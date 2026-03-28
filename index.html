@@ -7015,105 +7015,112 @@ INSTRUCCIONES IMPORTANTES:
       if (!el) {
         el = document.createElement('div');
         el.id = 'syncBadge';
-        el.style.cssText = 'position:fixed;top:calc(var(--st) + 8px);right:15px;z-index:9999;display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:all .4s ease;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
-        document.body.appendChild(el);
-      }
-
-      el.style.opacity = '1';
-      if (state === 'on') {
-        el.style.background = 'rgba(48,217,152,0.15)';
-        el.style.color = '#30d998';
-        el.style.border = '1px solid rgba(48,217,152,0.3)';
-        el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#30d998;box-shadow:0 0 8px #30d998"></span> Nube Sincronizada';
-        setTimeout(() => { if (!isSyncing) el.style.opacity = '0.4'; }, 5000);
-      } else if (state === 'syncing') {
-        isSyncing = true;
-        el.style.background = 'rgba(79,140,255,0.15)';
-        el.style.color = '#4f8cff';
-        el.style.border = '1px solid rgba(4f,8c,ff,0.3)';
-        el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#4f8cff;animation:pulse 1s infinite"></span> Guardando datos...';
-      } else {
-        isSyncing = false;
-        el.style.background = 'rgba(255,255,255,0.05)';
-        el.style.color = '#888';
-        el.style.border = '1px solid rgba(255,255,255,0.1)';
-        el.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:#888"></span> ${msg || 'Desconectado'}`;
-      }
+      el.style.cssText = 'position:fixed;top:calc(var(--st) + 8px);left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;white-space:nowrap;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:all .4s ease;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
+      document.body.appendChild(el);
     }
 
-    async function pushToFirebase() {
-      if (!syncEnabled || !fbUser || !fbDb || isSyncing) return;
-
-      try {
-        updateSyncStatus('syncing');
-        const batch = fbDb.batch();
-        const userDoc = fbDb.collection('users').doc(fbUser.uid);
-
-        // Solo subimos los últimos 20 entrenamientos para ahorrar datos y ser rápidos
-        // Firebase ya se encarga de mezclarlos correctamente
-        const recentOnes = workouts.slice(0, 20);
-        recentOnes.forEach(w => {
-          const wId = w.id || `w_${w.date.replace(/[^0-9]/g, '')}`;
-          const ref = userDoc.collection('workouts').doc(wId);
-          batch.set(ref, w, { merge: true });
-        });
-
-        // Guardamos estado del perfil
-        batch.set(userDoc, {
-          perfil: STORE.get('perfil') || {},
-          lastSync: firebase.firestore.FieldValue.serverTimestamp(),
-          platform: 'web_pwa'
-        }, { merge: true });
-
-        await batch.commit();
-        isSyncing = false;
-        updateSyncStatus('on');
-      } catch (e) {
-        isSyncing = false;
-        console.error('Push failed:', e);
-        updateSyncStatus('err', 'Reintentando...');
-        // Reintentar en 30 segundos si falló
-        setTimeout(pushToFirebase, 30000);
-      }
+    el.style.opacity = '1';
+    if (state === 'on') {
+      el.style.background = 'rgba(48,217,152,0.15)';
+      el.style.color = '#30d998';
+      el.style.border = '1px solid rgba(48,217,152,0.3)';
+      el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#30d998;box-shadow:0 0 8px #30d998"></span> Nube Sincronizada';
+      setTimeout(() => { if (!isSyncing) el.style.opacity = '0.3'; }, 5000);
+    } else if (state === 'syncing') {
+      isSyncing = true;
+      el.style.background = 'rgba(79,140,255,0.15)';
+      el.style.color = '#4f8cff';
+      el.style.border = '1px solid rgba(4f,8c,ff,0.3)';
+      el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#4f8cff;animation:pulse 1s infinite"></span> Guardando datos...';
+    } else {
+      isSyncing = false;
+      el.style.background = 'rgba(255,255,255,0.05)';
+      el.style.color = '#888';
+      el.style.border = '1px solid rgba(255,255,255,0.1)';
+      el.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:#888"></span> ${msg || 'Desconectado'}`;
     }
+  }
 
-    function listenRemoteWorkouts() {
-      if (!fbUser || !fbDb) return;
-      const col = fbDb.collection('users').doc(fbUser.uid).collection('workouts');
+  async function pushToFirebase() {
+    if (!syncEnabled || !fbUser || !fbDb || isSyncing) return;
 
-      fbUnsub = col.limit(50).onSnapshot(snap => {
-        if (snap.metadata.hasPendingWrites) return;
-        let changed = false;
-        snap.docChanges().forEach(change => {
-          if (change.type === 'added' || change.type === 'modified') {
-            const rw = change.doc.data();
-            const idx = workouts.findIndex(w => w.date === rw.date);
-            if (idx === -1) { workouts.push(rw); changed = true; }
-            else { workouts[idx] = rw; changed = true; }
-          }
-        });
-        if (changed) {
-          workouts.sort((a, b) => b.date.localeCompare(a.date));
-          saveWorkouts();
-          renderDash();
+    try {
+      updateSyncStatus('syncing');
+      const batch = fbDb.batch();
+      const userDoc = fbDb.collection('users').doc(fbUser.uid);
+
+      // Solo subimos los últimos 20 entrenamientos para ahorrar datos y ser rápidos
+      // Firebase ya se encarga de mezclarlos correctamente
+      const recentOnes = workouts.slice(0, 20);
+      recentOnes.forEach(w => {
+        const wId = w.id || `w_${w.date.replace(/[^0-9]/g, '')}`;
+        const ref = userDoc.collection('workouts').doc(wId);
+        batch.set(ref, w, { merge: true });
+      });
+
+      // Guardamos estado del perfil
+      batch.set(userDoc, {
+        perfil: STORE.get('perfil') || {},
+        lastSync: firebase.firestore.FieldValue.serverTimestamp(),
+        platform: 'web_pwa'
+      }, { merge: true });
+
+      await batch.commit();
+      isSyncing = false;
+      updateSyncStatus('on');
+    } catch (e) {
+      isSyncing = false;
+      console.error('Push failed:', e);
+      updateSyncStatus('err', 'Reintentando...');
+      // Reintentar en 30 segundos si falló
+      setTimeout(pushToFirebase, 30000);
+    }
+  }
+
+  function listenRemoteWorkouts() {
+    if (!fbUser || !fbDb) return;
+    const col = fbDb.collection('users').doc(fbUser.uid).collection('workouts');
+
+    fbUnsub = col.limit(50).onSnapshot(snap => {
+      if (snap.metadata.hasPendingWrites) return;
+      let changed = false;
+      snap.docChanges().forEach(change => {
+        if (change.type === 'added' || change.type === 'modified') {
+          const rw = change.doc.data();
+          const idx = workouts.findIndex(w => w.date === rw.date);
+          if (idx === -1) { workouts.push(rw); changed = true; }
+          else { workouts[idx] = rw; changed = true; }
         }
       });
-    }
-
-    // Hook de guardado robusto
-    const _origSave = saveWorkouts;
-    saveWorkouts = function () {
-      _origSave(); // Guardado local inmediato e infalible
-      if (syncEnabled) {
-        clearTimeout(window._syncDebounce);
-        window._syncDebounce = setTimeout(pushToFirebase, 5000);
+      if (changed) {
+        workouts.sort((a, b) => b.date.localeCompare(a.date));
+        saveWorkouts();
+        renderDash();
       }
-    };
+    });
+  }
 
-    setTimeout(initFirebase, 2000);
+  // Hook de guardado robusto
+  const _origSave = saveWorkouts;
+  saveWorkouts = function () {
+    _origSave(); // Guardado local inmediato e infalible
+    if (syncEnabled) {
+      clearTimeout(window._syncDebounce);
+      window._syncDebounce = setTimeout(pushToFirebase, 5000);
+    }
+  };
 
+  setTimeout(initFirebase, 2000);
 
-  </script>
+  // Registro del Service Worker (PWA)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => {
+        console.warn('SW register failed:', err);
+      });
+    });
+  }
+
+</script>
 </body>
-
 </html>
