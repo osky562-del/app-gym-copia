@@ -6141,6 +6141,10 @@
       el.innerHTML = html;
     }
 
+    /* ── AI-POWERED CONFIG ── */
+    const PROMPT_WORKER = 'https://ko95fit-ia.osky562.workers.dev/';
+    const CONSEJOS_WORKER = 'https://consejosapp.osky562.workers.dev/';
+
     /* ── AI-POWERED CONSEJOS (OpenRouter via Worker) ── */
     async function generarConsejosIA(p) {
       const statusEl = $('iaAdviceStatus');
@@ -6343,16 +6347,6 @@ Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer 
     }
 
     /* ══ RUTINA IA ══ */
-    const AI_MODELS = [
-      "openrouter/free",
-      "google/gemini-2.0-flash-exp:free",
-      "mistralai/mistral-7b-instruct:free",
-      "microsoft/phi-3-mini-128k-instruct:free",
-      "meta-llama/llama-3.1-8b-instruct:free"
-    ];
-    const WORKER = 'https://ko95fit-ia.osky562.workers.dev/';
-    const CONSEJOS_WORKER = 'https://consejosapp.osky562.workers.dev/';
-
     let rutinaGenerada = null; // {nombre, dias:[{titulo, ejercicios:[{ex,sets,reps,kg,nota}]}]}
 
     async function generarRutinaIA() {
