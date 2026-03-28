@@ -6141,9 +6141,10 @@
       el.innerHTML = html;
     }
 
-    /* ── AI-POWERED CONFIG ── */
-    const PROMPT_WORKER = 'https://ko95fit-ia.osky562.workers.dev/';
-    const CONSEJOS_WORKER = 'https://consejosapp.osky562.workers.dev/';
+    /* ── AI-POWERED CONFIG (Unified Backend) ── */
+    const AI_BRAIN_WORKER = 'https://consejosapp.osky562.workers.dev/';
+    const PROMPT_WORKER = AI_BRAIN_WORKER;
+    const CONSEJOS_WORKER = AI_BRAIN_WORKER;
 
     /* ── AI-POWERED CONSEJOS (OpenRouter via Worker) ── */
     async function generarConsejosIA(p) {
