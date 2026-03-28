@@ -6239,63 +6239,103 @@
             statusEl.style.background = 'var(--gg)';
             statusEl.style.color = 'var(--green)';
             
-            // Rich parsing into HTML (Prettier Coach UI)
-            let html = '<div style="display:flex;flex-direction:column;gap:12px;animation:fadeUp .4s ease;">';
+            // Rich parsing into HTML (Ultra-Premium UI)
+            let html = '<div style="display:flex;flex-direction:column;gap:16px;animation:fadeUp .4s ease;margin-bottom:20px;">';
+            
+            // Header estilo cyberpunk IA
+            html += `
+              <div style="background:linear-gradient(135deg, rgba(80,130,250,0.1), transparent); border:1px solid rgba(80,130,250,0.2); border-radius:12px; padding:12px; display:flex; gap:12px; align-items:center;">
+                <div style="width:40px;height:40px;border-radius:50%;background:rgba(80,130,250,0.2);display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(80,130,250,0.3);flex-shrink:0;">
+                  <i class="fa-solid fa-robot" style="color:#5082fa;font-size:1.1rem;"></i>
+                </div>
+                <div>
+                  <div style="font-size:.7rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:2px;">Cerebro Central IA</div>
+                  <div style="font-size:.85rem;color:var(--t1);font-weight:600;line-height:1.3;">Análisis táctico completado. Tus datos han sido procesados:</div>
+                </div>
+              </div>
+            `;
+            
             const lines = content.split('\n');
-            let currentSection = '';
+            let currentSection = null;
+
+            const themeMap = {
+              '🎯': { bg: 'rgba(26,77,255,0.05)', b1: '#1A4DFF', b2: '#00C6FF', t: '#5082fa' },
+              '💪': { bg: 'rgba(245,166,35,0.05)', b1: '#F5A623', b2: '#FFD000', t: '#f5a623' },
+              '🥗': { bg: 'rgba(0,176,155,0.05)', b1: '#00B09B', b2: '#96C93D', t: '#00b09b' },
+              '😴': { bg: 'rgba(142,45,226,0.05)', b1: '#8E2DE2', b2: '#4A00E0', t: '#b06ab3' },
+              '🔥': { bg: 'rgba(255,65,108,0.05)', b1: '#FF416C', b2: '#FF4B2B', t: '#ff416c' },
+              '⚡': { bg: 'rgba(79,172,254,0.05)', b1: '#4facfe', b2: '#00f2fe', t: '#4facfe' },
+              '📊': { bg: 'rgba(26,77,255,0.05)', b1: '#1A4DFF', b2: '#00C6FF', t: '#5082fa' }
+            };
 
             lines.forEach(line => {
               let clean = line.trim();
               if (!clean) return;
 
-              // Eliminar asteriscos para procesar la logica sin estorbos de markdown
               const cleanNoBold = line.replace(/\*|#|_/g, '').trim();
-              
-              // Detectar si es cabecera (Si empieza por nuestro emoji o todo mayusculas)
               const isHeaderPattern = /^([🎯💪🥗😴🔥⚡📊🏋💊🧠])/u.test(cleanNoBold) || (/^[A-ZÁÉÍÓÚÑ ]+(:|—|-)/.test(cleanNoBold) && cleanNoBold.length < 50);
 
               if (isHeaderPattern && cleanNoBold.length < 60) {
-                if (currentSection) html += '</div></div>';
+                if (currentSection) html += '</div></div></div>'; // Cierra content-wrapper, flex-col, card
                 
                 const emojiMatch = cleanNoBold.match(/^([\u2700-\u27BF]|[\uD83C-\uD83E][\uDC00-\uDFFF])/u);
-                const emoji = emojiMatch ? emojiMatch[0] : '✦';
+                const emoji = emojiMatch ? emojiMatch[0] : '🎯';
                 let title = cleanNoBold.replace(/^[\s\u2700-\u27BF\uD83C-\uD83E\uDC00-\uDFFF]+/, '').replace(/[:—\-]+$/, '').trim();
-                if(!title) title = "CONSEJO";
+                if(!title) title = "CONSEJO TÁCTICO";
 
-                const colors = { '🎯': 'blue', '💪': 'amber', '🥗': 'green', '😴': 'purple', '🔥': 'red', '⚡': 'blue' };
-                const color = colors[emoji] || 'amber';
+                const theme = themeMap[emoji] || themeMap['🎯'];
                 
                 html += `
-                  <div style="background:var(--c2);border:1px solid rgba(255,255,255,0.03);border-left:3px solid var(--${color});border-radius:10px;padding:14px;box-shadow:0 4px 15px rgba(0,0,0,0.15);">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:6px;">
-                      <span style="font-size:1.2rem;background:var(--bg);box-shadow:inset 0 2px 4px rgba(0,0,0,.5);border-radius:6px;padding:5px;line-height:1;">${emoji}</span>
-                      <span style="font-size:.85rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--t1);">${title}</span>
-                    </div>
-                    <div style="font-size:.88rem;color:var(--t2);line-height:1.6;display:flex;flex-direction:column;gap:8px;">
+                  <div style="background:var(--c2); border:1px solid rgba(255,255,255,0.04); border-radius:14px; position:relative; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg, ${theme.b1}, ${theme.b2});box-shadow:0 0 10px ${theme.b1};"></div>
+                    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg, ${theme.bg}, transparent);z-index:0;pointer-events:none;"></div>
+                    
+                    <div style="position:relative;z-index:1;padding:16px;">
+                      
+                      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed rgba(255,255,255,0.08);">
+                        <div style="width:36px;height:36px;border-radius:10px;background:var(--bg);border:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:1.3rem;box-shadow:inset 0 4px 6px rgba(0,0,0,0.3);">
+                          ${emoji}
+                        </div>
+                        <div style="flex:1;">
+                          <div style="font-size:1.05rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;background:linear-gradient(90deg, ${theme.b1}, ${theme.b2});-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${title}</div>
+                          <div style="font-size:.6rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px;font-weight:700;">KO95FIT ENGINE</div>
+                        </div>
+                      </div>
+                      
+                      <div style="font-size:.88rem;color:var(--t1);line-height:1.6;display:flex;flex-direction:column;gap:10px;">
                 `;
-                currentSection = title;
+                currentSection = theme;
                 return;
               }
               
-              // Parse texto y negritas
-              clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--t1);font-weight:800;">$1</strong>');
+              clean = clean.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
+                 let tColor = currentSection ? currentSection.t : 'var(--amber)';
+                 return `<span style="background:rgba(255,255,255,0.05);padding:1px 6px;border-radius:4px;color:${tColor};font-weight:700;border:1px solid rgba(255,255,255,0.08);">${p1}</span>`;
+              });
               
               const isListItem = /^[-•\*]\s+/.test(cleanNoBold);
               let textContent = clean;
-              if (isListItem) textContent = textContent.replace(/^<strong.*?>[-•\*]\s+<\/strong>|[-•\*]\s+/, '').trim();
+              if (isListItem) {
+                 textContent = textContent.replace(/^(<span[^>]*>)?[-•\*]\s+(<\/span>)?|[-•\*]\s+/, '').trim();
+              }
               
               if (currentSection) {
                 if (isListItem) {
-                  html += `<div style="display:flex;gap:8px;align-items:start;"><span style="color:var(--amber);margin-top:1px;font-size:1.1rem;line-height:1;">•</span><span>${textContent}</span></div>`;
+                  html += `
+                    <div style="display:flex; gap:10px; align-items:flex-start; background:rgba(0,0,0,0.25); border-radius:8px; padding:12px; border:1px solid rgba(255,255,255,0.02);">
+                      <div style="margin-top:6px;width:6px;height:6px;border-radius:50%;background:${currentSection.t};box-shadow:0 0 8px ${currentSection.t};flex-shrink:0;"></div>
+                      <div style="flex:1;">${textContent}</div>
+                    </div>
+                  `;
                 } else {
-                  html += `<div>${textContent}</div>`;
+                  html += `<div style="color:var(--t2);">${textContent}</div>`;
                 }
               } else {
-                html += `<div style="font-size:.88rem;color:var(--t2);line-height:1.6;padding:0 4px;">${clean}</div>`;
+                html += `<div style="font-size:.88rem;color:var(--t2);line-height:1.6;">${clean}</div>`;
               }
             });
             
-            if (currentSection) html += '</div></div>';
+            if (currentSection) html += '</div></div></div>';
             html += '</div>';
             
             bodyEl.innerHTML = html;
