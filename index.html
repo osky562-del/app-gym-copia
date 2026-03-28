@@ -6239,32 +6239,65 @@
             statusEl.style.background = 'var(--gg)';
             statusEl.style.color = 'var(--green)';
             
-            // Rich parsing into HTML
-            let html = '';
-            const sections = content.split(/\n/).filter(l => l.trim());
+            // Rich parsing into HTML (Prettier Coach UI)
+            let html = '<div style="display:flex;flex-direction:column;gap:12px;animation:fadeUp .4s ease;">';
+            const lines = content.split('\n');
             let currentSection = '';
 
-            sections.forEach(line => {
+            lines.forEach(line => {
               let clean = line.trim();
-              const isHeader = /^(🎯|💪|🥗|😴|🔥|⚡|📊|🏋|💊|🧠)/.test(clean) || /^[A-ZÁÉÍÓÚ ]+ —/.test(clean);
-              if (isHeader) {
-                if (currentSection) html += '</ul></div>';
-                const emojiMatch = clean.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u);
+              if (!clean) return;
+
+              // Eliminar asteriscos para procesar la logica sin estorbos de markdown
+              const cleanNoBold = line.replace(/\*|#|_/g, '').trim();
+              
+              // Detectar si es cabecera (Si empieza por nuestro emoji o todo mayusculas)
+              const isHeaderPattern = /^([🎯💪🥗😴🔥⚡📊🏋💊🧠])/u.test(cleanNoBold) || (/^[A-ZÁÉÍÓÚÑ ]+(:|—|-)/.test(cleanNoBold) && cleanNoBold.length < 50);
+
+              if (isHeaderPattern && cleanNoBold.length < 60) {
+                if (currentSection) html += '</div></div>';
+                
+                const emojiMatch = cleanNoBold.match(/^([\u2700-\u27BF]|[\uD83C-\uD83E][\uDC00-\uDFFF])/u);
                 const emoji = emojiMatch ? emojiMatch[0] : '✦';
-                const title = clean.replace(/^[\s\p{Emoji_Presentation}\p{Extended_Pictographic}]+/u, '').replace(/^[\s—\-:]+/, '').trim();
-                const colors = { '🎯': 'blue', '💪': 'amber', '🥗': 'green', '😴': 'purple', '🔥': 'red', '⚡': 'blue', '📊': 'blue' };
-                const color = colors[emoji] || 'blue';
-                html += `<div style="margin-top:14px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:1.1rem;">${emoji}</span><span style="font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--${color})">${title}</span></div><ul class="consejo-list">`;
+                let title = cleanNoBold.replace(/^[\s\u2700-\u27BF\uD83C-\uD83E\uDC00-\uDFFF]+/, '').replace(/[:—\-]+$/, '').trim();
+                if(!title) title = "CONSEJO";
+
+                const colors = { '🎯': 'blue', '💪': 'amber', '🥗': 'green', '😴': 'purple', '🔥': 'red', '⚡': 'blue' };
+                const color = colors[emoji] || 'amber';
+                
+                html += `
+                  <div style="background:var(--c2);border:1px solid rgba(255,255,255,0.03);border-left:3px solid var(--${color});border-radius:10px;padding:14px;box-shadow:0 4px 15px rgba(0,0,0,0.15);">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:6px;">
+                      <span style="font-size:1.2rem;background:var(--bg);box-shadow:inset 0 2px 4px rgba(0,0,0,.5);border-radius:6px;padding:5px;line-height:1;">${emoji}</span>
+                      <span style="font-size:.85rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--t1);">${title}</span>
+                    </div>
+                    <div style="font-size:.88rem;color:var(--t2);line-height:1.6;display:flex;flex-direction:column;gap:8px;">
+                `;
                 currentSection = title;
                 return;
               }
-              clean = clean.replace(/^[\s•\-\*\d\.]+/, '').trim();
-              if (!clean) return;
-              clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-              if (currentSection) html += `<li>${clean}</li>`;
-              else html += `<p style="font-size:.85rem;color:var(--t2);line-height:1.6;margin-bottom:8px;">${clean}</p>`;
+              
+              // Parse texto y negritas
+              clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--t1);font-weight:800;">$1</strong>');
+              
+              const isListItem = /^[-•\*]\s+/.test(cleanNoBold);
+              let textContent = clean;
+              if (isListItem) textContent = textContent.replace(/^<strong.*?>[-•\*]\s+<\/strong>|[-•\*]\s+/, '').trim();
+              
+              if (currentSection) {
+                if (isListItem) {
+                  html += `<div style="display:flex;gap:8px;align-items:start;"><span style="color:var(--amber);margin-top:1px;font-size:1.1rem;line-height:1;">•</span><span>${textContent}</span></div>`;
+                } else {
+                  html += `<div>${textContent}</div>`;
+                }
+              } else {
+                html += `<div style="font-size:.88rem;color:var(--t2);line-height:1.6;padding:0 4px;">${clean}</div>`;
+              }
             });
-            if (currentSection) html += '</ul></div>';
+            
+            if (currentSection) html += '</div></div>';
+            html += '</div>';
+            
             bodyEl.innerHTML = html;
             STORE.set('iaConsejos', { html, ts: Date.now() });
             setTimeout(() => statusEl.style.display = 'none', 3000);
