@@ -45,8 +45,10 @@
       --f: 'Inter', sans-serif;
       --fm: 'JetBrains Mono', monospace;
       --tab: 80px;
-      --st: env(safe-area-inset-top, 44px);
-      --sb: env(safe-area-inset-bottom, 20px);
+      --sf-top: env(safe-area-inset-top, 40px);
+      --sf-bot: env(safe-area-inset-bottom, 20px);
+      --st: max(var(--sf-top), 40px);
+      --sb: max(var(--sf-bot), 24px);
       --r: 12px;
       --r2: 8px;
     }
@@ -1033,7 +1035,7 @@
     }
 
     .plan-top {
-      padding-top: var(--st);
+      padding-top: calc(var(--st) + 8px);
       padding-left: 14px;
       padding-right: 14px;
       padding-bottom: 10px;
@@ -1148,6 +1150,7 @@
       font-weight: 600;
       width: 100%;
       -moz-appearance: textfield;
+      appearance: textfield;
       min-height: 28px;
     }
 
@@ -1345,6 +1348,7 @@
       text-align: center;
       width: 52px;
       -moz-appearance: textfield;
+      appearance: textfield;
     }
 
     .plan-param-i::-webkit-inner-spin-button,
@@ -1490,7 +1494,7 @@
     }
 
     .lv-top {
-      padding: calc(var(--st)+8px) 14px 10px;
+      padding: calc(var(--st) + 8px) 14px 10px;
       background: var(--bg);
       border-bottom: 1px solid var(--line);
       display: flex;
@@ -1950,6 +1954,7 @@
       width: 100%;
       outline: none;
       -moz-appearance: textfield;
+      appearance: textfield;
       transition: border-color .2s;
     }
 
@@ -3259,6 +3264,7 @@
       text-align: right;
       width: 120px;
       -moz-appearance: textfield;
+      appearance: textfield;
     }
 
     .pf-inp::-webkit-inner-spin-button,
