@@ -45,10 +45,8 @@
       --f: 'Inter', sans-serif;
       --fm: 'JetBrains Mono', monospace;
       --tab: 80px;
-      --sf-top: env(safe-area-inset-top, 40px);
-      --sf-bot: env(safe-area-inset-bottom, 20px);
-      --st: max(var(--sf-top), 40px);
-      --sb: max(var(--sf-bot), 24px);
+      --st: env(safe-area-inset-top, 40px);
+      --sb: env(safe-area-inset-bottom, 24px);
       --r: 12px;
       --r2: 8px;
     }
@@ -1035,10 +1033,10 @@
     }
 
     .plan-top {
-      padding-top: calc(var(--st) + 8px);
+      padding-top: calc(var(--st) + 14px);
       padding-left: 14px;
       padding-right: 14px;
-      padding-bottom: 10px;
+      padding-bottom: 12px;
       background: rgba(10, 10, 10, .97);
       border-bottom: 1px solid var(--line);
       display: flex;
@@ -1494,7 +1492,10 @@
     }
 
     .lv-top {
-      padding: calc(var(--st) + 8px) 14px 10px;
+      padding-top: calc(var(--st) + 14px);
+      padding-left: 14px;
+      padding-right: 14px;
+      padding-bottom: 12px;
       background: var(--bg);
       border-bottom: 1px solid var(--line);
       display: flex;
