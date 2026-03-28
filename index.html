@@ -6215,58 +6215,7 @@
       // IMC
       const imc = (p.peso && p.altura) ? +(p.peso / ((p.altura / 100) ** 2)).toFixed(1) : null;
 
-      /* ── PROMPT COMPLETO ── */
-      const prompt = `Eres un entrenador personal de élite y coach de fitness. Tu nombre es KO95 Coach. Analiza TODOS los datos de este atleta y genera un informe personalizado de coaching con consejos ESPECÍFICOS y ACCIONABLES.
-
-Responde en español. Sé directo, motivador y profesional. No repitas datos que el usuario ya ve en la app. Da consejos que SOLO tú como IA puedes dar analizando patrones.
-
-═══ PERFIL DEL ATLETA ═══
-• Sexo: ${p.sexo || 'no especificado'}
-• Edad: ${p.edad || 'desconocida'} años
-• Peso actual: ${p.peso || '?'}kg | Altura: ${p.altura || '?'}cm${imc ? ` | IMC: ${imc}` : ''}
-• Nivel autodeclarado: ${p.nivel}
-• Objetivo principal: ${p.objetivo}
-• Días de entreno planificados: ${p.dias || 3}/semana
-• Lesiones o limitaciones: ${p.lesiones || 'ninguna'}
-
-═══ HISTORIAL DE ENTRENAMIENTO ═══
-• Total de sesiones registradas: ${totalSess}
-• Racha actual: ${streak} días consecutivos | Racha máxima: ${maxStreak} días
-• Consistencia: ${consistencia !== null ? consistencia + '%' : 'sin datos'} (${sessPorSemana} sesiones/semana real vs ${p.dias} planificadas)
-• Volumen total levantado: ${big(volTotal)}kg
-• RPE medio: ${rpeMedio || 'sin datos'}${rpeMax ? ` | RPE máx: ${rpeMax} | RPE mín: ${rpeMin}` : ''}
-${durMedia ? `• Duración media de sesión: ${durMedia} minutos` : ''}
-
-═══ RÉCORDS PERSONALES (TOP EJERCICIOS) ═══
-  ${prsText || 'Sin datos de ejercicios aún'}
-
-═══ DISTRIBUCIÓN MUSCULAR ═══
-  ${musBalance || 'Sin datos de músculos aún'}
-
-═══ TENDENCIA SEMANAL ═══
-• Volumen esta semana vs anterior: ${weekComp.volDelta >= 0 ? '+' : ''}${weekComp.volDelta}%
-• Sesiones esta semana: ${weekComp.curSess}
-${weightTrend !== null ? `• Tendencia de peso corporal: ${weightTrend > 0 ? '+' : ''}${weightTrend}kg desde el primer registro` : ''}
-
-═══ ÚLTIMAS 5 SESIONES ═══
-  ${last5 || 'Sin sesiones registradas'}
-
-═══ INSTRUCCIONES DE RESPUESTA ═══
-Genera un informe con estas secciones (usa emojis como títulos):
-
-🎯 DIAGNÓSTICO — En 2-3 líneas, evalúa el estado actual del atleta basándote en los datos.
-
-💪 ENTRENAMIENTO — 3-4 consejos específicos sobre su rutina, ejercicios, volumen, intensidad. Si hay desbalance muscular, mencionarlo. Si el RPE es muy alto o bajo, ajustar.
-
-🥗 NUTRICIÓN — 2-3 consejos de nutrición personalizados según su objetivo, peso e IMC.
-
-😴 RECUPERACIÓN — 1-2 consejos sobre descanso, sueño, deload si es necesario.
-
-🔥 MOTIVACIÓN — Un mensaje motivacional personalizado basado en su racha, consistencia y progreso.
-
-⚡ PRÓXIMO RETO — Propón un reto o meta concreta para las próximas 2 semanas.
-
-Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer algo concreto). Máximo 400 palabras total.`;
+      const prompt = `Coach IA KO95FIT - analiza este atleta y da consejos en español. PERFIL: ${p.sexo||'?'}, ${p.edad||'?'}a, ${p.peso||'?'}kg, ${p.altura||'?'}cm, IMC ${imc||'?'}, nivel ${p.nivel}, objetivo ${p.objetivo}, ${p.dias||3} dias/sem, lesiones: ${p.lesiones||'ninguna'}. HISTORIAL: ${totalSess} sesiones, racha ${streak}d (max ${maxStreak}d), vol ${big(volTotal)}kg, RPE ${rpeMedio||'?'}, consistencia ${consistencia||'?'}%. TOP PRs: ${prsText||'sin datos'}. MUSCULOS: ${musBalance||'sin datos'}. SEMANA: vol ${weekComp.volDelta>=0?'+':''}${weekComp.volDelta}%, ${weekComp.curSess} ses. ULTIMAS: ${last5||'ninguna'}. RESPONDE con: 🎯DIAGNOSTICO | 💪ENTRENAMIENTO | 🥗NUTRICION | 😴RECUPERACION | 🔥MOTIVACION | ⚡RETO. Max 250 palabras, directo y accionable.`;
 
       statusEl.textContent = 'Coach IA consultando...';
       try {
@@ -6378,30 +6327,8 @@ Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer 
       const totalV = Object.values(volMus).reduce((a,b) => a+b, 0) || 1;
       const musDist = Object.entries(volMus).sort((a,b)=>b[1]-a[1]).map(([m,v]) => `${m} (${Math.round(v/totalV*100)}%)`).join(', ');
 
-      const prompt = `Eres un entrenador personal elite. Genera una rutina de gym HIPER-PERSONALIZADA.
+      const prompt = `Genera una rutina gym en JSON. PERFIL: ${perfil.sexo||'?'}, ${perfil.edad||'?'}a, ${perfil.peso||'?'}kg, nivel ${nivel}, objetivo ${objetivo}, enfoque ${enfoque}, equipo ${equipo}${lesiones ? ', lesiones: '+lesiones : ''}. PRs: ${prs||'ninguno'}. Vol muscular: ${musDist||'equilibrado'}. Genera ${dias} dias, 5-6 ejercicios/dia. Responde SOLO JSON: {"nombre":"Plan X","dias":[{"titulo":"Dia 1","ejercicios":[{"ex":"nombre","sets":4,"reps":10,"kg":"","nota":"tecnica"}]}]}`;
 
-PERFIL DEL USUARIO:
-- Biometría: ${perfil.sexo || '—'}, ${perfil.edad || '—'} años, ${perfil.peso || '—'}kg, ${perfil.altura || '—'}cm
-- Nivel: ${nivel} | Objetivo: ${objetivo} | Enfoque: ${enfoque}
-- Equipamiento: ${equipo} | Lesiones: ${lesiones || 'Ninguna'}
-
-ANÁLISIS DE RENDIMIENTO (HISTORIAL):
-- Últimas sesiones: ${logs.length ? logs.map(w => `${w.date} (${w.exercises.length} ej)`).join(', ') : 'Sin historial'}
-- Mejores marcas (PRs): ${prs || 'Ninguna'}
-- Distribución de volumen actual: ${musDist || 'Equilibrada'}
-
-INSTRUCCIONES DE GENERACIÓN:
-1. Análisis: Si los PRs son altos, no pongas ejercicios de principiante. Si la distribución de volumen muestra que un músculo está rezagado, dale prioridad. Si hay lesiones, propón alternativas seguras.
-2. Estructura: Genera exactamente ${dias} días de entrenamiento.
-3. Formato: Responde ÚNICAMENTE con JSON válido (sin markdown).
-4. Esquema JSON:
-{"nombre":"Nombre del plan","dias":[{"titulo":"Día 1 — Pecho + Hombro","ejercicios":[{"ex":"Ejercicio","sets":4,"reps":10,"kg":"","nota":"Nota técnica clave"}]}]}
-
-REQUISITOS:
-- Ejercicios en español.
-- 5-7 ejercicios por día.
-- kg: siempre vacío "".
-- nota: Instrucción técnica de 3-5 palabras.`;
 
       btn.disabled = true;
       $('rutinaResult').innerHTML = '';
@@ -6416,8 +6343,11 @@ REQUISITOS:
           signal: ac.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            messages: [{ role: 'user', content: prompt }], // Mandar directamente, el worker inteligente hará el resto
-            temperature: 0.8
+            messages: [
+              { role: 'system', content: 'Eres un entrenador. Responde solo con JSON puro, sin markdown.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.7
           })
         });
         clearTimeout(tid);
