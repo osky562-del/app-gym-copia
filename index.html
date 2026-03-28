@@ -6265,10 +6265,10 @@ Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer 
 
       /* ── Modelo principal + fallbacks ── */
       const CONSEJOS_MODELS = [
-        "arcee-ai/trinity-large-preview:free",
+        "openrouter/free", 
         "google/gemini-2.0-flash-exp:free",
-        "deepseek/deepseek-r1-0528-qwen3-8b:free",
-        "qwen/qwen3-8b:free"
+        "mistralai/mistral-7b-instruct:free",
+        "microsoft/phi-3-mini-128k-instruct:free"
       ];
 
       let ok = false, respuesta = '', lastErr = '';
@@ -6370,11 +6370,10 @@ Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer 
 
     /* ══ RUTINA IA ══ */
     const AI_MODELS = [
-      "arcee-ai/trinity-large-preview:free",
+      "openrouter/free",
       "google/gemini-2.0-flash-exp:free",
-      "deepseek/deepseek-r1-0528-qwen3-8b:free",
-      "qwen/qwen3-8b:free",
       "mistralai/mistral-7b-instruct:free",
+      "microsoft/phi-3-mini-128k-instruct:free",
       "meta-llama/llama-3.1-8b-instruct:free"
     ];
     const WORKER = 'https://ko95fit-ia.osky562.workers.dev/';
