@@ -6392,25 +6392,47 @@ Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer 
       const objetivo = perfil.objetivo || enfoque;
       const lesiones = perfil.lesiones && perfil.lesiones !== 'ninguna' ? perfil.lesiones : null;
 
-      const prompt = `Eres un entrenador personal experto. Genera una rutina de gym COMPLETA.
+      const logs = workouts.slice(0, 10); 
+      
+      // Analizar fortalezas para la rutina
+      const exMax = {};
+      const volMus = {};
+      workouts.slice(0, 20).forEach(w => {
+        (w.exercises || []).forEach(e => {
+          const kg = +e.kg || 0;
+          if (!exMax[e.ex] || kg > exMax[e.ex]) exMax[e.ex] = kg;
+          const m = getMuscle(e.ex);
+          volMus[m] = (volMus[m] || 0) + (kg * (+e.sets || 1) * (+e.reps || 1));
+        });
+      });
+      const prs = Object.entries(exMax).sort((a,b) => b[1]-a[1]).slice(0,5).map(([x,k]) => `${x} (${k}kg)`).join(', ');
+      const totalV = Object.values(volMus).reduce((a,b) => a+b, 0) || 1;
+      const musDist = Object.entries(volMus).sort((a,b)=>b[1]-a[1]).map(([m,v]) => `${m} (${Math.round(v/totalV*100)}%)`).join(', ');
 
-PERFIL:
-- Nivel: ${nivel}
-- Objetivo: ${objetivo}
-- Enfoque: ${enfoque}
-- Días/semana: ${dias}
-- Equipamiento: ${equipo}
-${lesiones ? `- Lesiones/limitaciones: ${lesiones} (evitar ejercicios que afecten esta zona)` : ''}
+      const prompt = `Eres un entrenador personal elite. Genera una rutina de gym HIPER-PERSONALIZADA.
 
-INSTRUCCIONES IMPORTANTES:
-- Responde ÚNICAMENTE con JSON válido, sin texto antes ni después, sin markdown
-- El JSON debe tener exactamente esta estructura:
-{"nombre":"Nombre del plan","dias":[{"titulo":"Día 1 — Pecho + Tríceps","ejercicios":[{"ex":"Press banca","sets":4,"reps":10,"kg":"","nota":"Agarre medio"},{"ex":"Press inclinado","sets":3,"reps":12,"kg":"","nota":""}]},{"titulo":"Día 2 — ...","ejercicios":[...]}]}
-- Genera exactamente ${dias} días
-- Cada día: 5-7 ejercicios con sets, reps y nota técnica breve
-- Los nombres de ejercicios en español
-- kg siempre vacío ""
-- Nota: consejo técnico de 2-5 palabras máximo`;
+PERFIL DEL USUARIO:
+- Biometría: ${perfil.sexo || '—'}, ${perfil.edad || '—'} años, ${perfil.peso || '—'}kg, ${perfil.altura || '—'}cm
+- Nivel: ${nivel} | Objetivo: ${objetivo} | Enfoque: ${enfoque}
+- Equipamiento: ${equipo} | Lesiones: ${lesiones || 'Ninguna'}
+
+ANÁLISIS DE RENDIMIENTO (HISTORIAL):
+- Últimas sesiones: ${logs.length ? logs.map(w => `${w.date} (${w.exercises.length} ej)`).join(', ') : 'Sin historial'}
+- Mejores marcas (PRs): ${prs || 'Ninguna'}
+- Distribución de volumen actual: ${musDist || 'Equilibrada'}
+
+INSTRUCCIONES DE GENERACIÓN:
+1. Análisis: Si los PRs son altos, no pongas ejercicios de principiante. Si la distribución de volumen muestra que un músculo está rezagado, dale prioridad. Si hay lesiones, propón alternativas seguras.
+2. Estructura: Genera exactamente ${dias} días de entrenamiento.
+3. Formato: Responde ÚNICAMENTE con JSON válido (sin markdown).
+4. Esquema JSON:
+{"nombre":"Nombre del plan","dias":[{"titulo":"Día 1 — Pecho + Hombro","ejercicios":[{"ex":"Ejercicio","sets":4,"reps":10,"kg":"","nota":"Nota técnica clave"}]}]}
+
+REQUISITOS:
+- Ejercicios en español.
+- 5-7 ejercicios por día.
+- kg: siempre vacío "".
+- nota: Instrucción técnica de 3-5 palabras.`;
 
       btn.disabled = true;
       $('rutinaResult').innerHTML = '';
