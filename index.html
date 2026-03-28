@@ -6274,7 +6274,7 @@ Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer 
       let ok = false, respuesta = '', lastErr = '';
 
       for (let i = 0; i < CONSEJOS_MODELS.length; i++) {
-        statusEl.textContent = i === 0 ? 'Conectando con Trinity IA…' : `Fallback ${i}/${CONSEJOS_MODELS.length - 1}…`;
+        statusEl.textContent = i === 0 ? 'Conectando con Coach IA…' : `Reintentando (${i}/${CONSEJOS_MODELS.length - 1})…`;
         try {
           const ac = new AbortController();
           const tid = setTimeout(() => ac.abort(), 30000);
@@ -6301,7 +6301,7 @@ Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer 
       }
 
       if (ok) {
-        statusEl.textContent = 'Trinity IA ✓';
+        statusEl.textContent = 'Coach IA ✓';
         statusEl.style.background = 'var(--gg)';
         statusEl.style.color = 'var(--green)';
 
@@ -6419,10 +6419,10 @@ INSTRUCCIONES IMPORTANTES:
       let ok = false, txt = '', lastErr = '';
 
       for (let i = 0; i < AI_MODELS.length; i++) {
-        stat.textContent = i === 0 ? 'Generando con Trinity IA…' : `Modelo ${i + 1}/${AI_MODELS.length}…`;
+        stat.textContent = i === 0 ? 'Generando rutina con IA...' : `Modelo ${i + 1}/${AI_MODELS.length} (reintentando)...`;
         try {
           const ac = new AbortController();
-          const tid = setTimeout(() => ac.abort(), 30000);
+          const tid = setTimeout(() => ac.abort(), 45000); // 45s for routines
           const r = await fetch(CONSEJOS_WORKER, {
             method: 'POST',
             signal: ac.signal,
@@ -6437,14 +6437,26 @@ INSTRUCCIONES IMPORTANTES:
           clearTimeout(tid);
           if (r.ok) {
             const d = await r.json();
-            const content = d.choices?.[0]?.message?.content;
-            if (content) { txt = content; ok = true; stat.textContent = `✓ Generado`; break; }
+            const content = d.choices?.[0]?.message?.content || d; 
+            if (content) { 
+              txt = typeof content === 'string' ? content : JSON.stringify(content);
+              ok = true; 
+              stat.textContent = `✓ Rutina generada`; 
+              break; 
+            }
           } else {
-            lastErr = `Error ${r.status}`;
+            const errBody = await r.json().catch(() => ({}));
+            lastErr = `Error ${r.status}: ${errBody.error || r.statusText}`;
           }
         } catch (e) {
-          lastErr = e.name === 'AbortError' ? 'Timeout' : e.message;
+          lastErr = e.name === 'AbortError' ? 'Timeout (45s)' : e.message;
         }
+      }
+
+      if (!ok) {
+        btn.disabled = false;
+        stat.innerHTML = `<span style="color:var(--red)">No se pudo generar: ${lastErr}</span>`;
+        return;
       }
 
       btn.disabled = false;
