@@ -6263,93 +6263,67 @@ Genera un informe con estas secciones (usa emojis como títulos):
 
 Sé conciso pero específico. Cada consejo debe ser accionable (que pueda hacer algo concreto). Máximo 400 palabras total.`;
 
-      /* ── Modelo principal + fallbacks ── */
-      const CONSEJOS_MODELS = [
-        "openrouter/free", 
-        "google/gemini-2.0-flash-exp:free",
-        "mistralai/mistral-7b-instruct:free",
-        "microsoft/phi-3-mini-128k-instruct:free"
-      ];
+      statusEl.textContent = 'Coach IA consultando...';
+      try {
+        const ac = new AbortController();
+        const tid = setTimeout(() => ac.abort(), 45000);
+        const r = await fetch(CONSEJOS_WORKER, {
+          method: 'POST',
+          signal: ac.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.75
+          })
+        });
+        clearTimeout(tid);
+        
+        if (r.ok) {
+          const content = await r.text();
+          if (content && content.length > 50) {
+            statusEl.textContent = 'Coach IA ✓';
+            statusEl.style.background = 'var(--gg)';
+            statusEl.style.color = 'var(--green)';
+            
+            // Rich parsing into HTML
+            let html = '';
+            const sections = content.split(/\n/).filter(l => l.trim());
+            let currentSection = '';
 
-      let ok = false, respuesta = '', lastErr = '';
-
-      for (let i = 0; i < CONSEJOS_MODELS.length; i++) {
-        statusEl.textContent = i === 0 ? 'Conectando con Coach IA…' : `Reintentando (${i}/${CONSEJOS_MODELS.length - 1})…`;
-        try {
-          const ac = new AbortController();
-          const tid = setTimeout(() => ac.abort(), 30000);
-          const r = await fetch(CONSEJOS_WORKER, {
-            method: 'POST',
-            signal: ac.signal,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: CONSEJOS_MODELS[i],
-              messages: [{ role: 'user', content: prompt }],
-              temperature: 0.75,
-              max_tokens: 2000
-            })
-          });
-          clearTimeout(tid);
-          if (r.ok) {
-            const d = await r.json();
-            const content = d.choices?.[0]?.message?.content;
-            if (content && content.length > 80) { respuesta = content; ok = true; break; }
-          } else { lastErr = `Error ${r.status}`; }
-        } catch (e) {
-          lastErr = e.name === 'AbortError' ? 'Timeout' : e.message;
-        }
-      }
-
-      if (ok) {
-        statusEl.textContent = 'Coach IA ✓';
-        statusEl.style.background = 'var(--gg)';
-        statusEl.style.color = 'var(--green)';
-
-        // Parse response into rich HTML
-        let html = '';
-        const sections = respuesta.split(/\n/).filter(l => l.trim());
-        let currentSection = '';
-
-        sections.forEach(line => {
-          let clean = line.trim();
-          // Detect section headers (emoji at start)
-          const isHeader = /^(🎯|💪|🥗|😴|🔥|⚡|📊|🏋|💊|🧠)/.test(clean);
-          if (isHeader) {
+            sections.forEach(line => {
+              let clean = line.trim();
+              const isHeader = /^(🎯|💪|🥗|😴|🔥|⚡|📊|🏋|💊|🧠)/.test(clean) || /^[A-ZÁÉÍÓÚ ]+ —/.test(clean);
+              if (isHeader) {
+                if (currentSection) html += '</ul></div>';
+                const emojiMatch = clean.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u);
+                const emoji = emojiMatch ? emojiMatch[0] : '✦';
+                const title = clean.replace(/^[\s\p{Emoji_Presentation}\p{Extended_Pictographic}]+/u, '').replace(/^[\s—\-:]+/, '').trim();
+                const colors = { '🎯': 'blue', '💪': 'amber', '🥗': 'green', '😴': 'purple', '🔥': 'red', '⚡': 'blue', '📊': 'blue' };
+                const color = colors[emoji] || 'blue';
+                html += `<div style="margin-top:14px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:1.1rem;">${emoji}</span><span style="font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--${color})">${title}</span></div><ul class="consejo-list">`;
+                currentSection = title;
+                return;
+              }
+              clean = clean.replace(/^[\s•\-\*\d\.]+/, '').trim();
+              if (!clean) return;
+              clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+              if (currentSection) html += `<li>${clean}</li>`;
+              else html += `<p style="font-size:.85rem;color:var(--t2);line-height:1.6;margin-bottom:8px;">${clean}</p>`;
+            });
             if (currentSection) html += '</ul></div>';
-            const emoji = clean.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u)?.[0] || '✦';
-            const title = clean.replace(/^[\s\p{Emoji_Presentation}\p{Extended_Pictographic}]+/u, '').replace(/^[\s—\-:]+/, '').trim();
-            const colors = { '🎯': 'blue', '💪': 'amber', '🥗': 'green', '😴': 'purple', '🔥': 'red', '⚡': 'blue' };
-            const color = colors[emoji] || 'blue';
-            html += `<div style="margin-top:14px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:1.1rem;">${emoji}</span><span style="font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--${color})">${title}</span></div><ul class="consejo-list">`;
-            currentSection = title;
+            bodyEl.innerHTML = html;
+            STORE.set('iaConsejos', { html, ts: Date.now() });
+            setTimeout(() => statusEl.style.display = 'none', 3000);
             return;
           }
-
-          // Regular line
-          clean = clean.replace(/^[\s•\-\*\d\.]+/, '').trim();
-          if (!clean) return;
-          clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-          if (currentSection) {
-            html += `<li>${clean}</li>`;
-          } else {
-            // If no section started yet, wrap in a paragraph
-            html += `<p style="font-size:.85rem;color:var(--t2);line-height:1.6;margin-bottom:8px;">${clean}</p>`;
-          }
-        });
-        if (currentSection) html += '</ul></div>';
-
-        bodyEl.innerHTML = html;
-        STORE.set('iaConsejos', { html, ts: Date.now() });
-      } else {
-        statusEl.textContent = 'Offline';
+        }
+        throw new Error(`Error ${r.status}`);
+      } catch (e) {
+        statusEl.textContent = 'Error: ' + (e.name === 'AbortError' ? 'Timeout' : e.message);
         statusEl.style.background = 'var(--rg)';
         statusEl.style.color = 'var(--red)';
         const cached = STORE.get('iaConsejos');
-        if (cached && cached.html) {
-          bodyEl.innerHTML = cached.html + '<div style="font-size:.65rem;color:var(--t4);margin-top:8px;font-style:italic;">Datos en caché — sin conexión</div>';
-        } else {
-          bodyEl.innerHTML = '<div style="font-size:.82rem;color:var(--t3);padding:8px 0;">No se pudo conectar con el Coach IA. Revisa tu conexión y reinténtalo.</div>';
-        }
+        if (cached?.html) bodyEl.innerHTML = cached.html + '<div style="font-size:.6rem;color:var(--t4);margin-top:8px;">Datos en caché</div>';
       }
     }
 
@@ -6436,75 +6410,46 @@ REQUISITOS:
 
       btn.disabled = true;
       $('rutinaResult').innerHTML = '';
-      rutinaGenerada = null;
-
-      let ok = false, txt = '', lastErr = '';
-
-      for (let i = 0; i < AI_MODELS.length; i++) {
-        stat.textContent = i === 0 ? 'Generando rutina con IA...' : `Modelo ${i + 1}/${AI_MODELS.length} (reintentando)...`;
-        try {
-          const ac = new AbortController();
-          const tid = setTimeout(() => ac.abort(), 45000); // 45s for routines
-          const r = await fetch(CONSEJOS_WORKER, {
-            method: 'POST',
-            signal: ac.signal,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: AI_MODELS[i],
-              messages: [{ role: 'user', content: prompt }],
-              temperature: 0.6,
-              max_tokens: 2500
-            })
-          });
-          clearTimeout(tid);
-          if (r.ok) {
-            const d = await r.json();
-            const content = d.choices?.[0]?.message?.content || d; 
-            if (content) { 
-              txt = typeof content === 'string' ? content : JSON.stringify(content);
-              ok = true; 
-              stat.textContent = `✓ Rutina generada`; 
-              break; 
-            }
-          } else {
-            const errBody = await r.json().catch(() => ({}));
-            lastErr = `Error ${r.status}: ${errBody.error || r.statusText}`;
-          }
-        } catch (e) {
-          lastErr = e.name === 'AbortError' ? 'Timeout (45s)' : e.message;
-        }
-      }
-
-      if (!ok) {
-        btn.disabled = false;
-        stat.innerHTML = `<span style="color:var(--red)">No se pudo generar: ${lastErr}</span>`;
-        return;
-      }
-
-      btn.disabled = false;
-
-      if (!ok) {
-        stat.textContent = 'Error: ' + lastErr + ' — sin conexión o servicio no disponible';
-        toast('No se pudo conectar con la IA', 'err');
-        return;
-      }
-
-      // Parse JSON
+      stat.style.display = 'block';
+      stat.textContent = 'IA Generando rutina personalizada...';
+      
       try {
-        const clean = txt
-          .replace(/```json/gi, '').replace(/```/g, '')
-          .replace(/^[^{]*/, '').replace(/[^}]*$/, '').trim();
-        // Find the outermost {...}
-        const start = clean.indexOf('{');
-        const end = clean.lastIndexOf('}');
-        rutinaGenerada = JSON.parse(clean.slice(start, end + 1));
-        if (!rutinaGenerada.dias || !Array.isArray(rutinaGenerada.dias)) throw new Error('formato incorrecto');
-        renderRutinaResult();
-        toast('Rutina generada ✓', 'good');
+        const ac = new AbortController();
+        const tid = setTimeout(() => ac.abort(), 60000); 
+        const r = await fetch(PROMPT_WORKER, {
+          method: 'POST',
+          signal: ac.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            messages: [{ role: 'user', content: prompt }], // Mandar directamente, el worker inteligente hará el resto
+            temperature: 0.8
+          })
+        });
+        clearTimeout(tid);
+
+        if (!r.ok) throw new Error(`Servidor IA (Error ${r.status})`);
+        
+        let txt = await r.text();
+        if (txt.includes('{')) {
+          const clean = txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1);
+          rutinaGenerada = JSON.parse(clean);
+          if (rutinaGenerada && rutinaGenerada.dias) {
+            renderRutinaResult();
+            stat.textContent = 'Rutina Generada ✓';
+            stat.style.background = 'var(--gg)';
+            stat.style.color = 'var(--green)';
+            setTimeout(() => stat.style.display = 'none', 3000);
+            return;
+          }
+        }
+        throw new Error('Respuesta de IA no válida');
       } catch (e) {
-        stat.textContent = 'Error al procesar la respuesta';
-        console.error('Parse error:', e, txt);
-        toast('Error al procesar respuesta de la IA', 'err');
+        stat.textContent = 'Error: ' + (e.name === 'AbortError' ? 'Tiempo agotado (60s)' : e.message);
+        stat.style.background = 'var(--rg)';
+        stat.style.color = 'var(--red)';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-wand-sparkles"></i> Generar Rutina Personalizada`;
       }
     }
 
