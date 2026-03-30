@@ -246,15 +246,12 @@
     }
 
     @keyframes up {
-      from {
-        opacity: 0;
-        transform: translateY(8px)
-      }
-
-      to {
-        opacity: 1;
-        transform: none
-      }
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes toastIn {
+      0% { opacity: 0; transform: translate(-50%, 15px) scale(0.92); }
+      100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
     }
 
     /* Ambient particles */
@@ -3139,32 +3136,34 @@
     /* ─── OVERLAYS ─── */
     #toasts {
       position: fixed;
-      bottom: calc(var(--tab)+12px);
+      bottom: 55px; /* Un poco más abajo para que no estorbe */
       left: 50%;
       transform: translateX(-50%);
-      z-index: 9000;
+      z-index: 20000;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 5px;
+      gap: 10px;
       pointer-events: none;
-      width: 88%;
-      max-width: 300px;
+      width: 90%;
+      max-width: 320px;
     }
 
     .toast {
-      background: var(--s4);
-      border: 1px solid var(--line2);
-      border-radius: 10px;
-      padding: 10px 16px;
-      font-size: .78rem;
-      font-weight: 600;
-      box-shadow: 0 8px 28px rgba(0, 0, 0, .7);
-      animation: up .22s ease;
+      background: rgba(10, 10, 11, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 12px 20px;
+      font-size: .85rem;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .8);
+      animation: toastIn .3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
       display: flex;
       align-items: center;
-      gap: 8px;
-      white-space: nowrap;
+      gap: 10px;
+      text-align: center;
     }
 
     .toast.ok {
@@ -4889,7 +4888,7 @@
       <div style="text-align:right; margin-bottom:20px">
         <span onclick="authResetPass()" style="color:var(--a); font-size:0.75rem; cursor:pointer; opacity:0.8; font-weight:700">¿Has olvidado la contraseña?</span>
       </div>
-      <button class="auth-btn" onclick="authEmailLogin()">Entrar</button>
+      <button class="auth-btn" id="btnLogin" onclick="authEmailLogin()">Entrar</button>
       <div class="auth-switch">¿No tienes cuenta? <span onclick="authToggle(1)">Regístrate</span></div>
     </div>
   </div>
@@ -5005,16 +5004,27 @@
         </div>
       </div>
       <div class="ob-slide">
+        <div class="ob-icon">👤</div>
+        <div class="ob-h">Tu <span>perfil</span></div>
+        <div class="ob-p">Esto nos ayuda a calcular tus necesidades calóricas y de entrenamiento.</div>
+        <div class="ob-inputs">
+          <div class="ob-inp">
+            <select id="obSexo">
+              <option value="hombre">👨 Hombre</option>
+              <option value="mujer">👩 Mujer</option>
+            </select>
+          </div>
+          <div class="ob-inp">
+            <input id="obEdad" type="number" placeholder="Tu edad" min="13" max="99">
+          </div>
+        </div>
+      </div>
+      <div class="ob-slide">
         <div class="ob-icon">🎯</div>
         <div class="ob-h">Tu <span>objetivo</span></div>
         <div class="ob-p">Lo usaremos para personalizar tus consejos de entrenamiento y nutrición.</div>
         <div class="ob-inputs">
           <div class="ob-inp">
-            <svg viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="6" />
-              <circle cx="12" cy="12" r="2" />
-            </svg>
             <select id="obObj">
               <option value="">— Tu objetivo —</option>
               <option value="ganar músculo">💪 Ganar músculo</option>
@@ -5025,12 +5035,6 @@
             </select>
           </div>
           <div class="ob-inp">
-            <svg viewBox="0 0 24 24">
-              <path d="M2 20h.01M7 20v-4" />
-              <path d="M12 20V10" />
-              <path d="M17 20V4" />
-              <path d="M22 20v-8" />
-            </svg>
             <select id="obNivel">
               <option value="">— Tu nivel —</option>
               <option value="principiante">🌱 Principiante (&lt;6 meses)</option>
@@ -5074,6 +5078,7 @@
     </div>
     <div class="ob-nav" id="obNav">
       <div class="ob-dot-n on"></div>
+      <div class="ob-dot-n"></div>
       <div class="ob-dot-n"></div>
       <div class="ob-dot-n"></div>
       <div class="ob-dot-n"></div>
@@ -5549,6 +5554,27 @@
             <div class="pf-label">Lesiones / limitaciones<small>opcional</small></div>
             <input class="pf-inp" type="text" id="pfLesiones" placeholder="ninguna"
               style="width:150px;font-size:.82rem;">
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">% Grasa<small>estimada</small></div>
+            <input class="pf-inp" type="number" id="pfGrasa" placeholder="15" min="3" max="50">
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Actividad diaria</div>
+            <select class="pf-sel" id="pfAct">
+              <option value="sedentario">Sedentario</option>
+              <option value="moderada">Moderada</option>
+              <option value="alta">Activo / Deportista</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Dieta preferida</div>
+            <select class="pf-sel" id="pfDieta">
+              <option value="omnívoro">Omnívoro</option>
+              <option value="vegano">Vegano / Vegetariano</option>
+              <option value="cetogénico">Bajo en carbohidratos</option>
+              <option value="ayuno">Ayuno intermitente</option>
+            </select>
           </div>
         </div>
         <button class="pf-save-btn" onclick="savePerfilAndGenerate()">Guardar perfil y ver consejos ✦</button>
@@ -6442,7 +6468,10 @@
         nivel: $('pfNivel').value,
         objetivo: $('pfObjetivo').value,
         dias: +$('pfDias').value || 0,
-        lesiones: $('pfLesiones').value.trim() || 'ninguna'
+        lesiones: $('pfLesiones').value.trim() || 'ninguna',
+        grasa: +$('pfGrasa').value || null,
+        actividad: $('pfAct').value || 'moderada',
+        dieta: $('pfDieta').value || 'omnívoro'
       };
       if (!p.nivel || !p.objetivo) return toast('Selecciona nivel y objetivo mínimo', 'err');
       STORE.set('perfil', p);
@@ -6635,7 +6664,14 @@
       // IMC
       const imc = (p.peso && p.altura) ? +(p.peso / ((p.altura / 100) ** 2)).toFixed(1) : null;
 
-      const prompt = `Coach IA KO95FIT - analiza este atleta y da consejos en español. PERFIL: ${p.sexo||'?'}, ${p.edad||'?'}a, ${p.peso||'?'}kg, ${p.altura||'?'}cm, IMC ${imc||'?'}, nivel ${p.nivel}, objetivo ${p.objetivo}, ${p.dias||3} dias/sem, lesiones: ${p.lesiones||'ninguna'}. HISTORIAL: ${totalSess} sesiones, racha ${streak}d (max ${maxStreak}d), vol ${big(volTotal)}kg, RPE ${rpeMedio||'?'}, consistencia ${consistencia||'?'}%. TOP PRs: ${prsText||'sin datos'}. MUSCULOS: ${musBalance||'sin datos'}. SEMANA: vol ${weekComp.volDelta>=0?'+':''}${weekComp.volDelta}%, ${weekComp.curSess} ses. ULTIMAS: ${last5||'ninguna'}. RESPONDE con: 🎯DIAGNOSTICO | 💪ENTRENAMIENTO | 🥗NUTRICION | 😴RECUPERACION | 🔥MOTIVACION | ⚡RETO. Max 250 palabras, directo y accionable.`;
+      const prompt = `Coach IA KO95FIT - Entrenador Personal Pro. 
+      PERFIL: ${p.sexo||'?'}, ${p.edad||'?'}a, ${p.peso||'?'}kg, ${p.altura||'?'}cm, ${p.grasa ? 'Grasa:'+p.grasa+'%,' : ''} Dieta: ${p.dieta}, Actividad: ${p.actividad}, IMC ${imc||'?'}, nivel ${p.nivel}, objetivo ${p.objetivo}, ${p.dias||3} d/sem, lesiones: ${p.lesiones}. 
+      HISTORIAL: ${totalSess} ses, racha ${streak}d, vol ${big(volTotal)}kg, RPE ${rpeMedio||'?'}, consistencia ${consistencia||'?'}%. 
+      TOP PRs: ${prsText||'sin datos'}. 
+      MUSCULOS: ${musBalance||'sin datos'}. 
+      SEMANA: vol ${weekComp.volDelta>=0?'+':''}${weekComp.volDelta}%, ${weekComp.curSess} ses. 
+      ULTIMAS: ${last5||'ninguna'}. 
+      ANALIZA minuciosamente y RESPONDE con: 🎯DIAGNOSTICO | 💪ENTRENAMIENTO | 🥗NUTRICION (específica para su ${p.dieta}) | 😴RECUPERACION | 🔥MOTIVACION | ⚡RETO. Max 250 palabras, tono profesional y técnico.`;
 
       statusEl.textContent = 'Coach IA consultando...';
       try {
@@ -7011,7 +7047,7 @@
 
     /* ══ ONBOARDING ══ */
     let obIdx = 0;
-    const OB_N = 4;
+    const OB_N = 5;
 
     function showOnboarding() {
       $('onboarding').classList.add('show');
@@ -7040,15 +7076,17 @@
     }
     function obSaveData() {
       const n = $('obName')?.value.trim();
+      const s = $('obSexo')?.value;
+      const e = $('obEdad')?.value;
       const obj = $('obObj')?.value;
       const nv = $('obNivel')?.value;
       if (n) STORE.set('name', n);
-      if (obj || nv) {
-        const p = STORE.get('perfil') || {};
-        if (obj) p.objetivo = obj;
-        if (nv) p.nivel = nv;
-        STORE.set('perfil', p);
-      }
+      const p = STORE.get('perfil') || {};
+      if (s) p.sexo = s;
+      if (e) p.edad = +e;
+      if (obj) p.objetivo = obj;
+      if (nv) p.nivel = nv;
+      STORE.set('perfil', p);
       updateGreeting();
     }
     (function () {
@@ -7349,33 +7387,42 @@
       try {
         if (FIREBASE_CONFIG.apiKey.includes('TU_API_KEY')) {
           updateSyncStatus('err', 'Modo Local');
+          $('authOverlay').classList.add('show');
           return;
         }
+
         fbApp = firebase.initializeApp(FIREBASE_CONFIG);
         fbDb = firebase.firestore();
 
-        fbDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
-          console.warn("Firestore persistence failed:", err.code);
-        });
+        // Configuración de persistencia compatible con v8/v9 compat
+        try {
+          fbDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
+            console.warn("Dato: Persistencia local limitada", err.code);
+          });
+        } catch(e) { console.warn("Dato: Saltando persistencia"); }
 
         firebase.auth().onAuthStateChanged(user => {
           if (user && !user.isAnonymous) {
             fbUser = user;
             syncEnabled = true;
-            updateSyncStatus('on');
+            updateSyncStatus('on', 'Élite: ' + (user.displayName || user.email));
             $('authOverlay').classList.remove('show');
+            
+            if (workouts.length > 0) pushToFirebase();
             listenRemoteWorkouts();
-            pushToFirebase();
           } else {
             fbUser = null;
             syncEnabled = false;
-            updateSyncStatus('off', 'Inicia sesión');
+            updateSyncStatus('off', '🔒 Identifícate');
             $('authOverlay').classList.add('show');
             if (user && user.isAnonymous) firebase.auth().signOut();
           }
         });
       } catch (e) {
-        console.warn('Firebase init error:', e);
+        console.error('Error Crítico Firebase:', e);
+        // Forzamos mostrar el login si algo falla para no bloquear al usuario
+        $('authOverlay').classList.add('show');
+        toast('Error de conexión con la nube', 'err');
       }
     }
 
@@ -7397,12 +7444,25 @@
     async function authEmailLogin() {
       const email = $('authLogEmail').value.trim();
       const pass = $('authLogPass').value.trim();
+      const btn = $('btnLogin');
       if (!email || !pass) { toast('Rellena todos los campos', 'err'); return; }
+      
+      btn.disabled = true;
+      btn.textContent = 'Comprobando...';
+      
       try {
         await firebase.auth().signInWithEmailAndPassword(email, pass);
-        toast('Sesión iniciada');
+        toast('¡Bienvenido de nuevo! 💪', 'good');
       } catch (e) {
-        toast('Error: ' + e.message, 'err');
+        btn.disabled = false;
+        btn.textContent = 'Iniciar Sesión';
+        console.error('Error Login:', e);
+        if (e.code === 'auth/wrong-password') toast('❌ Contraseña incorrecta', 'err');
+        else if (e.code === 'auth/user-not-found') toast('❓ Email no registrado', 'err');
+        else if (e.code === 'auth/invalid-email') toast('⚠️ Email no válido', 'err');
+        else if (e.code === 'auth/too-many-requests') toast('⏳ Bloqueo temporal: Demasiados intentos. Espera unos minutos.', 'err');
+        else if (e.code === 'auth/invalid-credential') toast('🔐 Credenciales inválidas. Revisa email y contraseña.', 'err');
+        else toast('Error: ' + e.message, 'err');
       }
     }
 
@@ -7421,16 +7481,23 @@
       const name = $('authNewName').value.trim();
       const email = $('authNewEmail').value.trim();
       const pass = $('authNewPass').value.trim();
-      
       if (!name || !email || !pass) { toast('Rellena todos los campos', 'err'); return; }
-      if (name.length < 3) { toast('Nombre demasiado corto', 'err'); return; }
-      
-      const userKey = name.toLowerCase().replace(/\s/g, '');
+      if (name.length < 3) { toast('Nombre corto (mín. 3)', 'err'); return; }
+      if (pass.length < 6) { toast('Contraseña corta (mín. 6)', 'err'); return; }
+
+      const btn = $('btnRegister');
+      btn.disabled = true;
+      btn.textContent = 'Procesando...';
 
       try {
+        const userKey = name.toLowerCase().replace(/\s/g, '');
         const userRef = fbDb.collection('usernames').doc(userKey);
         const nameDoc = await userRef.get();
-        if (nameDoc.exists) { toast('El nombre ya está pillado', 'err'); return; }
+        if (nameDoc.exists) { 
+          btn.disabled = false; btn.textContent = 'Registrarme';
+          toast('🚫 El nombre "' + name + '" ya está en uso por otro atleta', 'err'); 
+          return; 
+        }
 
         const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
         const uid = cred.user.uid;
@@ -7442,10 +7509,18 @@
         }, { merge: true });
 
         STORE.set('perfil', { ...STORE.get('perfil'), nombre: name });
-        renderProfile();
-        toast('Cuenta creada con éxito');
+        toast('¡Cuenta Élite creada!', 'good');
       } catch (e) {
-        toast('Error Registro: ' + e.message, 'err');
+        btn.disabled = false; btn.textContent = 'Registrarme';
+        console.error('Error Registro:', e);
+        if (e.code === 'auth/email-already-in-use') {
+          toast('Ese email ya tiene cuenta. ¡Inicia sesión!', 'err');
+          authToggle(false); // Cambiar a la pestaña de login
+        } else if (e.code === 'permission-denied') {
+          toast('Error de permisos Firebase (Revisa Reglas)', 'err');
+        } else {
+          toast('Error: ' + e.message, 'err');
+        }
       }
     }
 
