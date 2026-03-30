@@ -141,8 +141,34 @@
       padding: 0 10px;
       position: relative;
     }
-    /* Holographic glare */
-    .sp-title::after {
+    /* ── DASHBOARD & UI ── */
+    .btn-g {
+      background: var(--a);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px var(--ag);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-g:active {
+      transform: scale(0.96);
+      box-shadow: 0 2px 6px var(--ag);
+    }
+
+    .btn-g:disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .sp-glare {
       content: '';
       position: absolute;
       top: 0; left: -100%; width: 60%; height: 100%;
@@ -480,6 +506,138 @@
     .page.on {
       display: block;
       animation: up .22s ease;
+    }
+
+    /* ─── AUTH VIEW (ELITE) ─── */
+    #authOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 11, 0.95);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      animation: fadeIn 0.4s ease;
+    }
+    #authOverlay.show { display: flex; }
+    .auth-logo { width: 100px; height: 100px; margin-bottom: 24px; border-radius: 50%; border: 2px solid var(--a); object-fit: cover; }
+    .auth-card {
+      background: rgba(10, 10, 11, 0.82);
+      border: 1px solid rgba(255, 59, 48, 0.16);
+      border-radius: 28px;
+      width: 100%;
+      max-width: 360px;
+      padding: 40px 30px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+      animation: authIn 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+    }
+    @keyframes authIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .auth-card::before {
+      content: '';
+      position: absolute;
+      top: -20px;
+      right: -20px;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle, rgba(255, 59, 48, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .auth-title {
+      font-size: 1.4rem;
+      font-weight: 900;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .auth-sub {
+      font-size: 0.8rem;
+      color: var(--t3);
+      margin-bottom: 28px;
+    }
+
+    .auth-inp {
+      width: 100%;
+      background: var(--s2);
+      border: 1px solid var(--line2);
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: var(--t1);
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      transition: all 0.2s;
+    }
+
+    .auth-inp:focus {
+      border-color: var(--a);
+      background: var(--s3);
+      outline: none;
+      box-shadow: 0 0 15px rgba(255, 59, 48, 0.08);
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 15px;
+      background: var(--a);
+      border-radius: 14px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.95rem;
+      border: none;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 8px 25px var(--ag);
+    }
+
+    .auth-btn:active {
+      transform: scale(0.96);
+      filter: brightness(1.2);
+    }
+
+    .auth-google {
+      width: 100%;
+      padding: 14px;
+      margin-top: 16px;
+      background: #fff;
+      border-radius: 14px;
+      color: #000;
+      font-weight: 700;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-google:active {
+      transform: scale(0.97);
+      background: #f1f1f1;
+    }
+
+    .auth-switch {
+      margin-top: 24px;
+      font-size: 0.82rem;
+      color: var(--t3);
+    }
+
+    .auth-switch span {
+      color: var(--a);
+      font-weight: 800;
+      cursor: pointer;
     }
 
     .sec {
@@ -3349,7 +3507,7 @@
       font-weight: 700;
       cursor: pointer;
       transition: all .2s;
-      box-shadow: 0 3px 14px rgba(79, 140, 255, .28);
+      box-shadow: 0 3px 14px var(--ag);
     }
 
     .pf-save-btn:active {
@@ -4603,17 +4761,139 @@
 
       0%,
       100% {
-        transform: translateX(-200%)
+        transform: scale(1);
+        opacity: .8
       }
 
       50% {
-        transform: translateX(200%)
+        transform: scale(1.05);
+        opacity: 1
       }
+    }
+
+    /* Auth consolidated in header */
+
+    .auth-logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      filter: drop-shadow(0 0 15px var(--rg));
+    }
+
+    .auth-title {
+      font-size: 1.8rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      margin-bottom: 8px;
+    }
+
+    .auth-sub {
+      font-size: 0.9rem;
+      color: var(--t3);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .auth-inp {
+      width: 100%;
+      background: var(--s2);
+      border: 1px solid var(--line2);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      color: var(--t1);
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .auth-inp:focus {
+      border-color: var(--a);
+      background: var(--bg);
+      box-shadow: 0 0 0 4px var(--ag);
+    }
+
+    .auth-btn {
+      width: 100%;
+      background: var(--a);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-weight: 900;
+      font-size: 1rem;
+      margin-top: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 16px var(--ag);
+    }
+
+    .auth-btn:active {
+      transform: scale(0.97);
+    }
+
+    .auth-switch {
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: var(--t3);
+    }
+
+    .auth-switch span {
+      color: var(--a);
+      font-weight: 700;
+      cursor: pointer;
+      margin-left: 5px;
+    }
+
+    .auth-google-btn {
+      width: 100%;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      display: none; /* Oculto según preferencia de email-only */
     }
   </style>
 </head>
 
 <body>
+
+  <!-- AUTH OVERLAY -->
+  <div id="authOverlay">
+    <div class="auth-card" id="authSignup">
+      <img src="logo.png" class="auth-logo" alt="KO95FIT">
+      <div class="auth-title">Crear Cuenta</div>
+      <div class="auth-sub">Únete a la élite del entrenamiento</div>
+      <input type="text" class="auth-inp" id="authNewName" placeholder="Nombre de usuario único">
+      <input type="email" class="auth-inp" id="authNewEmail" placeholder="Correo electrónico">
+      <input type="password" class="auth-inp" id="authNewPass" placeholder="Contraseña">
+      <button class="auth-btn" id="btnRegister" onclick="authRegister()">Registrarme</button>
+      <div class="auth-switch">¿Ya tienes cuenta? <span onclick="authToggle(0)">Inicia sesión</span></div>
+    </div>
+
+    <div class="auth-card" id="authLogin" style="display:none">
+      <img src="logo.png" class="auth-logo" alt="KO95FIT">
+      <div class="auth-title">Bienvenido</div>
+      <div class="auth-sub">Entra en tu zona de rendimiento</div>
+      <input type="email" class="auth-inp" id="authLogEmail" placeholder="Correo electrónico">
+      <input type="password" class="auth-inp" id="authLogPass" placeholder="Contraseña">
+      <div style="text-align:right; margin-bottom:20px">
+        <span onclick="authResetPass()" style="color:var(--a); font-size:0.75rem; cursor:pointer; opacity:0.8; font-weight:700">¿Has olvidado la contraseña?</span>
+      </div>
+      <button class="auth-btn" onclick="authEmailLogin()">Entrar</button>
+      <div class="auth-switch">¿No tienes cuenta? <span onclick="authToggle(1)">Regístrate</span></div>
+    </div>
+  </div>
+
 
   <div class="pr-toast" id="prToast">
     <div class="pr-emoji">🏆</div>
@@ -5184,6 +5464,18 @@
             <div class="ir-v" id="irR">—</div>
           </div>
         </div>
+
+        <!-- LOGOUT TECHNICAL BUTTON -->
+        <div style="margin: 20px 0 100px; padding: 0 16px;">
+          <button class="btn-g" style="width:100%; background:transparent; border:1px solid var(--line); color:var(--t3); font-size:0.75rem; font-family:var(--fm); letter-spacing:1px; text-transform:uppercase;" onclick="firebase.auth().signOut().then(() => { location.reload(); })">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Finalizar Sesión (Desconectar)
+          </button>
+        </div>
       </div>
 
 
@@ -5333,7 +5625,7 @@
       <button class="tab" id="t-profile" onclick="goPage('profile')"><svg viewBox="0 0 24 24">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
-        </svg><span>Perfil</span></button>
+        </svg><span>Bio Elite</span></button>
     </div>
   </div>
 
@@ -6008,8 +6300,9 @@
       $('greetName').textContent = n || 'Atleta';
     }
     function renderProfile() {
-      const ca = STORE.get('accent') || 'blue';
+      const ca = STORE.get('accent') || 'red';
       document.querySelectorAll('.acc-sw').forEach(el => el.classList.toggle('on', el.dataset.accent === ca));
+      applyAccent();
       // Load saved name into input
       const n = getUserName();
       if ($('nameInput')) $('nameInput').value = n;
@@ -6017,6 +6310,41 @@
       $('psW').textContent = workouts.length; $('psK').textContent = big(tv); $('psS').textContent = calcMaxStreak(); $('psH').textContent = Math.round(th / 60) + 'h';
       $('irS').textContent = workouts.length; $('irK').textContent = big(tv) + ' kg'; $('irH').textContent = Math.round(th / 60) + 'h'; $('irR').textContent = rc ? (sr / rc).toFixed(1) : '—';
     }
+
+    /* ══ THEME / ACCENT ══ */
+    const ACCENTS = {
+      blue: { hex: '#4f8cff', rgba: 'rgba(79, 140, 255, 0.12)' },
+      green: { hex: '#2dd98a', rgba: 'rgba(45, 217, 138, 0.12)' },
+      purple: { hex: '#a57aff', rgba: 'rgba(165, 122, 255, 0.12)' },
+      amber: { hex: '#ffa040', rgba: 'rgba(255, 160, 64, 0.12)' },
+      red: { hex: '#ff3b30', rgba: 'rgba(255, 59, 48, 0.12)' },
+      pink: { hex: '#ff6eb4', rgba: 'rgba(255, 110, 180, 0.12)' }
+    };
+
+    function setAccent(color, el) {
+      STORE.set('accent', color);
+      if (el) {
+        document.querySelectorAll('.acc-sw, .ob-color').forEach(sw => sw.classList.remove('on'));
+        el.classList.add('on');
+      }
+      applyAccent();
+      toast('Color actualizado', 'good');
+    }
+
+    function obColor(color, btn) {
+      setAccent(color, btn);
+    }
+
+    function applyAccent() {
+      const color = STORE.get('accent') || 'red';
+      const theme = ACCENTS[color] || ACCENTS.red;
+      const root = document.documentElement;
+      root.style.setProperty('--a', theme.hex);
+      root.style.setProperty('--ag', theme.rgba);
+      // Update UI elements that might need forced color
+      document.querySelectorAll('.p-accent').forEach(e => e.style.color = theme.hex);
+    }
+    applyAccent(); // Initial call
     $('btnSaveW').addEventListener('click', () => { const w = parseFloat($('bwInput').value); if (!w || w < 20 || w > 300) return toast('Peso inválido', 'err'); const d = new Date().toISOString().split('T')[0]; const idx = weightLogs.findIndex(l => l.date === d); if (idx >= 0) weightLogs[idx].weight = w; else weightLogs.push({ date: d, weight: w }); saveWeights(); toast('Peso guardado ✓', 'good'); $('bwInput').value = ''; });
 
     /* ══ FONT SIZE ══ */
@@ -6678,36 +7006,8 @@
       });
     })();
 
-    /* ══ ACCENT SYSTEM ══ */
-    const ACCENTS = {
-      blue: { a: '#4f8cff', ag: 'rgba(79,140,255,.2)' },
-      green: { a: '#2dd98a', ag: 'rgba(45,217,138,.2)' },
-      purple: { a: '#bf5af2', ag: 'rgba(191,90,242,.2)' },
-      amber: { a: '#ff9f0a', ag: 'rgba(255,159,10,.2)' },
-      red: { a: '#ff3b30', ag: 'rgba(255,59,48,.2)' },
-      pink: { a: '#ff375f', ag: 'rgba(255,55,95,.2)' },
-    };
-    function applyAccent(name) {
-      const ac = ACCENTS[name] || ACCENTS.blue;
-      const r = document.documentElement;
-      r.style.setProperty('--a', ac.a);
-      r.style.setProperty('--ag', ac.ag);
-      r.style.setProperty('--a2', ac.ag.replace('.13', '.25'));
-      document.querySelectorAll('.acc-sw,.ob-color').forEach(el =>
-        el.classList.toggle('on', el.dataset.accent === name));
-    }
-    function setAccent(name) {
-      STORE.set('accent', name);
-      applyAccent(name);
-      toast('Color actualizado ✓');
-    }
-    function obColor(name, btn) {
-      document.querySelectorAll('.ob-color').forEach(e => e.classList.remove('on'));
-      btn.classList.add('on');
-      applyAccent(name);
-      STORE.set('accent', name);
-    }
-    applyAccent(STORE.get('accent') || 'blue');
+    /* Using ACCENTS and applyAccent from Profile section */
+    applyAccent(STORE.get('accent') || 'red');
 
     /* ══ ONBOARDING ══ */
     let obIdx = 0;
@@ -7054,23 +7354,98 @@
         fbApp = firebase.initializeApp(FIREBASE_CONFIG);
         fbDb = firebase.firestore();
 
-        // Persistencia de datos nativa de Firebase (Offline total)
         fbDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
           console.warn("Firestore persistence failed:", err.code);
         });
 
-        firebase.auth().signInAnonymously().then(cred => {
-          fbUser = cred.user;
-          syncEnabled = true;
-          updateSyncStatus('on');
-          listenRemoteWorkouts();
-          pushToFirebase(); // Subida inicial
-        }).catch(err => {
-          console.warn('Firebase auth error:', err);
-          updateSyncStatus('err', 'Sin Sincro');
+        firebase.auth().onAuthStateChanged(user => {
+          if (user && !user.isAnonymous) {
+            fbUser = user;
+            syncEnabled = true;
+            updateSyncStatus('on');
+            $('authOverlay').classList.remove('show');
+            listenRemoteWorkouts();
+            pushToFirebase();
+          } else {
+            fbUser = null;
+            syncEnabled = false;
+            updateSyncStatus('off', 'Inicia sesión');
+            $('authOverlay').classList.add('show');
+            if (user && user.isAnonymous) firebase.auth().signOut();
+          }
         });
       } catch (e) {
         console.warn('Firebase init error:', e);
+      }
+    }
+
+    function authToggle(isSignup) {
+      $('authSignup').style.display = isSignup ? 'block' : 'none';
+      $('authLogin').style.display = isSignup ? 'none' : 'block';
+    }
+
+    async function authGoogle() {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await firebase.auth().signInWithPopup(provider);
+        toast('Bienvenido de nuevo');
+      } catch (e) {
+        toast('Error Google: ' + e.message, 'err');
+      }
+    }
+
+    async function authEmailLogin() {
+      const email = $('authLogEmail').value.trim();
+      const pass = $('authLogPass').value.trim();
+      if (!email || !pass) { toast('Rellena todos los campos', 'err'); return; }
+      try {
+        await firebase.auth().signInWithEmailAndPassword(email, pass);
+        toast('Sesión iniciada');
+      } catch (e) {
+        toast('Error: ' + e.message, 'err');
+      }
+    }
+
+    async function authResetPass() {
+      const email = $('authLogEmail').value.trim();
+      if (!email) { toast('Escribe tu email arriba primero', 'err'); return; }
+      try {
+        await firebase.auth().sendPasswordResetEmail(email);
+        toast('Correo de recuperación enviado');
+      } catch (e) {
+        toast('Error: ' + e.message, 'err');
+      }
+    }
+
+    async function authRegister() {
+      const name = $('authNewName').value.trim();
+      const email = $('authNewEmail').value.trim();
+      const pass = $('authNewPass').value.trim();
+      
+      if (!name || !email || !pass) { toast('Rellena todos los campos', 'err'); return; }
+      if (name.length < 3) { toast('Nombre demasiado corto', 'err'); return; }
+      
+      const userKey = name.toLowerCase().replace(/\s/g, '');
+
+      try {
+        const userRef = fbDb.collection('usernames').doc(userKey);
+        const nameDoc = await userRef.get();
+        if (nameDoc.exists) { toast('El nombre ya está pillado', 'err'); return; }
+
+        const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
+        const uid = cred.user.uid;
+
+        await userRef.set({ uid, name });
+        await fbDb.collection('users').doc(uid).set({
+          perfil: { nombre: name },
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        STORE.set('perfil', { ...STORE.get('perfil'), nombre: name });
+        renderProfile();
+        toast('Cuenta creada con éxito');
+      } catch (e) {
+        toast('Error Registro: ' + e.message, 'err');
       }
     }
 
@@ -7079,67 +7454,59 @@
       if (!el) {
         el = document.createElement('div');
         el.id = 'syncBadge';
-      el.style.cssText = 'position:fixed;top:calc(var(--st) + 8px);left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;white-space:nowrap;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:all .4s ease;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
-      document.body.appendChild(el);
+        el.style.cssText = 'position:fixed;top:calc(var(--st) + 8px);left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;white-space:nowrap;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:all .4s ease;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
+        document.body.appendChild(el);
+      }
+
+      el.style.opacity = '1';
+      if (state === 'on') {
+        el.style.background = 'rgba(255, 59, 48, 0.15)';
+        el.style.color = '#ff3b30';
+        el.style.border = '1px solid rgba(255, 59, 48, 0.3)';
+        el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#ff3b30;box-shadow:0 0 8px #ff3b30"></span> Nube Sincronizada';
+        setTimeout(() => { if (!isSyncing) el.style.opacity = '0.3'; }, 7000);
+      } else if (state === 'syncing') {
+        isSyncing = true;
+        el.style.background = 'rgba(255, 255, 255, 0.1)';
+        el.style.color = '#fff';
+        el.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1s infinite"></span> Sincronizando...';
+      } else {
+        isSyncing = false;
+        el.style.background = 'rgba(255,255,255,0.05)';
+        el.style.color = '#888';
+        el.style.border = '1px solid rgba(255,255,255,0.1)';
+        el.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:#888"></span> ${msg || 'Offline'}`;
+      }
     }
 
-    el.style.opacity = '1';
-    if (state === 'on') {
-      el.style.background = 'rgba(48,217,152,0.15)';
-      el.style.color = '#30d998';
-      el.style.border = '1px solid rgba(48,217,152,0.3)';
-      el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#30d998;box-shadow:0 0 8px #30d998"></span> Nube Sincronizada';
-      setTimeout(() => { if (!isSyncing) el.style.opacity = '0.3'; }, 5000);
-    } else if (state === 'syncing') {
-      isSyncing = true;
-      el.style.background = 'rgba(79,140,255,0.15)';
-      el.style.color = '#4f8cff';
-      el.style.border = '1px solid rgba(4f,8c,ff,0.3)';
-      el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#4f8cff;animation:pulse 1s infinite"></span> Guardando datos...';
-    } else {
-      isSyncing = false;
-      el.style.background = 'rgba(255,255,255,0.05)';
-      el.style.color = '#888';
-      el.style.border = '1px solid rgba(255,255,255,0.1)';
-      el.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:#888"></span> ${msg || 'Desconectado'}`;
+    async function pushToFirebase() {
+      if (!syncEnabled || !fbUser || !fbDb || isSyncing) return;
+      try {
+        updateSyncStatus('syncing');
+        const batch = fbDb.batch();
+        const userDoc = fbDb.collection('users').doc(fbUser.uid);
+        const recentOnes = workouts.slice(0, 25);
+        recentOnes.forEach(w => {
+          const wId = w.id || `w_${w.date.replace(/[^0-9]/g, '')}`;
+          const ref = userDoc.collection('workouts').doc(wId);
+          batch.set(ref, w, { merge: true });
+        });
+        batch.set(userDoc, {
+          perfil: STORE.get('perfil') || {},
+          lastSync: firebase.firestore.FieldValue.serverTimestamp(),
+          client: 'Elite_KO95_v2'
+        }, { merge: true });
+        await batch.commit();
+        isSyncing = false;
+        updateSyncStatus('on');
+      } catch (e) {
+        isSyncing = false;
+        console.error('Push failed:', e);
+        updateSyncStatus('err', 'Error Sincro');
+        setTimeout(pushToFirebase, 60000);
+      }
     }
-  }
-
-  async function pushToFirebase() {
-    if (!syncEnabled || !fbUser || !fbDb || isSyncing) return;
-
-    try {
-      updateSyncStatus('syncing');
-      const batch = fbDb.batch();
-      const userDoc = fbDb.collection('users').doc(fbUser.uid);
-
-      // Solo subimos los últimos 20 entrenamientos para ahorrar datos y ser rápidos
-      // Firebase ya se encarga de mezclarlos correctamente
-      const recentOnes = workouts.slice(0, 20);
-      recentOnes.forEach(w => {
-        const wId = w.id || `w_${w.date.replace(/[^0-9]/g, '')}`;
-        const ref = userDoc.collection('workouts').doc(wId);
-        batch.set(ref, w, { merge: true });
-      });
-
-      // Guardamos estado del perfil
-      batch.set(userDoc, {
-        perfil: STORE.get('perfil') || {},
-        lastSync: firebase.firestore.FieldValue.serverTimestamp(),
-        platform: 'web_pwa'
-      }, { merge: true });
-
-      await batch.commit();
-      isSyncing = false;
-      updateSyncStatus('on');
-    } catch (e) {
-      isSyncing = false;
-      console.error('Push failed:', e);
-      updateSyncStatus('err', 'Reintentando...');
-      // Reintentar en 30 segundos si falló
-      setTimeout(pushToFirebase, 30000);
-    }
-  }
 
   async function removeFromFirebase(id) {
     if (!syncEnabled || !fbUser || !fbDb) return;
@@ -7190,7 +7557,7 @@
     }
   };
 
-  setTimeout(initFirebase, 2000);
+  setTimeout(initFirebase, 500);
 
   // Registro del Service Worker (PWA)
   if ('serviceWorker' in navigator) {
