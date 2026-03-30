@@ -5516,8 +5516,30 @@
     let workouts = STORE.get('workouts') || [];
     let weightLogs = STORE.get('weights') || [];
     let bonusXp = STORE.get('bonusXp') || 0;
+    
+    function recalculateBonusXp() {
+      let count = 0;
+      let historyPRs = {};
+      const sorted = [...workouts].sort((a, b) => a.date.localeCompare(b.date));
+      sorted.forEach(w => {
+        (w.exercises || []).forEach(e => {
+          const kg = +e.kg || 0;
+          if (kg > 0) {
+            if (!historyPRs[e.ex] || kg > historyPRs[e.ex]) {
+              count++;
+              historyPRs[e.ex] = kg;
+            }
+          }
+        });
+      });
+      bonusXp = count * (XP.pr || 100);
+      STORE.set('bonusXp', bonusXp);
+    }
 
-    function saveWorkouts() { STORE.set('workouts', workouts); }
+    function saveWorkouts() { 
+      recalculateBonusXp();
+      STORE.set('workouts', workouts); 
+    }
     function saveWeights() { STORE.set('weights', weightLogs); }
 
     /* ══ CONSTANTS ══ */
@@ -5526,6 +5548,7 @@
     const MM = { banca: 'Pecho', inclinado: 'Pecho', apertura: 'Pecho', fondo: 'Pecho', dominada: 'Espalda', remo: 'Espalda', jalón: 'Espalda', muerto: 'Espalda', sentadilla: 'Piernas', prensa: 'Piernas', femoral: 'Piernas', extensión: 'Piernas', gemelo: 'Piernas', rumano: 'Piernas', militar: 'Hombros', lateral: 'Hombros', frontal: 'Hombros', pájaro: 'Hombros', curl: 'Bíceps', bíceps: 'Bíceps', tríceps: 'Tríceps', francés: 'Tríceps', crunch: 'Core', plancha: 'Core', encogimiento: 'Core', abdominal: 'Core' };
     const LEVELS = [{ lvl: 1, title: 'Novato', min: 0, max: 500 }, { lvl: 2, title: 'Guerrero', min: 500, max: 1200 }, { lvl: 3, title: 'Atleta', min: 1200, max: 2500 }, { lvl: 4, title: 'Campeón', min: 2500, max: 5000 }, { lvl: 5, title: 'Élite', min: 5000, max: 10000 }, { lvl: 6, title: 'Maestro', min: 10000, max: 20000 }, { lvl: 7, title: 'Leyenda', min: 20000, max: Infinity }];
     const XP = { session: 50, exercise: 10, series: 5, pr: 100 };
+    recalculateBonusXp();
     const TPL = {
       1: [{ ex: "Press banca", s: 4, r: 10 }, { ex: "Press inclinado", s: 3, r: 12 }, { ex: "Aperturas", s: 3, r: 15 }, { ex: "Fondos", s: 3, r: 12 }, { ex: "Extensión tríceps", s: 3, r: 12 }, { ex: "Press francés", s: 3, r: 10 }],
       2: [{ ex: "Dominadas", s: 4, r: 10 }, { ex: "Remo con barra", s: 4, r: 10 }, { ex: "Jalón al pecho", s: 3, r: 12 }, { ex: "Curl bíceps barra", s: 3, r: 10 }, { ex: "Curl alterno", s: 3, r: 12 }, { ex: "Curl concentrado", s: 2, r: 12 }],
@@ -5907,7 +5930,17 @@
     }
     function togH(i) { const b = $('hb' + i), c = $('hc' + i); const o = b.classList.toggle('open'); if (c) c.classList.toggle('open', o); }
     $('cancelDel').addEventListener('click', () => closeSheet('shDel'));
-    $('confirmDel').addEventListener('click', () => { if (delId) { workouts = workouts.filter(w => w.id !== delId); saveWorkouts(); renderHist(); renderDash(); toast('Sesión eliminada'); } closeSheet('shDel'); });
+    $('confirmDel').addEventListener('click', () => { 
+      if (delId) { 
+        workouts = workouts.filter(w => w.id !== delId); 
+        saveWorkouts(); 
+        if (typeof removeFromFirebase === 'function') removeFromFirebase(delId);
+        renderHist(); 
+        renderDash(); 
+        toast('Sesión eliminada'); 
+      } 
+      closeSheet('shDel'); 
+    });
 
     /* ══ PROFILE ══ */
     function getUserName() { return STORE.get('name') || ''; }
@@ -7056,6 +7089,17 @@
     }
   }
 
+  async function removeFromFirebase(id) {
+    if (!syncEnabled || !fbUser || !fbDb) return;
+    try {
+      const userDoc = fbDb.collection('users').doc(fbUser.uid);
+      await userDoc.collection('workouts').doc(id).delete();
+      console.log('🗑 Workout removed from cloud:', id);
+    } catch (e) {
+      console.error('Failed to remove from cloud:', e);
+    }
+  }
+
   function listenRemoteWorkouts() {
     if (!fbUser || !fbDb) return;
     const col = fbDb.collection('users').doc(fbUser.uid).collection('workouts');
@@ -7066,9 +7110,14 @@
       snap.docChanges().forEach(change => {
         if (change.type === 'added' || change.type === 'modified') {
           const rw = change.doc.data();
-          const idx = workouts.findIndex(w => w.date === rw.date);
+          const idx = workouts.findIndex(w => (w.id && rw.id && w.id === rw.id) || (w.date === rw.date && (!w.id || !rw.id)));
           if (idx === -1) { workouts.push(rw); changed = true; }
           else { workouts[idx] = rw; changed = true; }
+        } else if (change.type === 'removed') {
+          const rw = change.doc.data();
+          const oldLen = workouts.length;
+          workouts = workouts.filter(w => (w.id && rw.id) ? w.id !== rw.id : w.date !== rw.date);
+          if (workouts.length !== oldLen) changed = true; 
         }
       });
       if (changed) {
