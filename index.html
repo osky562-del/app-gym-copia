@@ -17,6 +17,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <style>
     :root {
       --bg: #000000;
@@ -7364,14 +7365,7 @@
     }
 
     /* ══ FIREBASE CLOUD SYNC & OFFLINE MODE ══ */
-    const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyDi1A60FqgL4pVFtClJBop4Wx9MHOZd2Sg",
-      authDomain: "consejosapp-5c0dd.firebaseapp.com",
-      projectId: "consejosapp-5c0dd",
-      storageBucket: "consejosapp-5c0dd.firebasestorage.app",
-      messagingSenderId: "89535695550",
-      appId: "1:89535695550:web:07a558f67d03fcb33f2cef"
-    };
+    // FIREBASE_CONFIG se carga desde firebase-config.js (no incluido en GitHub)
 
     let fbApp = null, fbDb = null, fbUser = null, fbUnsub = null;
     let syncEnabled = false;
