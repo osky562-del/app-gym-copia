@@ -916,6 +916,11 @@
       outline-offset: 1px;
     }
 
+    .wd-bar.future {
+      background: var(--s2);
+      opacity: 0.35;
+    }
+
     .wd-l {
       font-size: .53rem;
       font-weight: 600;
@@ -6240,7 +6245,7 @@
       const now = new Date();
       $('greetDate').textContent = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][now.getDay()] + ', ' + now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
       $('strN').textContent = calcStreak(); $('strMax').textContent = calcMaxStreak();
-      $('weekStrip').innerHTML = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); const ds = d.toISOString().split('T')[0]; const hit = workouts.some(w => w.date === ds); const isT = i === 6; return `<div class="wd"><div class="wd-bar${hit ? ' hit' : ''}${isT ? ' today' : ''}"></div><div class="wd-l">${DAYS[d.getDay()]}</div></div>`; }).join('');
+      { const now2 = new Date(); const dow = now2.getDay(); const dFM = dow === 0 ? 6 : dow - 1; const mon = new Date(now2); mon.setDate(now2.getDate() - dFM); mon.setHours(0,0,0,0); const todayStr = now2.toISOString().split('T')[0]; $('weekStrip').innerHTML = Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); const ds = d.toISOString().split('T')[0]; const hit = workouts.some(w => w.date === ds); const isT = ds === todayStr; const isFut = d > now2 && !isT; return `<div class="wd"><div class="wd-bar${hit ? ' hit' : ''}${isT ? ' today' : ''}${isFut ? ' future' : ''}"></div><div class="wd-l">${DAYS[d.getDay()]}</div></div>`; }).join(''); }
       const wv = []; for (let w = 6; w >= 0; w--) { const sun = new Date(); sun.setDate(sun.getDate() - sun.getDay() - w * 7); let v = 0; for (let d = 0; d < 7; d++) { const dd = new Date(sun); dd.setDate(sun.getDate() + d); workouts.filter(x => x.date === dd.toISOString().split('T')[0]).forEach(x => (x.exercises || []).forEach(e => v += (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1))); } wv.push(v); }
       const mx = Math.max(...wv, 1);
       $('volBars').innerHTML = wv.map((v, i) => `<div class="vb"><div class="vb-bar${i === 6 ? ' now' : ''}" style="height:${Math.max(Math.round(v / mx * 100), v > 0 ? 4 : 0)}%;"></div><div class="vb-l">${['7S', '6S', '5S', '4S', '3S', '2S', 'Esta'][i]}</div></div>`).join('');
@@ -7406,7 +7411,9 @@
     function getWeekData(weeksAgo) {
       const now = new Date();
       const start = new Date(now);
-      start.setDate(now.getDate() - now.getDay() - weeksAgo * 7);
+      const dow = now.getDay();
+      const dFM = dow === 0 ? 6 : dow - 1; // días desde el lunes
+      start.setDate(now.getDate() - dFM - weeksAgo * 7);
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
       end.setDate(start.getDate() + 7);
