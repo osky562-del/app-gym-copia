@@ -2961,6 +2961,9 @@
       will-change: transform;
       transition: none;
       border-radius: 8px;
+      touch-action: none;
+      -webkit-user-drag: none;
+      pointer-events: none; /* los eventos van al modal, no a la img */
     }
     #pzmImg.grabbing {
       cursor: grabbing;
@@ -7706,30 +7709,34 @@
   (function () {
     const modal = document.getElementById('photoZoomModal');
     const img   = document.getElementById('pzmImg');
+    const vp    = document.querySelector('meta[name=viewport]');
+    const VP_DEFAULT = vp ? vp.content : '';
 
     let scale = 1, minScale = 1, maxScale = 8;
-    let tx = 0, ty = 0;          // translation
+    let tx = 0, ty = 0;
     let dragging = false;
     let lastX = 0, lastY = 0;
-
-    // Touch tracking
-    let touches = [];
     let lastPinchDist = 0;
     let lastTapTime = 0;
+    let activeTouches = [];
 
     function applyTransform(animate) {
       if (animate) {
-        img.style.transition = 'transform .25s ease';
-        setTimeout(() => { img.style.transition = 'none'; }, 260);
+        img.style.transition = 'transform .22s ease';
+        setTimeout(() => { img.style.transition = 'none'; }, 230);
+      } else {
+        img.style.transition = 'none';
       }
       img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
     }
 
     function clampTranslation() {
-      const maxTx = (img.naturalWidth  * scale - img.offsetWidth)  / 2;
-      const maxTy = (img.naturalHeight * scale - img.offsetHeight) / 2;
-      tx = Math.max(-Math.max(0, maxTx), Math.min(Math.max(0, maxTx), tx));
-      ty = Math.max(-Math.max(0, maxTy), Math.min(Math.max(0, maxTy), ty));
+      const iw = img.offsetWidth  || img.naturalWidth  || 300;
+      const ih = img.offsetHeight || img.naturalHeight || 300;
+      const maxTx = Math.max(0, (iw  * scale - iw)  / 2);
+      const maxTy = Math.max(0, (ih * scale - ih) / 2);
+      tx = Math.min(maxTx, Math.max(-maxTx, tx));
+      ty = Math.min(maxTy, Math.max(-maxTy, ty));
     }
 
     function resetView(animate) {
@@ -7737,23 +7744,28 @@
       applyTransform(animate);
     }
 
+    // Deshabilita el zoom nativo de iOS al abrir el modal
+    function lockViewport() {
+      if (vp) vp.content = 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';
+    }
+    function unlockViewport() {
+      if (vp) vp.content = VP_DEFAULT || 'width=device-width,initial-scale=1,viewport-fit=cover';
+    }
+
     window.openPhotoZoom = function (el) {
       img.src = el.src || el.currentSrc || el.getAttribute('src');
       resetView(false);
       modal.classList.add('active');
       document.body.style.overflow = 'hidden';
+      lockViewport();
     };
 
     window.closePhotoZoom = function () {
       modal.classList.remove('active');
       document.body.style.overflow = '';
+      unlockViewport();
       img.src = '';
     };
-
-    // Close on backdrop click (not on img)
-    modal.addEventListener('click', function (e) {
-      if (e.target === modal) closePhotoZoom();
-    });
 
     // Keyboard: Esc to close
     document.addEventListener('keydown', function (e) {
@@ -7761,12 +7773,11 @@
     });
 
     // ── Mouse Wheel Zoom ──────────────────────────────────────────────────────
-    img.addEventListener('wheel', function (e) {
+    modal.addEventListener('wheel', function (e) {
+      if (!modal.classList.contains('active')) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.85 : 1.15;
       const newScale = Math.min(maxScale, Math.max(minScale, scale * delta));
-
-      // Zoom towards cursor position
       const rect = img.getBoundingClientRect();
       const ox = e.clientX - rect.left - rect.width  / 2;
       const oy = e.clientY - rect.top  - rect.height / 2;
@@ -7778,7 +7789,8 @@
     }, { passive: false });
 
     // ── Mouse Drag Pan ────────────────────────────────────────────────────────
-    img.addEventListener('mousedown', function (e) {
+    modal.addEventListener('mousedown', function (e) {
+      if (e.target === modal && scale <= 1) { closePhotoZoom(); return; }
       if (scale <= 1) return;
       dragging = true;
       lastX = e.clientX;
@@ -7802,59 +7814,55 @@
       img.classList.remove('grabbing');
     });
 
-    // ── Touch Gestures ────────────────────────────────────────────────────────
-    function getTouches(e) { return Array.from(e.touches); }
+    // ── Touch Helpers ─────────────────────────────────────────────────────────
     function pinchDist(t) {
-      const dx = t[0].clientX - t[1].clientX;
-      const dy = t[0].clientY - t[1].clientY;
-      return Math.hypot(dx, dy);
+      return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     }
     function pinchCenter(t) {
-      return {
-        x: (t[0].clientX + t[1].clientX) / 2,
-        y: (t[0].clientY + t[1].clientY) / 2
-      };
+      return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 };
     }
 
-    img.addEventListener('touchstart', function (e) {
+    // ── Touch Events (todos en el modal para captura fiable en iOS) ───────────
+    modal.addEventListener('touchstart', function (e) {
       e.preventDefault();
-      touches = getTouches(e);
+      activeTouches = Array.from(e.touches);
 
-      if (touches.length === 1) {
-        // Double-tap detection
+      if (activeTouches.length === 1) {
         const now = Date.now();
-        if (now - lastTapTime < 280) {
-          // Double tap: toggle between 1x and 3x
+        if (now - lastTapTime < 300) {
+          // Doble toque: alternar 1x / 3x
           if (scale > 1.2) {
             resetView(true);
           } else {
             const rect = img.getBoundingClientRect();
-            const ox = touches[0].clientX - rect.left - rect.width  / 2;
-            const oy = touches[0].clientY - rect.top  - rect.height / 2;
+            const ox = activeTouches[0].clientX - rect.left - rect.width  / 2;
+            const oy = activeTouches[0].clientY - rect.top  - rect.height / 2;
             scale = 3;
             tx = -ox * (scale - 1);
             ty = -oy * (scale - 1);
             clampTranslation();
             applyTransform(true);
           }
+          lastTapTime = 0;
+          return;
         }
         lastTapTime = now;
-        lastX = touches[0].clientX;
-        lastY = touches[0].clientY;
+        lastX = activeTouches[0].clientX;
+        lastY = activeTouches[0].clientY;
 
-      } else if (touches.length === 2) {
-        lastPinchDist = pinchDist(touches);
-        const c = pinchCenter(touches);
+      } else if (activeTouches.length === 2) {
+        lastPinchDist = pinchDist(activeTouches);
+        const c = pinchCenter(activeTouches);
         lastX = c.x; lastY = c.y;
       }
     }, { passive: false });
 
-    img.addEventListener('touchmove', function (e) {
+    modal.addEventListener('touchmove', function (e) {
       e.preventDefault();
-      const t = getTouches(e);
+      const t = Array.from(e.touches);
 
-      if (t.length === 1 && scale > 1) {
-        // Pan
+      if (t.length === 1) {
+        if (scale <= 1) return;
         tx += t[0].clientX - lastX;
         ty += t[0].clientY - lastY;
         lastX = t[0].clientX;
@@ -7863,9 +7871,8 @@
         applyTransform(false);
 
       } else if (t.length === 2) {
-        // Pinch zoom
         const dist = pinchDist(t);
-        const ratio = dist / lastPinchDist;
+        const ratio = lastPinchDist > 0 ? dist / lastPinchDist : 1;
         const newScale = Math.min(maxScale, Math.max(minScale, scale * ratio));
 
         const c = pinchCenter(t);
@@ -7884,18 +7891,24 @@
       }
     }, { passive: false });
 
-    img.addEventListener('touchend', function (e) {
-      touches = getTouches(e);
-      if (touches.length === 1) {
-        lastX = touches[0].clientX;
-        lastY = touches[0].clientY;
+    modal.addEventListener('touchend', function (e) {
+      e.preventDefault();
+      const remaining = Array.from(e.touches);
+
+      // Toque simple (sin arrastrar) en fondo → cerrar
+      if (remaining.length === 0 && activeTouches.length === 1 && scale <= 1) {
+        const dx = Math.abs(activeTouches[0].clientX - lastX);
+        const dy = Math.abs(activeTouches[0].clientY - lastY);
+        if (dx < 8 && dy < 8) { closePhotoZoom(); return; }
+      }
+
+      if (remaining.length === 1) {
+        lastX = remaining[0].clientX;
+        lastY = remaining[0].clientY;
         lastPinchDist = 0;
       }
-      // Snap back if over-zoomed out
-      if (scale < minScale) {
-        scale = minScale; tx = 0; ty = 0;
-        applyTransform(true);
-      }
+      if (scale < minScale) { scale = minScale; tx = 0; ty = 0; applyTransform(true); }
+      activeTouches = remaining;
     }, { passive: false });
   })();
   // ────────────────────────────────────────────────────────────────────────────
