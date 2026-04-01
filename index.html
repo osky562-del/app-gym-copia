@@ -2902,6 +2902,73 @@
       color: var(--t3);
     }
 
+    /* ─── PHOTO ZOOM MODAL ─── */
+    #photoZoomModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: rgba(0,0,0,0.95);
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #photoZoomModal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #photoZoomModal .pzm-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 1.4rem;
+      line-height: 40px;
+      text-align: center;
+      cursor: pointer;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    #photoZoomModal .pzm-close:active {
+      background: rgba(255,59,48,0.5);
+    }
+    #photoZoomModal .pzm-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.4);
+      font-size: .7rem;
+      text-align: center;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #pzmImg {
+      max-width: 90vw;
+      max-height: 85vh;
+      object-fit: contain;
+      transform-origin: center center;
+      cursor: grab;
+      will-change: transform;
+      transition: none;
+      border-radius: 8px;
+    }
+    #pzmImg.grabbing {
+      cursor: grabbing;
+    }
+    .pzm-zoomable {
+      cursor: zoom-in;
+    }
+
     /* ─── PROFILE ─── */
     .p-hero {
       background: linear-gradient(135deg, #111, #000);
@@ -5121,12 +5188,19 @@
   </div>
   <div id="toasts"></div>
 
+  <!-- PHOTO ZOOM MODAL -->
+  <div id="photoZoomModal" role="dialog" aria-modal="true" aria-label="Vista de imagen ampliada">
+    <button class="pzm-close" onclick="closePhotoZoom()" title="Cerrar">✕</button>
+    <img id="pzmImg" src="" alt="Imagen ampliada" draggable="false">
+    <div class="pzm-hint">Pellizca para ampliar · Arrastra para mover · Doble toque para zoom</div>
+  </div>
+
   <!-- APP (always visible, no login) -->
   <div id="app">
     <div class="topbar">
       <div class="tb-brand">
         <div class="tb-mark">
-          <img src="logo.png" alt="KO95FIT" class="tb-logo-img" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 30%22><text x=%2250%25%22 y=%2250%25%22 dy=%22.35em%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22900%22 font-style=%22italic%22 font-size=%2222%22 fill=%22%23ff3b30%22>KO95FIT</text></svg>'">
+          <img src="logo.png" alt="KO95FIT" class="tb-logo-img pzm-zoomable" onclick="openPhotoZoom(this)" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 30%22><text x=%2250%25%22 y=%2250%25%22 dy=%22.35em%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22900%22 font-style=%22italic%22 font-size=%2222%22 fill=%22%23ff3b30%22>KO95FIT</text></svg>'">
         </div>
         <div class="tb-name" style="display:none;">KO95<span class="p-accent">FIT</span></div>
       </div>
@@ -5361,7 +5435,7 @@
       <div class="page" id="pageProf">
         <div class="p-hero" style="margin-top:4px;">
           <div class="p-av">
-            <img src="logo.png" alt="KO95FIT" class="p-logo-img" onerror="this.outerHTML='<div style=%22font-size:2rem; font-weight:900; font-style:italic; color:%23ff3b30;%22>KO95FIT</div>'">
+            <img src="logo.png" alt="KO95FIT" class="p-logo-img pzm-zoomable" onclick="openPhotoZoom(this)" onerror="this.outerHTML='<div style=%22font-size:2rem; font-weight:900; font-style:italic; color:%23ff3b30;%22>KO95FIT</div>'">
           </div>
           <div class="p-name">KO95<span class="p-accent">FIT</span></div>
           <div class="p-sub">Hardcore Training System</div>
@@ -7627,6 +7701,204 @@
   };
 
   setTimeout(initFirebase, 500);
+
+  // ─── PHOTO ZOOM & PAN ───────────────────────────────────────────────────────
+  (function () {
+    const modal = document.getElementById('photoZoomModal');
+    const img   = document.getElementById('pzmImg');
+
+    let scale = 1, minScale = 1, maxScale = 8;
+    let tx = 0, ty = 0;          // translation
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+
+    // Touch tracking
+    let touches = [];
+    let lastPinchDist = 0;
+    let lastTapTime = 0;
+
+    function applyTransform(animate) {
+      if (animate) {
+        img.style.transition = 'transform .25s ease';
+        setTimeout(() => { img.style.transition = 'none'; }, 260);
+      }
+      img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+    }
+
+    function clampTranslation() {
+      const maxTx = (img.naturalWidth  * scale - img.offsetWidth)  / 2;
+      const maxTy = (img.naturalHeight * scale - img.offsetHeight) / 2;
+      tx = Math.max(-Math.max(0, maxTx), Math.min(Math.max(0, maxTx), tx));
+      ty = Math.max(-Math.max(0, maxTy), Math.min(Math.max(0, maxTy), ty));
+    }
+
+    function resetView(animate) {
+      scale = 1; tx = 0; ty = 0;
+      applyTransform(animate);
+    }
+
+    window.openPhotoZoom = function (el) {
+      img.src = el.src || el.currentSrc || el.getAttribute('src');
+      resetView(false);
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    };
+
+    window.closePhotoZoom = function () {
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+      img.src = '';
+    };
+
+    // Close on backdrop click (not on img)
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closePhotoZoom();
+    });
+
+    // Keyboard: Esc to close
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('active')) closePhotoZoom();
+    });
+
+    // ── Mouse Wheel Zoom ──────────────────────────────────────────────────────
+    img.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.85 : 1.15;
+      const newScale = Math.min(maxScale, Math.max(minScale, scale * delta));
+
+      // Zoom towards cursor position
+      const rect = img.getBoundingClientRect();
+      const ox = e.clientX - rect.left - rect.width  / 2;
+      const oy = e.clientY - rect.top  - rect.height / 2;
+      tx += ox * (1 - newScale / scale);
+      ty += oy * (1 - newScale / scale);
+      scale = newScale;
+      clampTranslation();
+      applyTransform(false);
+    }, { passive: false });
+
+    // ── Mouse Drag Pan ────────────────────────────────────────────────────────
+    img.addEventListener('mousedown', function (e) {
+      if (scale <= 1) return;
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      img.classList.add('grabbing');
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      tx += e.clientX - lastX;
+      ty += e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      clampTranslation();
+      applyTransform(false);
+    });
+
+    window.addEventListener('mouseup', function () {
+      dragging = false;
+      img.classList.remove('grabbing');
+    });
+
+    // ── Touch Gestures ────────────────────────────────────────────────────────
+    function getTouches(e) { return Array.from(e.touches); }
+    function pinchDist(t) {
+      const dx = t[0].clientX - t[1].clientX;
+      const dy = t[0].clientY - t[1].clientY;
+      return Math.hypot(dx, dy);
+    }
+    function pinchCenter(t) {
+      return {
+        x: (t[0].clientX + t[1].clientX) / 2,
+        y: (t[0].clientY + t[1].clientY) / 2
+      };
+    }
+
+    img.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      touches = getTouches(e);
+
+      if (touches.length === 1) {
+        // Double-tap detection
+        const now = Date.now();
+        if (now - lastTapTime < 280) {
+          // Double tap: toggle between 1x and 3x
+          if (scale > 1.2) {
+            resetView(true);
+          } else {
+            const rect = img.getBoundingClientRect();
+            const ox = touches[0].clientX - rect.left - rect.width  / 2;
+            const oy = touches[0].clientY - rect.top  - rect.height / 2;
+            scale = 3;
+            tx = -ox * (scale - 1);
+            ty = -oy * (scale - 1);
+            clampTranslation();
+            applyTransform(true);
+          }
+        }
+        lastTapTime = now;
+        lastX = touches[0].clientX;
+        lastY = touches[0].clientY;
+
+      } else if (touches.length === 2) {
+        lastPinchDist = pinchDist(touches);
+        const c = pinchCenter(touches);
+        lastX = c.x; lastY = c.y;
+      }
+    }, { passive: false });
+
+    img.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+      const t = getTouches(e);
+
+      if (t.length === 1 && scale > 1) {
+        // Pan
+        tx += t[0].clientX - lastX;
+        ty += t[0].clientY - lastY;
+        lastX = t[0].clientX;
+        lastY = t[0].clientY;
+        clampTranslation();
+        applyTransform(false);
+
+      } else if (t.length === 2) {
+        // Pinch zoom
+        const dist = pinchDist(t);
+        const ratio = dist / lastPinchDist;
+        const newScale = Math.min(maxScale, Math.max(minScale, scale * ratio));
+
+        const c = pinchCenter(t);
+        const rect = img.getBoundingClientRect();
+        const ox = c.x - rect.left - rect.width  / 2;
+        const oy = c.y - rect.top  - rect.height / 2;
+
+        tx += (c.x - lastX) + ox * (1 - newScale / scale);
+        ty += (c.y - lastY) + oy * (1 - newScale / scale);
+
+        lastX = c.x; lastY = c.y;
+        lastPinchDist = dist;
+        scale = newScale;
+        clampTranslation();
+        applyTransform(false);
+      }
+    }, { passive: false });
+
+    img.addEventListener('touchend', function (e) {
+      touches = getTouches(e);
+      if (touches.length === 1) {
+        lastX = touches[0].clientX;
+        lastY = touches[0].clientY;
+        lastPinchDist = 0;
+      }
+      // Snap back if over-zoomed out
+      if (scale < minScale) {
+        scale = minScale; tx = 0; ty = 0;
+        applyTransform(true);
+      }
+    }, { passive: false });
+  })();
+  // ────────────────────────────────────────────────────────────────────────────
 
   // Registro del Service Worker (PWA)
   if ('serviceWorker' in navigator) {
