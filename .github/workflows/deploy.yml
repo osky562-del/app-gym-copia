@@ -1,0 +1,27 @@
+name: Deploy KO95FIT Elite
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Inject Firebase Config
+        run: |
+          echo "const FIREBASE_CONFIG = ${{ secrets.FIREBASE_CONFIG }};" > firebase-config.js
+          echo "Claves inyectadas desde el almacen de secretos de GitHub."
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: .
+          branch: gh-pages

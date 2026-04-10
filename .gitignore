@@ -1,2 +1,8 @@
 firebase-config.js
+index.original.html
 .claude/
+.gemini/
+servidor.js
+servir_app.cmd
+node_modules/
+package-lock.json
