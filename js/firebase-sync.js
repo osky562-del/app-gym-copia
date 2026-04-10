@@ -52,7 +52,7 @@ function initFirebase() {
       fbApp = firebase.app();
     } else {
       fbApp = firebase.initializeApp(FIREBASE_CONFIG);
-      console.log("KO95FIT: Firebase Initialized ✓");
+      console.log("KO95FIT: Firebase Initialized (v4) ✓");
     }
     fbDb = firebase.firestore();
 
