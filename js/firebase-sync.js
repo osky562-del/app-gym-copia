@@ -5,6 +5,10 @@ let fbApp = null, fbDb = null, fbUser = null, fbUnsub = null;
 let syncEnabled = false;
 let isSyncing = false;
 let isRemoteUpdate = false; // Flag para evitar ciclo push↔snapshot
+
+if (typeof firebase === 'undefined') {
+  console.error("KO95FIT Error: Firebase SDK no cargado. Revisa la conexión.");
+}
 const _pendingDeletes = new Set(); // IDs borrados intencionalmente por el usuario
 
 // Detector de conexión para re-sincronizar automáticamente
@@ -29,13 +33,20 @@ function initFirebase() {
       return;
     }
 
-    if (FIREBASE_CONFIG.apiKey.includes('TU_API_KEY')) {
-      updateSyncStatus('err', 'Modo Local');
+    if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.includes('TU_API_KEY')) {
+      console.warn("KO95FIT: Configuración de Firebase incompleta o por defecto.");
+      updateSyncStatus('err', 'Config Error');
       $('authOverlay').classList.add('show');
       return;
     }
 
-    fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+    // Evitar inicializar dos veces si ya existe
+    if (firebase.apps.length > 0) {
+      fbApp = firebase.app();
+    } else {
+      fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+      console.log("KO95FIT: Firebase Initialized ✓");
+    }
     fbDb = firebase.firestore();
 
     // Configuración de persistencia compatible con v8/v9 compat
@@ -96,6 +107,7 @@ function enterLocalMode() {
 async function authGoogle() {
   if (location.protocol === 'file:') return toast('La nube requiere un servidor. Usa el archivo servir_app.cmd', 'err');
   try {
+    if (firebase.apps.length === 0) initFirebase();
     const provider = new firebase.auth.GoogleAuthProvider();
     await firebase.auth().signInWithPopup(provider);
     toast('Bienvenido de nuevo');
@@ -115,6 +127,9 @@ async function authEmailLogin() {
   btn.textContent = 'Comprobando...';
   
   try {
+    // Asegurar inicialización si por algún motivo no ocurrió
+    if (firebase.apps.length === 0) initFirebase();
+    
     await firebase.auth().signInWithEmailAndPassword(email, pass);
     toast('¡Bienvenido de nuevo! 💪', 'good');
   } catch (e) {
@@ -155,6 +170,7 @@ async function authRegister() {
   btn.textContent = 'Procesando...';
 
   try {
+    if (firebase.apps.length === 0) initFirebase();
     const userKey = name.toLowerCase().replace(/\s/g, '');
     const userRef = fbDb.collection('usernames').doc(userKey);
     const nameDoc = await userRef.get();
@@ -229,6 +245,7 @@ function updateSyncStatus(state, msg = '') {
 
 async function pushToFirebase() {
   if (!syncEnabled || !fbUser || !fbDb || isSyncing) return;
+  isSyncing = true;
   try {
     updateSyncStatus('syncing');
     const userDoc = fbDb.collection('users').doc(fbUser.uid);
@@ -255,17 +272,19 @@ async function pushToFirebase() {
         batch.set(ref, w, { merge: true });
       });
 
-      if (i === 0) {
-        // Sanitizar perfil
+      // Intentar commit de entrenos primero
+      await batch.commit();
+
+      // Guardar info de perfil por separado para que un error de reglas en el perfil 
+      // no bloquee los entrenamientos
+      try {
         const perfil = JSON.parse(JSON.stringify(STORE.get('perfil') || {}));
-        batch.set(userDoc, {
+        await userDoc.set({
           perfil,
           lastSync: firebase.firestore.FieldValue.serverTimestamp(),
           client: 'Elite_KO95_v2'
         }, { merge: true });
-      }
-      
-      await batch.commit();
+      } catch(e) { console.warn('Aviso: Perfil no sincronizado, pero entrenos OK.'); }
     }
 
     if (cleanWorkouts.length === 0) {
@@ -287,6 +306,8 @@ async function pushToFirebase() {
     // Reintentar en 1 minuto si falla
     clearTimeout(window._syncRetry);
     window._syncRetry = setTimeout(pushToFirebase, 60000);
+  } finally {
+    isSyncing = false;
   }
 }
 
@@ -386,10 +407,10 @@ if (syncEnabled && !isRemoteUpdate) {
 }
   };
 
-  // Inicialización inmediata para evitar parpadeos
-  initFirebase();
+// Inicialización inmediata al cargar el script
+initFirebase();
 
-  // Registro del Service Worker (PWA) — solo desde http/https
+// Registro del Service Worker (PWA) — solo desde http/https
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 window.addEventListener('load', () => {
   navigator.serviceWorker.register('sw.js').catch(err => {
