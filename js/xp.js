@@ -1,0 +1,6 @@
+/* ══ XP ══ */
+function getLvl(xp) { let l = LEVELS[0]; for (const v of LEVELS) if (xp >= v.min) l = v; return l; }
+function calcXp() { let x = 0; workouts.forEach(w => { x += XP.session; (w.exercises || []).forEach(e => { x += XP.exercise; x += XP.series * (+e.sets || 1); }); }); return x + bonusXp; }
+function updateXpBar() { const xp = calcXp(), lv = getLvl(xp); $('tbXp').textContent = xp.toLocaleString() + ' XP'; $('xpBadge').textContent = 'Nv.' + lv.lvl; $('xpTitle').textContent = lv.title; const pct = lv.max === Infinity ? 100 : Math.round((xp - lv.min) / (lv.max - lv.min) * 100); $('xpFill').style.width = pct + '%'; $('xpPts').textContent = xp.toLocaleString() + ' / ' + (lv.max === Infinity ? 'MAX' : lv.max.toLocaleString()) + ' XP'; }
+function showXpFloat(pts) { const e = document.createElement('div'); e.className = 'xp-float'; e.textContent = '+' + pts + ' XP'; e.style.top = '130px'; document.body.appendChild(e); setTimeout(() => e.remove(), 1700); }
+function showPR(name, kg) { $('prT').textContent = '¡Nuevo récord personal!'; $('prD').textContent = name + ': ' + kg + ' kg'; $('prToast').classList.add('show'); vib([100, 50, 200, 50, 300]); showXpFloat(XP.pr); bonusXp += XP.pr; STORE.set('bonusXp', bonusXp); setTimeout(() => $('prToast').classList.remove('show'), 3500); }
