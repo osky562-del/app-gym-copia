@@ -1,0 +1,32 @@
+:root {
+  --bg: #000000;
+  --s1: #060606;
+  --s2: #0c0c0c;
+  --s3: #121212;
+  --s4: #1a1a1a;
+  --s5: #222222;
+  --t1: #ffffff;
+  --t2: rgba(255, 255, 255, .82);
+  --t3: rgba(255, 255, 255, .48);
+  --t4: rgba(255, 255, 255, .22);
+  --a: #ff3b30; /* Elite Fire Red */
+  --ag: rgba(255, 59, 48, .12);
+  --green: #ff453a;
+  --gg: rgba(255, 69, 58, .12);
+  --red: #ff3b30;
+  --rg: rgba(255, 59, 48, .15);
+  --amber: #ff9f0a;
+  --amg: rgba(255, 159, 10, .12);
+  --purple: #e60000;
+  --pg: rgba(230, 0, 0, .12);
+  --gold: #ffd700;
+  --line: rgba(255, 59, 48, 0.12);
+  --line2: rgba(255, 59, 48, 0.08);
+  --f: 'Inter', sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+  --tab: 80px;
+  --st: env(safe-area-inset-top, 40px);
+  --sb: env(safe-area-inset-bottom, 24px);
+  --r: 12px;
+  --r2: 8px;
+}

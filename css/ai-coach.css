@@ -1,0 +1,485 @@
+/* ─── IA COACH PAGE ─── */
+.ai-hero {
+  background: linear-gradient(135deg, #0d1a2e, #0a0a0a);
+  border: 1px solid rgba(79, 140, 255, .2);
+  border-radius: var(--r);
+  padding: 20px 18px;
+  margin-bottom: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-hero::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79, 140, 255, .12), transparent 70%);
+  pointer-events: none;
+}
+
+.ai-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(79, 140, 255, .15);
+  border: 1px solid rgba(79, 140, 255, .3);
+  border-radius: 100px;
+  padding: 3px 11px;
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--a);
+  margin-bottom: 10px;
+}
+
+.ai-hero-badge svg {
+  width: 11px;
+  height: 11px;
+  fill: var(--a);
+}
+
+.ai-hero-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  margin-bottom: 5px;
+}
+
+.ai-hero-sub {
+  font-size: .8rem;
+  color: var(--t3);
+  line-height: 1.6;
+}
+
+/* Perfil físico form */
+.pf-card {
+  background: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.pf-row {
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  padding: 0 16px;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pf-row:last-child {
+  border-bottom: none;
+}
+
+.pf-label {
+  font-size: .84rem;
+  font-weight: 500;
+  color: var(--t2);
+  flex: 1;
+}
+
+.pf-label small {
+  display: block;
+  font-size: .68rem;
+  color: var(--t3);
+  font-weight: 400;
+  margin-top: 1px;
+}
+
+.pf-inp {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--t1);
+  font-size: .9rem;
+  font-weight: 600;
+  text-align: right;
+  width: 120px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.pf-inp::-webkit-inner-spin-button,
+.pf-inp::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+.pf-inp::placeholder {
+  color: var(--t4);
+}
+
+.pf-sel {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--a);
+  font-size: .88rem;
+  font-weight: 600;
+  text-align: right;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.pf-sel option {
+  background: #18181c;
+  color: #f4f4f6;
+}
+
+.pf-save-btn {
+  width: 100%;
+  height: 50px;
+  background: var(--a);
+  border: none;
+  color: #fff;
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: 0 3px 14px var(--ag);
+}
+
+.pf-save-btn:active {
+  transform: scale(.985);
+  opacity: .9;
+}
+
+/* Consejos cards */
+.consejo-card {
+  background: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.consejo-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.consejo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.consejo-icon.blue {
+  background: var(--ag);
+}
+
+.consejo-icon.green {
+  background: rgba(48, 217, 152, .12);
+}
+
+.consejo-icon.amber {
+  background: rgba(245, 166, 35, .12);
+}
+
+.consejo-icon.purple {
+  background: rgba(155, 114, 245, .12);
+}
+
+.consejo-title {
+  font-size: .9rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.consejo-badge {
+  font-size: .62rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 100px;
+}
+
+.consejo-badge.ok {
+  background: rgba(48, 217, 152, .15);
+  color: var(--green);
+  border: 1px solid rgba(48, 217, 152, .25);
+}
+
+.consejo-badge.warn {
+  background: rgba(245, 166, 35, .15);
+  color: var(--amber);
+  border: 1px solid rgba(245, 166, 35, .25);
+}
+
+.consejo-badge.tip {
+  background: var(--ag);
+  color: var(--a);
+  border: 1px solid rgba(79, 140, 255, .25);
+}
+
+.consejo-body {
+  padding: 14px 16px;
+}
+
+.consejo-body p {
+  font-size: .84rem;
+  color: var(--t2);
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+
+.consejo-body p:last-child {
+  margin-bottom: 0;
+}
+
+.consejo-body strong {
+  color: var(--t1);
+  font-weight: 700;
+}
+
+.consejo-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.consejo-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: .83rem;
+  color: var(--t2);
+  line-height: 1.5;
+}
+
+.consejo-list li::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--a);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.consejo-list li strong {
+  color: var(--t1);
+}
+
+/* Estado vacío IA */
+.ai-empty {
+  text-align: center;
+  padding: 50px 20px;
+}
+
+.ai-empty-ic {
+  font-size: 3rem;
+  opacity: .25;
+  margin-bottom: 12px;
+}
+
+.ai-empty-t {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--t2);
+  margin-bottom: 5px;
+}
+
+.ai-empty-d {
+  font-size: .8rem;
+  color: var(--t3);
+  line-height: 1.6;
+}
+
+/* Botón generar */
+.btn-gen-consejos {
+  width: 100%;
+  height: 54px;
+  background: linear-gradient(135deg, var(--a), #7b5ea7);
+  border: none;
+  border-radius: var(--r2);
+  color: #fff;
+  font-size: .92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: 0 4px 20px rgba(79, 140, 255, .3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.btn-gen-consejos svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.btn-gen-consejos:active {
+  transform: scale(.985);
+  opacity: .9;
+}
+
+/* ─── Rutina IA generator ─── */
+.btn-gen-rutina {
+  width: 100%;
+  height: 54px;
+  background: linear-gradient(135deg, #1a0a2e, #0a1a2e);
+  border: 1.5px solid rgba(79, 140, 255, .4);
+  border-radius: var(--r2);
+  color: var(--a);
+  font-size: .92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+
+.btn-gen-rutina:active {
+  transform: scale(.985);
+  opacity: .85;
+}
+
+.btn-gen-rutina:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.gen-status {
+  font-size: .76rem;
+  color: var(--t3);
+  text-align: center;
+  min-height: 18px;
+  font-family: var(--fm);
+  margin-bottom: 10px;
+}
+
+.rutina-dia-card {
+  background: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 9px;
+}
+
+.rutina-dia-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(135deg, var(--s2), var(--s1));
+}
+
+.rutina-dia-title {
+  font-size: .92rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.rutina-dia-meta {
+  font-size: .7rem;
+  color: var(--t3);
+  font-family: var(--fm);
+}
+
+.btn-usar-rutina {
+  background: var(--a);
+  border: none;
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.btn-usar-rutina:active {
+  transform: scale(.95);
+}
+
+.btn-guardar-rutina {
+  background: var(--gg);
+  border: 1px solid rgba(48, 217, 152, .3);
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--green);
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.btn-guardar-rutina:active {
+  transform: scale(.95);
+}
+
+.rutina-ex-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  gap: 10px;
+}
+
+.rutina-ex-row:last-child {
+  border-bottom: none;
+}
+
+.rutina-ex-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--ag);
+  border: 1px solid rgba(79, 140, 255, .2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .65rem;
+  font-weight: 800;
+  color: var(--a);
+  flex-shrink: 0;
+}
+
+.rutina-ex-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rutina-ex-name {
+  font-size: .86rem;
+  font-weight: 600;
+}
+
+.rutina-ex-detail {
+  font-size: .7rem;
+  color: var(--t3);
+  font-family: var(--fm);
+  margin-top: 1px;
+}
+
+.rutina-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 8px;
+}
+

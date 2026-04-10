@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>KO95FIT</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="manifest" href="manifest.json">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- ══ Modular CSS ══ -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/splash.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/plan.css">
+  <link rel="stylesheet" href="css/live.css">
+  <link rel="stylesheet" href="css/progress.css">
+  <link rel="stylesheet" href="css/history.css">
+  <link rel="stylesheet" href="css/awards.css">
+  <link rel="stylesheet" href="css/profile.css">
+  <link rel="stylesheet" href="css/overlays.css">
+  <link rel="stylesheet" href="css/ai-coach.css">
+  <link rel="stylesheet" href="css/onboarding.css">
+  <link rel="stylesheet" href="css/summary.css">
+  <link rel="stylesheet" href="css/polish.css">
+  <link rel="stylesheet" href="css/pro.css">
+
+  <!-- ══ External Libraries ══ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
+</head>
+
+<body>
+
+  <!-- AUTH OVERLAY -->
+  <div id="authOverlay">
+    <div class="auth-card" id="authSignup" style="display:none">
+      <img src="logo.png" class="auth-logo" alt="KO95FIT">
+      <div class="auth-title">Crear Cuenta</div>
+      <div class="auth-sub">Únete a la élite del entrenamiento</div>
+      <input type="text" class="auth-inp" id="authNewName" placeholder="Nombre de usuario único">
+      <input type="email" class="auth-inp" id="authNewEmail" placeholder="Correo electrónico">
+      <input type="password" class="auth-inp" id="authNewPass" placeholder="Contraseña">
+      <button class="auth-btn" id="btnRegister" onclick="authRegister()">Registrarme</button>
+      <div class="auth-switch">¿Ya tienes cuenta? <span onclick="authToggle(0)">Inicia sesión</span></div>
+    </div>
+
+    <div class="auth-card" id="authLogin">
+      <img src="logo.png" class="auth-logo" alt="KO95FIT">
+      <div class="auth-title">Bienvenido</div>
+      <div class="auth-sub">Entra en tu zona de rendimiento</div>
+      <input type="email" class="auth-inp" id="authLogEmail" placeholder="Correo electrónico">
+      <input type="password" class="auth-inp" id="authLogPass" placeholder="Contraseña">
+      <div style="text-align:right; margin-bottom:20px">
+        <span onclick="authResetPass()" style="color:var(--a); font-size:0.75rem; cursor:pointer; opacity:0.8; font-weight:700">¿Has olvidado la contraseña?</span>
+      </div>
+      <button class="auth-btn" id="btnLogin" onclick="authEmailLogin()">Entrar</button>
+      <div class="auth-switch">¿No tienes cuenta? <span onclick="authToggle(1)">Regístrate</span></div>
+      <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line2);">
+        <span onclick="enterLocalMode()" style="color:var(--t3);font-size:0.78rem;cursor:pointer;font-weight:600;opacity:0.7;">Continuar sin cuenta (modo local)</span>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="pr-toast" id="prToast">
+    <div class="pr-emoji">🏆</div>
+    <div class="pr-t" id="prT">¡Nuevo récord!</div>
+    <div class="pr-d" id="prD">—</div>
+  </div>
+
+  <!-- Sheets -->
+  <div class="sov" id="shDel">
+    <div class="sh">
+      <div class="sh-h"></div>
+      <div class="sh-title">Eliminar sesión</div>
+      <div style="text-align:center;font-size:.8rem;color:var(--t3);padding:0 16px 10px">Esta acción no se puede
+        deshacer.</div><button class="sh-act danger" id="confirmDel">Eliminar</button><button class="sh-act center"
+        id="cancelDel">Cancelar</button>
+    </div>
+  </div>
+  <div class="sov" id="shCopy">
+    <div class="sh">
+      <div class="sh-h"></div>
+      <div class="sh-title">Copiar sesión</div>
+      <div class="sh-list" id="copyList"></div><button class="sh-act center"
+        onclick="closeSheet('shCopy')">Cancelar</button>
+    </div>
+  </div>
+  <div class="sov" id="shTpl">
+    <div class="sh">
+      <div class="sh-h"></div>
+      <div class="sh-title">Rutinas</div>
+      <div class="sh-list" id="tplList">
+        <div class="sh-card" onclick="loadTpl(1)">
+          <div class="sh-ct">💪 Día 1 — Pecho + Tríceps</div>
+          <div class="sh-cd">Banca · Inclinado · Aperturas · Fondos · Extensión · Francés</div>
+        </div>
+        <div class="sh-card" onclick="loadTpl(2)">
+          <div class="sh-ct">🔗 Día 2 — Espalda + Bíceps</div>
+          <div class="sh-cd">Dominadas · Remo · Jalón · Curl barra · Curl alterno · Concentrado</div>
+        </div>
+        <div class="sh-card" onclick="loadTpl(3)">
+          <div class="sh-ct">🦵 Día 3 — Piernas</div>
+          <div class="sh-cd">Sentadilla · Prensa · Rumano · Femoral · Extensión · Gemelos</div>
+        </div>
+        <div class="sh-card" onclick="loadTpl(4)">
+          <div class="sh-ct">🛡 Día 4 — Hombros + Core</div>
+          <div class="sh-cd">Militar · Laterales · Frontales · Pájaros · Encogimientos · Crunch</div>
+        </div>
+      </div>
+      <button class="sh-act center" onclick="closeSheet('shTpl')">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="rp-ov" id="rpOv" onclick="if(event.target===this)this.classList.remove('on')">
+    <div class="rp-sheet">
+      <div class="rp-handle"></div>
+      <div class="rp-title">Tiempo de descanso</div>
+      <div class="rp-grid">
+        <div class="rp-opt" onclick="pickRest(0,this)">
+          <div class="rp-val">Off</div>
+          <div class="rp-lbl">Sin pausa</div>
+        </div>
+        <div class="rp-opt" onclick="pickRest(30,this)">
+          <div class="rp-val">30s</div>
+          <div class="rp-lbl">Rápido</div>
+        </div>
+        <div class="rp-opt on" onclick="pickRest(60,this)">
+          <div class="rp-val">1m</div>
+          <div class="rp-lbl">Corto</div>
+        </div>
+        <div class="rp-opt" onclick="pickRest(90,this)">
+          <div class="rp-val">90s</div>
+          <div class="rp-lbl">Normal</div>
+        </div>
+        <div class="rp-opt" onclick="pickRest(120,this)">
+          <div class="rp-val">2m</div>
+          <div class="rp-lbl">Largo</div>
+        </div>
+        <div class="rp-opt" onclick="pickRest(180,this)">
+          <div class="rp-val">3m</div>
+          <div class="rp-lbl">Fuerza</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPLASH -->
+
+  <!-- ══ ONBOARDING ══ -->
+  <div id="onboarding">
+    <div class="ob-track" id="obTrack">
+      <div class="ob-slide">
+        <div class="ob-icon">🏋️</div>
+        <div class="ob-h">Bienvenido a<br><span>KO95FIT</span></div>
+        <div class="ob-p">Tu sistema de entrenamiento personal. Registra, analiza y mejora cada sesión desde el móvil.
+        </div>
+      </div>
+      <div class="ob-slide">
+        <div class="ob-icon">👤</div>
+        <div class="ob-h">¿Cómo te<br><span>llamas?</span></div>
+        <div class="ob-p">Te llamaremos así en la app.</div>
+        <div class="ob-inputs">
+          <div class="ob-inp">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <input id="obName" type="text" placeholder="Tu nombre o apodo" maxlength="20" autocomplete="off"
+              autocorrect="off">
+          </div>
+        </div>
+      </div>
+      <div class="ob-slide">
+        <div class="ob-icon">👤</div>
+        <div class="ob-h">Tu <span>perfil</span></div>
+        <div class="ob-p">Esto nos ayuda a calcular tus necesidades calóricas y de entrenamiento.</div>
+        <div class="ob-inputs">
+          <div class="ob-inp">
+            <select id="obSexo">
+              <option value="hombre">👨 Hombre</option>
+              <option value="mujer">👩 Mujer</option>
+            </select>
+          </div>
+          <div class="ob-inp">
+            <input id="obEdad" type="number" placeholder="Tu edad" min="13" max="99">
+          </div>
+        </div>
+      </div>
+      <div class="ob-slide">
+        <div class="ob-icon">🎯</div>
+        <div class="ob-h">Tu <span>objetivo</span></div>
+        <div class="ob-p">Lo usaremos para personalizar tus consejos de entrenamiento y nutrición.</div>
+        <div class="ob-inputs">
+          <div class="ob-inp">
+            <select id="obObj">
+              <option value="">— Tu objetivo —</option>
+              <option value="ganar músculo">💪 Ganar músculo</option>
+              <option value="perder grasa">🔥 Perder grasa</option>
+              <option value="ganar fuerza">⚡ Ganar fuerza</option>
+              <option value="resistencia">🏃 Resistencia</option>
+              <option value="mantenimiento">⚖️ Mantenimiento</option>
+            </select>
+          </div>
+          <div class="ob-inp">
+            <select id="obNivel">
+              <option value="">— Tu nivel —</option>
+              <option value="principiante">🌱 Principiante (&lt;6 meses)</option>
+              <option value="intermedio">💪 Intermedio (6m–2 años)</option>
+              <option value="avanzado">🔥 Avanzado (&gt;2 años)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="ob-slide">
+        <div class="ob-icon">🎨</div>
+        <div class="ob-h">Elige tu<br><span>color</span></div>
+        <div class="ob-p">Personaliza el aspecto de la app. Puedes cambiarlo después en Perfil.</div>
+        <div class="ob-colors">
+          <div class="ob-color on" data-accent="blue" style="background:#4f8cff" onclick="obColor('blue',this)"><svg
+              viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg></div>
+          <div class="ob-color" data-accent="green" style="background:#2dd98a" onclick="obColor('green',this)"><svg
+              viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg></div>
+          <div class="ob-color" data-accent="purple" style="background:#a57aff" onclick="obColor('purple',this)"><svg
+              viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg></div>
+          <div class="ob-color" data-accent="amber" style="background:#ffa040" onclick="obColor('amber',this)"><svg
+              viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg></div>
+          <div class="ob-color" data-accent="red" style="background:#ff453a" onclick="obColor('red',this)"><svg
+              viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg></div>
+          <div class="ob-color" data-accent="pink" style="background:#ff6eb4" onclick="obColor('pink',this)"><svg
+              viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-nav" id="obNav">
+      <div class="ob-dot-n on"></div>
+      <div class="ob-dot-n"></div>
+      <div class="ob-dot-n"></div>
+      <div class="ob-dot-n"></div>
+      <div class="ob-dot-n"></div>
+    </div>
+    <div class="ob-foot">
+      <button class="ob-skip" onclick="obSkip()">Saltar</button>
+      <button class="ob-next" id="obNextBtn" onclick="obNext()">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- ══ POST-WORKOUT SUMMARY ══ -->
+  <div id="summaryMode">
+    <div class="sum-hd">
+      <div class="sum-lbl">KO95FIT</div>
+      <div class="sum-title">Entreno <em>completado</em> 💪</div>
+    </div>
+    <div class="sum-scroll">
+      <div class="sum-stats" id="sumStats"></div>
+      <div id="sumPR"></div>
+      <div class="sum-xp-row" id="sumXP"></div>
+      <div class="sum-exs" id="sumExs"></div>
+      <div id="sumProInsights"></div>
+      <div class="sum-acts">
+        <button class="sum-btn-p" onclick="closeSummary()">Volver al inicio 🏠</button>
+        <button class="sum-btn-s" onclick="closeSummary();setTimeout(openPlan,100)">Otro entreno ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="splash">
+    <div class="sp-glow"></div>
+    <div class="sp-content">
+      <div class="sp-title">KO95<span>FIT</span></div>
+      <div class="sp-sub">Elite Training System</div>
+      <div class="sp-loader">
+        <div class="sp-bar"><div class="sp-fill"></div></div>
+        <div class="sp-status">Initializing AI Coach</div>
+      </div>
+    </div>
+  </div>
+  <div id="toasts"></div>
+
+  <!-- APP (always visible, no login) -->
+  <div id="app">
+    <div class="topbar">
+      <div class="tb-brand">
+        <div class="tb-mark">
+          <img src="logo.png" alt="KO95FIT" class="tb-logo-img" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 30%22><text x=%2250%25%22 y=%2250%25%22 dy=%22.35em%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22900%22 font-style=%22italic%22 font-size=%2222%22 fill=%22%23ff3b30%22>KO95FIT</text></svg>'">
+        </div>
+        <div class="tb-name" style="display:none;">KO95<span class="p-accent">FIT</span></div>
+      </div>
+      <button class="tb-fs-btn" id="tbFsBtn" onclick="cycleFontSize()" title="Tamaño de texto">A</button>
+      <div class="tb-xp" onclick="goPage('awards')"><svg viewBox="0 0 24 24">
+          <polygon
+            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg><span class="tb-xp-v" id="tbXp">0 XP</span></div>
+    </div>
+
+    <div class="scroll" id="mainScroll">
+      <!-- DASHBOARD -->
+      <div class="page on" id="pageDash">
+        <div class="hero">
+          <div class="hero-greet" id="greetDate">—</div>
+          <div class="hero-name">Hola, <em id="greetName">Atleta</em> 👋</div>
+          <div class="xp-wrap">
+            <div class="xp-top">
+              <div class="xp-lv">
+                <div class="xp-badge" id="xpBadge">Nv.1</div>
+                <div class="xp-lv-title" id="xpTitle">Novato</div>
+              </div>
+              <div class="xp-pts" id="xpPts">0 / 500 XP</div>
+            </div>
+            <div class="xp-track">
+              <div class="xp-fill" id="xpFill" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="streak-row">
+            <div class="streak-chip"><span class="sn" id="strN">0</span><span class="sl">días 🔥</span></div><span
+              class="sm">Mejor: <strong id="strMax">0</strong></span>
+          </div>
+          <div class="week-strip" id="weekStrip"></div>
+        </div>
+        <div class="sec">Esta semana</div>
+        <div id="weekCompare" style="display:flex;gap:6px;margin-bottom:9px;"></div>
+        <div class="card" style="padding:13px;margin-bottom:9px;">
+          <div class="vol-bars" id="volBars"></div>
+        </div>
+        <div class="kpis">
+          <div class="kpi" style="--kc:var(--a)">
+            <div class="kpi-l">Sesiones</div>
+            <div class="kpi-v" id="kS">0</div>
+            <div class="kpi-s">Total</div>
+          </div>
+          <div class="kpi" style="--kc:var(--green)">
+            <div class="kpi-l">Volumen</div>
+            <div class="kpi-v" id="kV">0</div>
+            <div class="kpi-s">Kg totales</div>
+          </div>
+          <div class="kpi" style="--kc:var(--amber)">
+            <div class="kpi-l">Ejercicios</div>
+            <div class="kpi-v" id="kE">0</div>
+            <div class="kpi-s">Registrados</div>
+          </div>
+          <div class="kpi" style="--kc:var(--purple)">
+            <div class="kpi-l">RPE medio</div>
+            <div class="kpi-v" id="kR">—</div>
+            <div class="kpi-s">Intensidad</div>
+          </div>
+        </div>
+        <button class="cta" onclick="openPlan()">
+          <div class="cta-ic"><svg viewBox="0 0 24 24">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg></div>
+          <div class="cta-tx">
+            <div class="cta-t">Nuevo entrenamiento</div>
+            <div class="cta-s">Planifica y empieza</div>
+          </div>
+          <span style="font-size:1.2rem;color:rgba(255,255,255,.35)">›</span>
+        </button>
+        <div style="display:flex;gap:8px;margin-bottom:9px;margin-top:0;">
+          <button onclick="exportData()"
+            style="flex:1;height:46px;background:var(--s1);border:1px solid var(--line2);border-radius:10px;color:var(--t2);font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Exportar
+          </button>
+          <button onclick="importData()"
+            style="flex:1;height:46px;background:var(--s1);border:1px solid var(--line2);border-radius:10px;color:var(--t2);font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Restaurar
+          </button>
+        </div>
+        <div id="muscleChips" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;"></div>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(event)">
+        <div class="sec">Sesiones recientes</div>
+        <div id="recentList"></div>
+
+      </div>
+
+      <!-- AWARDS -->
+      <div class="page" id="pageAwards">
+        <div class="aw-hero">
+          <div class="aw-lv-lbl">Tu nivel</div>
+          <div class="aw-badge" id="awBadge">Nv.1</div>
+          <div class="aw-title" id="awTitle">Novato</div>
+          <div class="aw-xp">Tienes <span id="awXp">0</span> XP en total</div>
+          <div class="aw-prog">
+            <div class="aw-prog-top">
+              <div class="aw-prog-cur" id="awCur">0 / 500 XP</div>
+              <div class="aw-prog-nxt" id="awNxt">Próximo: Guerrero</div>
+            </div>
+            <div class="aw-prog-track">
+              <div class="aw-prog-fill" id="awFill" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sec">Insignias</div>
+        <div class="card" style="margin-bottom:9px;">
+          <div class="badges-grid" id="badgesGrid"></div>
+        </div>
+        <div class="sec">Misiones</div>
+        <div class="card" style="margin-bottom:9px;">
+          <div class="ms-list" id="msList"></div>
+        </div>
+      </div>
+
+      <!-- PROGRESS -->
+      <div class="page" id="pageProg">
+        <div class="sec">Actividad — 13 semanas</div>
+        <div class="card" style="margin-bottom:9px;">
+          <div class="hm-wrap">
+            <div class="hm-hdr" id="hmHdr"></div>
+            <div class="hm-grid" id="hmGrid"></div>
+            <div class="hm-leg"><span class="hm-lt">Menos</span>
+              <div class="hm-ls" style="background:var(--s3)"></div>
+              <div class="hm-ls hm-c l1"></div>
+              <div class="hm-ls hm-c l2"></div>
+              <div class="hm-ls hm-c l3"></div>
+              <div class="hm-ls hm-c l4"></div><span class="hm-lt">Más</span>
+            </div>
+          </div>
+        </div>
+        <div class="sec">Resumen</div>
+        <div class="stat-grid" style="margin-bottom:9px;">
+          <div class="stat-tile">
+            <div class="st-v" id="pTS">0</div>
+            <div class="st-l">Sesiones</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-v" id="pAW">0</div>
+            <div class="st-l">Ses./semana</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-v" id="pTV">0</div>
+            <div class="st-l">Kg levantados</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-v" id="pBS">0</div>
+            <div class="st-l">Racha máxima</div>
+          </div>
+        </div>
+        <div class="sec">Grupos musculares</div>
+        <div class="card" style="padding:14px;margin-bottom:9px;">
+          <div class="muscle-wrap">
+            <div class="muscle-donut"><canvas id="muscleChart"></canvas></div>
+            <div class="ml-list" id="mlList"></div>
+          </div>
+        </div>
+        <div class="sec">Balance muscular <span class="pro-sec-badge" id="radarProBadge">PRO</span></div>
+        <div class="card" style="padding:14px;margin-bottom:9px;">
+          <div class="ch-box ch220" id="radarWrap"><canvas id="muscleRadar"></canvas></div>
+        </div>
+        <div class="sec">Volumen semanal</div>
+        <div class="card" style="padding:14px;margin-bottom:9px;">
+          <div class="ch-box ch160"><canvas id="volChart"></canvas></div>
+        </div>
+        <div class="sec">Intensidad RPE</div>
+        <div class="card" style="padding:14px;margin-bottom:9px;">
+          <div class="ch-box ch160"><canvas id="rpeChart"></canvas></div>
+        </div>
+        <div class="sec">Récords</div>
+        <div class="card" style="margin-bottom:9px;overflow:auto;">
+          <table class="pr-table">
+            <thead>
+              <tr>
+                <th>Ejercicio</th>
+                <th>Récord</th>
+                <th>1RM</th>
+                <th>Tend.</th>
+              </tr>
+            </thead>
+            <tbody id="prBody"></tbody>
+          </table>
+        </div>
+        <div class="sec">Evolución</div>
+        <div class="card" style="padding:14px;margin-bottom:9px;">
+          <div class="qps"><button class="qp on" onclick="selPill('__PESO__',this)">⚖ Peso</button></div>
+          <select class="ex-sel" id="progSel" onchange="drawExChart()">
+            <option value="__PESO__">⚖ Peso Corporal</option>
+          </select>
+          <div class="seg"><button class="seg-b on" id="mMax" onclick="setMet('MAX',this)">Máx kg</button><button
+              class="seg-b" id="m1RM" onclick="setMet('1RM',this)">1RM Est.</button><button class="seg-b" id="mVol"
+              onclick="setMet('VOL',this)">Volumen</button></div>
+          <div class="pr3">
+            <div class="prb">
+              <div class="prb-v" id="prMax">—</div>
+              <div class="prb-l">Récord</div>
+            </div>
+            <div class="prb">
+              <div class="prb-v" id="pr1RM">—</div>
+              <div class="prb-l">1RM Est.</div>
+            </div>
+            <div class="prb">
+              <div class="prb-v" id="prVol">—</div>
+              <div class="prb-l">Max Vol.</div>
+            </div>
+          </div>
+          <div class="ch-box ch220"><canvas id="exChart"></canvas></div>
+          <div class="seg" style="margin-top:10px;"><button class="seg-b" onclick="setTR('1M',this)">1M</button><button
+              class="seg-b" onclick="setTR('3M',this)">3M</button><button class="seg-b"
+              onclick="setTR('6M',this)">6M</button><button class="seg-b on" onclick="setTR('ALL',this)">Todo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="page" id="pageHist">
+        <div style="position:sticky;top:0;z-index:10;background:var(--bg);padding:4px 0 10px;">
+          <input type="text" id="histSearch" placeholder="🔍 Buscar en historial…" oninput="filterHistory()"
+            style="width:100%;background:var(--s1);border:1.5px solid var(--line2);border-radius:10px;padding:12px 14px;color:var(--t1);font-size:.86rem;font-weight:500;outline:none;" />
+        </div>
+        <div id="histList" style="margin-top:4px;"></div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="page" id="pageProf">
+        <div class="p-hero" style="margin-top:4px;">
+          <div class="p-av">
+            <img src="logo.png" alt="KO95FIT" class="p-logo-img" onerror="this.outerHTML='<div style=%22font-size:2rem; font-weight:900; font-style:italic; color:%23ff3b30;%22>KO95FIT</div>'">
+          </div>
+          <div class="p-name">KO95<span class="p-accent">FIT</span></div>
+          <div class="p-sub">Hardcore Training System</div>
+          <div class="p-sr">
+            <div class="ps">
+              <div class="ps-v" id="psW">0</div>
+              <div class="ps-l">Sync OK</div>
+            </div>
+            <div class="ps">
+              <div class="ps-v" id="psK">0</div>
+              <div class="ps-l">Ton.</div>
+            </div>
+            <div class="ps">
+              <div class="ps-v" id="psS">0</div>
+              <div class="ps-l">Días</div>
+            </div>
+            <div class="ps">
+              <div class="ps-v" id="psH">0h</div>
+              <div class="ps-l">Mins.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec">Tu plan</div>
+        <div id="profilePlanCard" class="plan-card-wrap"></div>
+
+        <div class="sec">Color de acento</div>
+        <div class="acc-section" style="margin-bottom:9px;">
+          <div class="acc-section-t">Personaliza el color de la app</div>
+          <div style="display:flex;gap:12px;padding:16px;flex-wrap:wrap;" id="accentGrid">
+            <div class="acc-sw" data-accent="blue" style="background:#4f8cff" onclick="setAccent('blue',this)"><svg
+                viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12" />
+              </svg></div>
+            <div class="acc-sw" data-accent="green" style="background:#2dd98a" onclick="setAccent('green',this)"><svg
+                viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12" />
+              </svg></div>
+            <div class="acc-sw" data-accent="purple" style="background:#a57aff" onclick="setAccent('purple',this)"><svg
+                viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12" />
+              </svg></div>
+            <div class="acc-sw" data-accent="amber" style="background:#ffa040" onclick="setAccent('amber',this)"><svg
+                viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12" />
+              </svg></div>
+            <div class="acc-sw" data-accent="red" style="background:#ff453a" onclick="setAccent('red',this)"><svg
+                viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12" />
+              </svg></div>
+            <div class="acc-sw" data-accent="pink" style="background:#ff6eb4" onclick="setAccent('pink',this)"><svg
+                viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12" />
+              </svg></div>
+          </div>
+        </div>
+        <div class="sec">Tu nombre</div>
+        <div class="inp-row" style="margin-bottom:9px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <input type="text" id="nameInput" placeholder="¿Cómo te llamas?" maxlength="30"
+            style="text-transform:capitalize;">
+          <button class="btn-g" style="padding:8px 14px;font-size:.8rem;" onclick="saveName()">Guardar</button>
+        </div>
+        <div class="sec">Peso corporal</div>
+        <div class="inp-row" style="margin-bottom:9px;">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <input type="number" id="bwInput" placeholder="Kg actuales" step="0.1">
+          <button class="btn-g" style="padding:8px 14px;font-size:.8rem;" id="btnSaveW">Guardar</button>
+        </div>
+        <div class="sec">Estadísticas</div>
+        <div class="info-list" style="margin-bottom:9px;">
+          <div class="ir">
+            <div class="ir-ic blue"><svg viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg></div>
+            <div class="ir-l">Sesiones totales</div>
+            <div class="ir-v" id="irS">0</div>
+          </div>
+          <div class="ir">
+            <div class="ir-ic green"><svg viewBox="0 0 24 24">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg></div>
+            <div class="ir-l">Kg levantados</div>
+            <div class="ir-v" id="irK">0</div>
+          </div>
+          <div class="ir">
+            <div class="ir-ic amber"><svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg></div>
+            <div class="ir-l">Horas entrenadas</div>
+            <div class="ir-v" id="irH">0h</div>
+          </div>
+          <div class="ir">
+            <div class="ir-ic purple"><svg viewBox="0 0 24 24">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg></div>
+            <div class="ir-l">RPE promedio</div>
+            <div class="ir-v" id="irR">—</div>
+          </div>
+        </div>
+
+        <!-- LOGOUT TECHNICAL BUTTON -->
+        <div style="margin: 20px 0 100px; padding: 0 16px;">
+          <button class="btn-g" style="width:100%; background:transparent; border:1px solid var(--line); color:var(--t3); font-size:0.75rem; font-family:var(--fm); letter-spacing:1px; text-transform:uppercase;" onclick="logoutCloud()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Finalizar Sesión (Desconectar)
+          </button>
+        </div>
+      </div>
+
+
+      <!-- IA COACH -->
+      <div class="page" id="pageAI">
+
+        <div class="ai-hero">
+          <div class="ai-hero-badge"><svg viewBox="0 0 24 24">
+              <polygon
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>IA Coach</div>
+          <div class="ai-hero-title">Tu entrenador personal</div>
+          <div class="ai-hero-sub">Rellena tu perfil físico y recibirás consejos personalizados de nutrición y
+            entrenamiento basados en tus sesiones reales.</div>
+          <div id="aiUsageBadge" class="pro-ai-remaining"></div>
+        </div>
+
+        <div class="sec">Tu perfil físico</div>
+        <div class="pf-card">
+          <div class="pf-row">
+            <div class="pf-label">Sexo</div>
+            <select class="pf-sel" id="pfSexo">
+              <option value="">— elige —</option>
+              <option value="hombre">Hombre</option>
+              <option value="mujer">Mujer</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Edad<small>años</small></div>
+            <input class="pf-inp" type="number" id="pfEdad" placeholder="25" min="13" max="99">
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Peso<small>kg</small></div>
+            <input class="pf-inp" type="number" id="pfPeso" placeholder="75" min="30" max="300" step="0.5">
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Altura<small>cm</small></div>
+            <input class="pf-inp" type="number" id="pfAltura" placeholder="175" min="100" max="250">
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Nivel</div>
+            <select class="pf-sel" id="pfNivel">
+              <option value="">— elige —</option>
+              <option value="principiante">Principiante (&lt;6 meses)</option>
+              <option value="intermedio">Intermedio (6m–2 años)</option>
+              <option value="avanzado">Avanzado (&gt;2 años)</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Objetivo</div>
+            <select class="pf-sel" id="pfObjetivo">
+              <option value="">— elige —</option>
+              <option value="ganar músculo">Ganar músculo</option>
+              <option value="perder grasa">Perder grasa</option>
+              <option value="ganar fuerza">Ganar fuerza</option>
+              <option value="resistencia">Resistencia</option>
+              <option value="mantenimiento">Mantenimiento</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Días/semana<small>que entrenas</small></div>
+            <select class="pf-sel" id="pfDias">
+              <option value="">— elige —</option>
+              <option value="2">2 días</option>
+              <option value="3">3 días</option>
+              <option value="4">4 días</option>
+              <option value="5">5 días</option>
+              <option value="6">6 días</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Lesiones / limitaciones<small>opcional</small></div>
+            <input class="pf-inp" type="text" id="pfLesiones" placeholder="ninguna"
+              style="width:150px;font-size:.82rem;">
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">% Grasa<small>estimada</small></div>
+            <input class="pf-inp" type="number" id="pfGrasa" placeholder="15" min="3" max="50">
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Actividad diaria</div>
+            <select class="pf-sel" id="pfAct">
+              <option value="sedentario">Sedentario</option>
+              <option value="moderada">Moderada</option>
+              <option value="alta">Activo / Deportista</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Dieta preferida</div>
+            <select class="pf-sel" id="pfDieta">
+              <option value="omnívoro">Omnívoro</option>
+              <option value="vegano">Vegano / Vegetariano</option>
+              <option value="cetogénico">Bajo en carbohidratos</option>
+              <option value="ayuno">Ayuno intermitente</option>
+            </select>
+          </div>
+        </div>
+        <button class="pf-save-btn" onclick="savePerfilAndGenerate()">Guardar perfil y ver consejos ✦</button>
+
+        <div id="aiConsejos"></div>
+
+        <div class="sec" style="margin-top:24px;">Generar rutina con IA</div>
+        <div class="pf-card" style="margin-bottom:10px;">
+          <div class="pf-row">
+            <div class="pf-label">Días por semana</div>
+            <select class="pf-sel" id="rDias">
+              <option value="3">3 días — Full Body</option>
+              <option value="4" selected>4 días — Torso/Pierna</option>
+              <option value="5">5 días — Bro Split</option>
+              <option value="6">6 días — PPL</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Enfoque</div>
+            <select class="pf-sel" id="rEnfoque">
+              <option value="hipertrofia">Hipertrofia</option>
+              <option value="fuerza">Fuerza</option>
+              <option value="definición">Definición</option>
+              <option value="resistencia">Resistencia</option>
+            </select>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Equipamiento</div>
+            <select class="pf-sel" id="rEquipo">
+              <option value="gimnasio completo">Gimnasio completo</option>
+              <option value="mancuernas y barra">Mancuernas y barra</option>
+              <option value="solo mancuernas">Solo mancuernas</option>
+              <option value="peso corporal">Peso corporal</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn-gen-rutina" id="btnGenRutina" onclick="generarRutinaIA()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          Generar rutina con IA
+        </button>
+        <div class="gen-status" id="genStatus"></div>
+
+        <div id="rutinaResult"></div>
+
+      </div>
+    </div><!-- /scroll -->
+
+    <div class="tabbar">
+      <button class="tab on" id="t-dash" onclick="goPage('dash')"><svg viewBox="0 0 24 24">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg><span>Inicio</span></button>
+      <button class="tab" id="t-add" onclick="openPlan()"><svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg><span>Entreno</span></button>
+      <button class="tab" id="t-ai" onclick="goPage('ai')"><svg viewBox="0 0 24 24">
+          <path
+            d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1H1a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18 2.5 2.5 0 0 0 10 15.5 2.5 2.5 0 0 0 7.5 13m9 0A2.5 2.5 0 0 0 14 15.5a2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 16.5 13z" />
+        </svg><span>Coach</span></button>
+      <button class="tab" id="t-prog" onclick="goPage('prog')"><svg viewBox="0 0 24 24">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg><span>Stats</span></button>
+      <button class="tab" id="t-hist" onclick="goPage('hist')"><svg viewBox="0 0 24 24">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+          <rect x="9" y="3" width="6" height="4" rx="1" />
+          <line x1="9" y1="12" x2="15" y2="12" />
+          <line x1="9" y1="16" x2="13" y2="16" />
+        </svg><span>Historial</span></button>
+      <button class="tab" id="t-profile" onclick="goPage('profile')"><svg viewBox="0 0 24 24">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg><span>Bio Elite</span></button>
+    </div>
+  </div>
+
+  <!-- PLAN MODE -->
+  <div id="planMode">
+    <div class="plan-top">
+      <button class="plan-back" onclick="closePlan()"><svg viewBox="0 0 24 24">
+          <polyline points="15 18 9 12 15 6" />
+        </svg></button>
+      <div class="plan-head">
+        <div class="plan-head-t">Planifica tu entreno</div>
+        <div class="plan-head-s" id="planSub">0 ejercicios</div>
+      </div>
+      <button class="btn-g btn-empezar" id="btnEmpezar" onclick="startLiveMode()" disabled>Empezar ▶</button>
+    </div>
+    <div class="plan-scroll">
+      <div class="plan-meta">
+        <div class="pm-chip" style="flex:1.2">
+          <div class="pm-l">Fecha</div><input class="pm-i" type="date" id="planDate">
+        </div>
+        <div class="pm-chip" id="rpeChip" style="cursor:pointer;position:relative;" onclick="toggleRpeMode()">
+          <div class="pm-l">RPE <span id="rpeModeLabel"
+              style="color:var(--a);font-size:.5rem;font-weight:800;letter-spacing:.06em;">AUTO</span></div>
+          <div id="rpeAutoDisplay" style="font-size:.9rem;font-weight:700;color:var(--a);">—</div>
+          <input class="pm-i" type="number" id="planRpe" placeholder="auto" min="1" max="10"
+            style="display:none;width:60px;">
+        </div>
+        <div class="pm-chip" style="flex:2">
+          <div class="pm-l">Notas</div><input class="pm-i" type="text" id="planNotes" placeholder="¿Cómo te sientes?">
+        </div>
+      </div>
+      <div class="plan-search-wrap">
+        <svg class="plan-search-ico" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input class="plan-search" id="planSearch" placeholder="Buscar ejercicio…" autocomplete="off"
+          oninput="filterAC()">
+        <div class="plan-ac" id="planAC"></div>
+      </div>
+      <div class="chip-row" style="margin-bottom:12px;">
+        <button class="chip" onclick="document.getElementById('shTpl').classList.add('on');renderTplList()"><svg
+            viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>Rutinas</button>
+        <button class="chip" onclick="openCopy()"><svg viewBox="0 0 24 24">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>Copiar sesión</button>
+      </div>
+      <div class="plan-ex-list" id="planExList"></div>
+      <div id="planEmpty" style="text-align:center;padding:40px 18px;color:var(--t3);">
+        <div style="font-size:2.4rem;opacity:.22;margin-bottom:9px;">🏋️</div>
+        <div style="font-size:.88rem;font-weight:600;color:var(--t2);margin-bottom:4px;">Añade ejercicios</div>
+        <div style="font-size:.76rem;">Busca arriba o carga una rutina</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE MODE -->
+  <div id="liveMode">
+    <div class="lv-top">
+      <button class="lv-back" onclick="backToPlan()"><svg viewBox="0 0 24 24">
+          <polyline points="15 18 9 12 15 6" />
+        </svg></button>
+      <div class="lv-center">
+        <div class="lv-label">Entrenando</div>
+        <div class="lv-time" id="lvTime">00:00</div>
+      </div>
+      <div class="lv-r">
+        <button class="lv-pause" id="lvPauseBtn" onclick="togglePause()"><svg id="lvPauseIco" viewBox="0 0 24 24">
+            <rect x="6" y="4" width="4" height="16" />
+            <rect x="14" y="4" width="4" height="16" />
+          </svg></button>
+        <button class="btn-g lv-finish" onclick="finishLive()">Finalizar</button>
+      </div>
+    </div>
+    <div class="lv-prog-bar">
+      <div class="lv-prog-fill" id="lvProg" style="width:0%"></div>
+    </div>
+    <div class="lv-stats">
+      <div class="ls">
+        <div class="ls-v" id="lvEx">0/0</div>
+        <div class="ls-l">Ejerc.</div>
+      </div>
+      <div class="ls">
+        <div class="ls-v" id="lvSets">0</div>
+        <div class="ls-l">Series ✓</div>
+      </div>
+      <div class="ls">
+        <div class="ls-v" id="lvVol">0</div>
+        <div class="ls-l">Kg vol.</div>
+      </div>
+      <div class="ls">
+        <div class="ls-v" id="lvClock">00:00</div>
+        <div class="ls-l">Tiempo</div>
+      </div>
+    </div>
+    <div class="lv-rest" id="lvRest">
+      <div class="lv-rest-ring"><svg viewBox="0 0 42 42">
+          <circle class="lrr-track" cx="21" cy="21" r="17" stroke-dasharray="107" />
+          <circle class="lrr-prog" id="lrrProg" cx="21" cy="21" r="17" stroke-dasharray="107" stroke-dashoffset="0" />
+        </svg>
+        <div class="lv-rest-n" id="lrrN">0</div>
+      </div>
+      <div class="lv-rest-info">
+        <div class="lv-rest-t">Descansando…</div>
+        <div class="lv-rest-s" id="lvRestSub">Prepárate</div>
+      </div>
+      <button class="lv-rest-skip" onclick="skipRest()">Saltar</button>
+    </div>
+    <div class="lv-ex-area">
+      <div class="lv-paused-ov" id="lvPausedOv">
+        <div class="lpo-ic">⏸</div>
+        <div class="lpo-t">Pausado</div>
+        <div class="lpo-time" id="lvPauseTime">00:00</div>
+        <div class="lpo-s">Pausa nº <span id="lvPauseCnt">1</span></div>
+        <button class="btn-resume" onclick="togglePause()">▶ Reanudar</button>
+      </div>
+      <div class="lv-ex-nav">
+        <button class="lv-nav-btn" id="lvNavP" onclick="navEx(-1)"><svg viewBox="0 0 24 24">
+            <polyline points="15 18 9 12 15 6" />
+          </svg></button>
+        <div class="lv-ex-ctr">
+          <div class="lv-ex-ctr-lbl">Ejercicio</div>
+          <div class="lv-ex-ctr-n" id="lvExCtr">1 / 1</div>
+        </div>
+        <button class="lv-nav-btn" id="lvNavN" onclick="navEx(1)"><svg viewBox="0 0 24 24">
+            <polyline points="9 18 15 12 9 6" />
+          </svg></button>
+      </div>
+      <div class="lv-ex-scroll" id="lvExScroll">
+        <div class="lv-ex-name" id="lvExName">—</div>
+        <div class="lv-ex-pr" id="lvExPr"></div>
+        <div id="lvSetsEl"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══ Modular JavaScript ══ -->
+  <!-- Order matters: dependencies load first -->
+  <script src="js/store.js"></script>
+  <script src="js/constants.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/pro.js"></script>
+  <script src="js/xp.js"></script>
+  <script src="js/rest.js"></script>
+  <script src="js/helpers.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/plan.js"></script>
+  <script src="js/live.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/awards.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ai-coach.js"></script>
+  <script src="js/ai-rutina.js"></script>
+  <script src="js/rpe.js"></script>
+  <script src="js/summary.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/onboarding.js"></script>
+  <script src="js/firebase-sync.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
