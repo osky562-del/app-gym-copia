@@ -1,5 +1,12 @@
 /* ══ FIREBASE CLOUD SYNC & OFFLINE MODE ══ */
-// FIREBASE_CONFIG se carga desde firebase-config.js (no incluido en GitHub)
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDi1A60FqgL4pVFtClJBop4Wx9MHOZd2Sg",
+  authDomain: "consejosapp-5c0dd.firebaseapp.com",
+  projectId: "consejosapp-5c0dd",
+  storageBucket: "consejosapp-5c0dd.firebasestorage.app",
+  messagingSenderId: "89535695550",
+  appId: "1:89535695550:web:07a558f67d03fcb33f2cef"
+};
 
 let fbApp = null, fbDb = null, fbUser = null, fbUnsub = null;
 let syncEnabled = false;
