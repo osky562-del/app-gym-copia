@@ -1,4 +1,5 @@
 firebase-config.js
+firestore.rules
 index.original.html
 .claude/
 .gemini/
