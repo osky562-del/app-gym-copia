@@ -98,9 +98,9 @@ const Pro = (function () {
     'priority_support':   'prioritySupport',
   };
 
-  /* ── Admin / Owner Emails (auto Pro+) ── */
-  const ADMIN_EMAILS = [
-    'osky_95@hotmail.com',
+  /* ── Admin / Owner UIDs (auto Pro+) ── */
+  const ADMIN_UIDS = [
+    'sQCUoNHTPmWo2Nf42xICmE3FZAT2',
   ];
 
   /* ── State ── */
@@ -241,9 +241,9 @@ const Pro = (function () {
   }
 
   /* ── Admin check ── */
-  function checkAdmin(email) {
-    if (!email) return;
-    isAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === email.toLowerCase());
+  function checkAdmin(uid) {
+    if (!uid) return;
+    isAdmin = ADMIN_UIDS.includes(uid);
     if (isAdmin) {
       currentPlan = 'pro_plus';
       planExpiry = null; // never expires for admin
