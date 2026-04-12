@@ -1,0 +1,114 @@
+rules_version = '2';
+
+// ══════════════════════════════════════════════════
+// KO95FIT — Firestore Security Rules v3
+// ══════════════════════════════════════════════════
+//
+// CÓMO DESPLEGAR:
+//   1. Ve a Firebase Console → tu proyecto → Firestore → Rules
+//   2. Copia y pega estas reglas
+//   3. Pulsa "Publish"
+//
+// ESTRUCTURA:
+//   /users/{uid}                    → Perfil (dueño lee/escribe con restricciones)
+//   /users/{uid}/subscription/plan  → Plan Pro (SOLO admin / Cloud Functions)
+//   /users/{uid}/workouts/{id}      → Entrenos (dueño, con validación)
+//   /usernames/{name}               → Registro de nombres únicos
+// ══════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper: ¿Autenticado? ──
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // ── Helper: ¿Es el dueño del documento? ──
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    // ── Helper: ¿Es admin? (por UID — no expone datos personales) ──
+    function isAdmin() {
+      return isAuth()
+        && request.auth.uid in [
+          'sQCUoNHTPmWo2Nf42xICmE3FZAT2'
+        ];
+    }
+
+    // ── Helper: Escritura segura (no toca campos protegidos) ──
+    function safeWrite() {
+      let blocked = ['subscription', 'pro_plan', 'isAdmin', 'role', 'tier'];
+      return request.method == 'create'
+        ? !request.resource.data.keys().hasAny(blocked)
+        : !request.resource.data.diff(resource.data).affectedKeys().hasAny(blocked);
+    }
+
+    // ── Helper: Plan válido (para subscription) ──
+    function isValidPlan(data) {
+      return data.plan in ['free', 'pro', 'pro_plus']
+        && data.keys().hasAll(['plan', 'updatedAt']);
+    }
+
+    // ══════════════════════════════════════════════
+    // USERS
+    // ══════════════════════════════════════════════
+    match /users/{userId} {
+
+      // Lectura: solo el dueño o admin
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Escritura: dueño (sin tocar campos protegidos) o admin
+      allow create: if isOwner(userId) && safeWrite();
+      allow update: if (isOwner(userId) && safeWrite()) || isAdmin();
+      allow delete: if isAdmin();
+
+      // ── SUBSCRIPTION (blindado) ──────────────────
+      match /subscription/{docId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin() && isValidPlan(request.resource.data);
+        allow update: if isAdmin() && isValidPlan(request.resource.data);
+        allow delete: if false;
+      }
+
+      // ── WORKOUTS ─────────────────────────────────
+      match /workouts/{workoutId} {
+        allow read: if isOwner(userId) || isAdmin();
+
+        allow create: if isOwner(userId)
+          && request.resource.data.date is string;
+
+        allow update: if isOwner(userId)
+          && request.resource.data.date is string;
+
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // USERNAMES (registro único)
+    // ══════════════════════════════════════════════
+    match /usernames/{name} {
+      allow get: if true;
+      allow list: if isAuth();
+
+      allow create: if isAuth()
+        && request.resource.data.keys().hasAll(['uid', 'name'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.name.size() <= 30;
+
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ══════════════════════════════════════════════
+    // DEFAULT: DENEGAR TODO lo no definido arriba
+    // ══════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

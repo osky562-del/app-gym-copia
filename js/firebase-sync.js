@@ -72,7 +72,7 @@ function initFirebase() {
         document.getElementById('authOverlay').classList.remove('show');
 
         // Check if user is admin → auto Pro+
-        Pro.checkAdmin(user.email);
+        Pro.checkAdmin(user.uid);
         
         if (workouts.length > 0) pushToFirebase();
         listenRemoteWorkouts();
