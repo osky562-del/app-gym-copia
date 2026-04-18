@@ -1,4 +1,3 @@
-firebase-config.js
 firestore.rules
 index.original.html
 .claude/
@@ -9,3 +8,4 @@ serve.cmd
 test_ai.js
 node_modules/
 package-lock.json
+worker.js
