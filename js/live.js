@@ -134,9 +134,9 @@ function restoreLiveSession(saved) {
   livePauseCnt = saved.livePauseCnt || 0;
   livePausedMs = saved.livePausedMs || 0;
   livePauseStartWall = 0;
-  // Restore total seconds from when app was closed; wall start adjusted to match
-  liveTotalSec = saved.liveTotalSec || 0;
-  liveStartWall = Date.now() - liveTotalSec * 1000 - livePausedMs;
+  // Mantener liveStartWall original para que el tiempo siga corriendo mientras la app estuvo cerrada
+  liveStartWall = saved.liveStartWall || (Date.now() - (saved.liveTotalSec || 0) * 1000 - livePausedMs);
+  liveTotalSec = Math.floor((Date.now() - liveStartWall - livePausedMs) / 1000);
 
   if (saved.planDate && $('planDate')) $('planDate').value = saved.planDate;
   if (saved.planNotes && $('planNotes')) $('planNotes').value = saved.planNotes;
