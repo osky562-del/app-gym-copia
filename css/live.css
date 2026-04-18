@@ -554,3 +554,54 @@
   transform: scale(.88);
 }
 
+.lv-ex-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 16px;
+  padding-bottom: 6px;
+}
+
+.lv-ex-name-row .lv-ex-name {
+  padding: 0;
+  flex: 1;
+}
+
+.lv-ex-change {
+  background: var(--s3);
+  border: 1px solid var(--line2);
+  border-radius: 9px;
+  padding: 7px 13px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--t2);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 4px;
+  transition: background .15s;
+}
+
+.lv-ex-change:active {
+  background: var(--s5);
+}
+
+.lv-add-ex-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  background: none;
+  border: 1.5px dashed var(--line2);
+  border-radius: 12px;
+  color: var(--a);
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .18s;
+}
+
+.lv-add-ex-btn:active {
+  background: var(--ag);
+  border-color: var(--a);
+}
+
