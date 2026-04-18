@@ -3,34 +3,38 @@ function startLiveMode() {
   if (!planExs.length) return;
   liveExs = planExs.map(ex => ({ name: ex.name, restSec: ex.restSec, sets: Array.from({ length: ex.sets }, () => ({ kg: ex.kg || '', reps: ex.reps, done: false })) }));
   liveIdx = 0; liveTotalSec = 0; livePauseSec = 0; liveIsPaused = false; livePauseCnt = 0;
+  liveStartWall = Date.now(); livePausedMs = 0; livePauseStartWall = 0;
   $('lvTime').textContent = '00:00'; $('lvTime').className = 'lv-time';
   $('lvPauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
   $('lvPausedOv').classList.remove('show'); stopRest();
   $('planMode').classList.remove('show');
   $('liveMode').classList.add('show');
-  liveTotalInt = setInterval(() => { if (!liveIsPaused) { liveTotalSec++; $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec); } }, 1000);
-  renderLiveEx(); updateLvStats();
+  liveTotalInt = setInterval(() => { if (!liveIsPaused) { liveTotalSec = Math.floor((Date.now() - liveStartWall - livePausedMs) / 1000); $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec); } }, 1000);
+  saveLiveSession(); renderLiveEx(); updateLvStats();
 }
 function backToPlan() {
   if (!confirm('¿Volver a la planificación?')) return;
   clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
+  STORE.set('live_session', null);
   $('liveMode').classList.remove('show'); $('planMode').classList.add('show');
 }
 function togglePause() {
   liveIsPaused = !liveIsPaused;
   if (liveIsPaused) {
-    livePauseCnt++; $('lvPauseCnt').textContent = livePauseCnt;
+    livePauseCnt++; livePauseStartWall = Date.now(); $('lvPauseCnt').textContent = livePauseCnt;
     $('lvPausedOv').classList.add('show'); $('lvTime').className = 'lv-time paused';
     $('lvPauseIco').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
-    livePauseInt = setInterval(() => { livePauseSec++; $('lvPauseTime').textContent = fmt(livePauseSec); }, 1000);
+    livePauseInt = setInterval(() => { livePauseSec = Math.floor((Date.now() - livePauseStartWall) / 1000); $('lvPauseTime').textContent = fmt(livePauseSec); }, 1000);
     stopRest(); toast('Pausado ⏸');
   } else {
+    livePausedMs += Date.now() - livePauseStartWall;
     clearInterval(livePauseInt); $('lvPausedOv').classList.remove('show'); $('lvTime').className = 'lv-time';
     $('lvPauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
     toast('¡Vamos! 💪', 'good');
   }
+  saveLiveSession();
 }
-function navEx(dir) { const n = liveIdx + dir; if (n < 0 || n >= liveExs.length) return; liveIdx = n; stopRest(); renderLiveEx(); }
+function navEx(dir) { const n = liveIdx + dir; if (n < 0 || n >= liveExs.length) return; liveIdx = n; stopRest(); renderLiveEx(); saveLiveSession(); }
 function renderLiveEx() {
   const ex = liveExs[liveIdx], lk = getLastKg(ex.name), pr = getPR(ex.name);
   $('lvExName').textContent = ex.name;
@@ -67,7 +71,7 @@ function toggleSet(si) {
   if (s.done) {
     setTimeout(updateAutoRpe, 50); vib([60]); showXpFloat(XP.series); const kg = +s.kg || 0, pr = getPR(ex.name); if (kg > 0 && kg > pr) showPR(ex.name, kg); if (ex.restSec) startRest(ex.restSec, ex.sets.every(x => x.done) ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
   }
-  renderLiveEx();
+  renderLiveEx(); saveLiveSession();
 }
 function updateLvStats() {
   let done = 0, vol = 0; liveExs.forEach(ex => ex.sets.forEach(s => { if (s.done) { done++; vol += (+s.kg || 0) * (+s.reps || 1); } }));
@@ -96,6 +100,7 @@ function finishLive() {
     Pro.showUpgradeModal('unlimited_workouts');
     toast('Límite de sesiones alcanzado. Los datos de esta sesión no se guardarán permanentemente.', 'err');
   }
+  STORE.set('live_session', null);
   workouts.unshift(wk); saveWorkouts();
   try {
     if (window.forceSyncCloud) window.forceSyncCloud();
@@ -108,3 +113,52 @@ function finishLive() {
   showXpFloat(xpGained);
   showSummary(wk, xpGained, newPRs);
 }
+
+function saveLiveSession() {
+  if (!liveExs.length) return;
+  STORE.set('live_session', {
+    liveExs, liveIdx, liveTotalSec, livePauseSec,
+    liveIsPaused, livePauseCnt,
+    liveStartWall, livePausedMs, livePauseStartWall,
+    planDate: $('planDate') ? $('planDate').value || '' : '',
+    planNotes: $('planNotes') ? $('planNotes').value || '' : '',
+    ts: Date.now()
+  });
+}
+
+function restoreLiveSession(saved) {
+  liveExs = saved.liveExs;
+  liveIdx = saved.liveIdx || 0;
+  livePauseSec = saved.livePauseSec || 0;
+  liveIsPaused = false;
+  livePauseCnt = saved.livePauseCnt || 0;
+  livePausedMs = saved.livePausedMs || 0;
+  livePauseStartWall = 0;
+  // Restore total seconds from when app was closed; wall start adjusted to match
+  liveTotalSec = saved.liveTotalSec || 0;
+  liveStartWall = Date.now() - liveTotalSec * 1000 - livePausedMs;
+
+  if (saved.planDate && $('planDate')) $('planDate').value = saved.planDate;
+  if (saved.planNotes && $('planNotes')) $('planNotes').value = saved.planNotes;
+
+  $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec);
+  $('lvTime').className = 'lv-time';
+  $('lvPauseCnt').textContent = livePauseCnt;
+  $('lvPauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+  $('lvPausedOv').classList.remove('show');
+  stopRest();
+  $('planMode').classList.remove('show');
+  $('liveMode').classList.add('show');
+  liveTotalInt = setInterval(() => {
+    if (!liveIsPaused) {
+      liveTotalSec = Math.floor((Date.now() - liveStartWall - livePausedMs) / 1000);
+      $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec);
+    }
+  }, 1000);
+  renderLiveEx(); updateLvStats();
+  toast('Entreno restaurado 💪', 'good');
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && liveExs.length) saveLiveSession();
+});

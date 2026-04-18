@@ -19,3 +19,15 @@ updateGreeting();
 renderDash();
 updateXpBar();
 Pro.renderProBadges();
+
+/* Restaurar entreno interrumpido */
+(function checkSavedSession() {
+  const saved = STORE.get('live_session');
+  if (saved && saved.liveExs && saved.liveExs.length > 0) {
+    if (confirm('Tienes un entreno en curso. ¿Continuar donde lo dejaste?')) {
+      restoreLiveSession(saved);
+    } else {
+      STORE.set('live_session', null);
+    }
+  }
+})();
