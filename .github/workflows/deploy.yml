@@ -21,6 +21,8 @@ jobs:
         run: |
           echo "const FIREBASE_CONFIG = ${FIREBASE_CONFIG};" > firebase-config.js
           echo "firebase-config.js generado OK"
+          # Quitarlo del .gitignore para que el deploy action lo incluya
+          sed -i '/^firebase-config\.js$/d' .gitignore
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
