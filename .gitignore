@@ -5,5 +5,7 @@ index.original.html
 .gemini/
 servidor.js
 servir_app.cmd
+serve.cmd
+test_ai.js
 node_modules/
 package-lock.json
