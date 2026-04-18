@@ -120,6 +120,7 @@ function saveLiveSession() {
     liveExs, liveIdx, liveTotalSec, livePauseSec,
     liveIsPaused, livePauseCnt,
     liveStartWall, livePausedMs, livePauseStartWall,
+    restStartWall, restTotal, restMsg: restInt ? restMsg : '',
     planDate: $('planDate') ? $('planDate').value || '' : '',
     planNotes: $('planNotes') ? $('planNotes').value || '' : '',
     ts: Date.now()
@@ -156,6 +157,18 @@ function restoreLiveSession(saved) {
     }
   }, 1000);
   renderLiveEx(); updateLvStats();
+  // Restaurar descanso si estaba activo
+  if (saved.restTotal && saved.restStartWall) {
+    const elapsed = Math.floor((Date.now() - saved.restStartWall) / 1000);
+    const remaining = saved.restTotal - elapsed;
+    if (remaining > 0) {
+      startRest(remaining, saved.restMsg || 'Prepárate');
+      // Ajustar restStartWall para que el countdown sea correcto desde ahora
+      restTotal = saved.restTotal; restStartWall = saved.restStartWall;
+    } else {
+      toast('El descanso ya terminó 💪', 'good');
+    }
+  }
   toast('Entreno restaurado 💪', 'good');
 }
 
