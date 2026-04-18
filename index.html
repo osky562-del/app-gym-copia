@@ -125,6 +125,27 @@
     </div>
   </div>
 
+  <div class="sov" id="shLvEx">
+    <div class="sh">
+      <div class="sh-h"></div>
+      <div class="sh-title" id="shLvExTitle">Añadir ejercicio</div>
+      <div style="padding:0 11px 8px;">
+        <input id="lvExSearch" style="width:100%;background:var(--s3);border:1.5px solid var(--line2);border-radius:11px;padding:12px 14px;font-size:.95rem;font-weight:600;color:var(--t1);outline:none;box-sizing:border-box;" type="text" placeholder="Buscar ejercicio…" oninput="filterLvAC()" autocomplete="off">
+      </div>
+      <div id="lvExAC" class="sh-list" style="max-height:26vh;"></div>
+      <div style="padding:6px 11px 4px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);">Cardio</div>
+      <div class="sh-list" style="max-height:20vh;">
+        <div class="sh-card" onclick="pickLvEx('Cinta',true)">🏃 Cinta</div>
+        <div class="sh-card" onclick="pickLvEx('Bici estática',true)">🚴 Bici estática</div>
+        <div class="sh-card" onclick="pickLvEx('Elíptica',true)">⚡ Elíptica</div>
+        <div class="sh-card" onclick="pickLvEx('HIIT',true)">🔥 HIIT</div>
+        <div class="sh-card" onclick="pickLvEx('Remo ergómetro',true)">🚣 Remo ergómetro</div>
+        <div class="sh-card" onclick="pickLvEx('Cuerda',true)">🪢 Cuerda</div>
+      </div>
+      <button class="sh-act center" onclick="closeSheet('shLvEx')">Cancelar</button>
+    </div>
+  </div>
+
   <div class="rp-ov" id="rpOv" onclick="if(event.target===this)this.classList.remove('on')">
     <div class="rp-sheet">
       <div class="rp-handle"></div>
@@ -975,9 +996,13 @@
           </svg></button>
       </div>
       <div class="lv-ex-scroll" id="lvExScroll">
-        <div class="lv-ex-name" id="lvExName">—</div>
+        <div class="lv-ex-name-row">
+          <div class="lv-ex-name" id="lvExName">—</div>
+          <button class="lv-ex-change" onclick="openLvExSheet('replace')">Cambiar</button>
+        </div>
         <div class="lv-ex-pr" id="lvExPr"></div>
         <div id="lvSetsEl"></div>
+        <button class="lv-add-ex-btn" onclick="openLvExSheet('add')">+ Añadir ejercicio</button>
       </div>
     </div>
   </div>
