@@ -239,7 +239,7 @@ async function generarConsejosIA(p) {
   // IMC
   const imc = (p.peso && p.altura) ? +(p.peso / ((p.altura / 100) ** 2)).toFixed(1) : null;
 
-  const prompt = `Coach IA KO95FIT - Entrenador Personal Pro. 
+  const prompt = `RESPONDE SIEMPRE EN ESPAÑOL. Coach IA KO95FIT - Entrenador Personal Pro.
   PERFIL: ${p.sexo||'?'}, ${p.edad||'?'}a, ${p.peso||'?'}kg, ${p.altura||'?'}cm, ${p.grasa ? 'Grasa:'+p.grasa+'%,' : ''} Dieta: ${p.dieta}, Actividad: ${p.actividad}, IMC ${imc||'?'}, nivel ${p.nivel}, objetivo ${p.objetivo}, ${p.dias||3} d/sem, lesiones: ${p.lesiones}. 
   HISTORIAL: ${totalSess} ses, racha ${streak}d, vol ${big(volTotal)}kg, RPE ${rpeMedio||'?'}, consistencia ${consistencia||'?'}%. 
   TOP PRs: ${prsText||'sin datos'}. 
