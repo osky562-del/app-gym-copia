@@ -51,6 +51,7 @@ function renderLiveEx() {
   }
   $('lvExPr').textContent = prText;
   $('lvNavP').disabled = liveIdx === 0; $('lvNavN').disabled = liveIdx === liveExs.length - 1;
+  const canRemove = ex.sets.length > 1 && !ex.sets[ex.sets.length - 1].done;
   $('lvSetsEl').innerHTML = ex.sets.map((s, si) => {
     const isActive = !s.done && ex.sets.slice(0, si).every(p => p.done);
     if (ex.isCardio) {
@@ -79,8 +80,28 @@ function renderLiveEx() {
     <button class="lv-check${s.done ? ' done' : ''}" onclick="toggleSet(${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
   </div>
 </div>`;
-  }).join('');
+  }).join('') + `<div class="lv-set-actions">
+  <button class="lv-set-rm" onclick="removeLiveSet()"${canRemove ? '' : ' disabled'}>− Serie</button>
+  <button class="lv-set-add" onclick="addLiveSet()">+ Serie</button>
+</div>`;
   $('lvExScroll').scrollTo({ top: 0, behavior: 'smooth' }); updateLvStats();
+}
+function addLiveSet() {
+  const ex = liveExs[liveIdx];
+  const last = ex.sets[ex.sets.length - 1];
+  if (ex.isCardio) {
+    ex.sets.push({ min: last?.min || '', km: last?.km || '', done: false });
+  } else {
+    ex.sets.push({ kg: last?.kg || '', reps: last?.reps || 10, done: false });
+  }
+  renderLiveEx(); saveLiveSession();
+}
+function removeLiveSet() {
+  const ex = liveExs[liveIdx];
+  if (ex.sets.length <= 1) return;
+  if (ex.sets[ex.sets.length - 1].done) { toast('No puedes quitar una serie ya completada', 'err'); return; }
+  ex.sets.pop();
+  renderLiveEx(); saveLiveSession();
 }
 function updVol(si) { const s = liveExs[liveIdx].sets[si]; const v = +s.kg && +s.reps ? Math.round(+s.kg * +s.reps) : null; const el = $('lsv' + si); if (el) { el.textContent = v || '—'; el.className = 'lv-set-vol' + (v ? ' has' : ''); } updateLvStats(); }
 function toggleSet(si) {
