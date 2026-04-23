@@ -32,7 +32,7 @@ async function generarRutinaIA() {
   const totalV = Object.values(volMus).reduce((a,b) => a+b, 0) || 1;
   const musDist = Object.entries(volMus).sort((a,b)=>b[1]-a[1]).map(([m,v]) => `${m} (${Math.round(v/totalV*100)}%)`).join(', ');
 
-  const prompt = `Genera una rutina gym en JSON puro (sin markdown). PERFIL: ${perfil.sexo||'?'}, ${perfil.edad||'?'}a, ${perfil.peso||'?'}kg, nivel ${nivel}, objetivo ${objetivo}, enfoque ${enfoque}, equipo ${equipo}${lesiones ? ', lesiones: '+lesiones : ''}. PRs: ${prs||'ninguno'}. Vol muscular: ${musDist||'equilibrado'}. Genera ${dias} dias, 5-6 ejercicios/dia. JSON exacto: {"nombre":"Plan X","dias":[{"titulo":"Dia 1","ejercicios":[{"ex":"nombre","sets":4,"reps":10,"kg":"","nota":"tecnica"}]}]}`;
+  const prompt = `RESPONDE SIEMPRE EN ESPAÑOL. Genera una rutina gym en JSON puro (sin markdown). PERFIL: ${perfil.sexo||'?'}, ${perfil.edad||'?'}a, ${perfil.peso||'?'}kg, nivel ${nivel}, objetivo ${objetivo}, enfoque ${enfoque}, equipo ${equipo}${lesiones ? ', lesiones: '+lesiones : ''}. PRs: ${prs||'ninguno'}. Vol muscular: ${musDist||'equilibrado'}. Genera ${dias} dias, 5-6 ejercicios/dia. JSON exacto: {"nombre":"Plan X","dias":[{"titulo":"Dia 1","ejercicios":[{"ex":"nombre","sets":4,"reps":10,"kg":"","nota":"tecnica"}]}]}`;
 
   btn.disabled = true;
   $('rutinaResult').innerHTML = '';
