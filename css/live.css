@@ -605,3 +605,46 @@
   border-color: var(--a);
 }
 
+.lv-set-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lv-set-add,
+.lv-set-rm {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .18s;
+  border: 1.5px solid;
+}
+
+.lv-set-add {
+  background: none;
+  border-color: var(--a);
+  color: var(--a);
+}
+
+.lv-set-add:active {
+  background: var(--ag);
+}
+
+.lv-set-rm {
+  background: none;
+  border-color: var(--line2);
+  color: var(--t2);
+}
+
+.lv-set-rm:active:not(:disabled) {
+  background: var(--s5);
+}
+
+.lv-set-rm:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
