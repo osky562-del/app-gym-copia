@@ -586,6 +586,89 @@
   background: var(--s5);
 }
 
+.lv-ex-reorder {
+  background: var(--s3);
+  border: 1px solid var(--line2);
+  border-radius: 9px;
+  padding: 7px 11px;
+  font-size: .95rem;
+  color: var(--t2);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 4px;
+  transition: background .15s;
+}
+
+.lv-ex-reorder:active {
+  background: var(--s5);
+}
+
+/* Reorder sheet */
+.lv-reorder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line2);
+  gap: 12px;
+}
+
+.lv-reorder-item.current {
+  background: var(--ag);
+}
+
+.lv-reorder-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lv-reorder-name {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lv-reorder-item.current .lv-reorder-name {
+  color: var(--a);
+}
+
+.lv-reorder-meta {
+  font-size: .72rem;
+  color: var(--t3);
+  margin-top: 2px;
+}
+
+.lv-reorder-btns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.lv-reorder-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  border: 1.5px solid var(--line2);
+  background: var(--s3);
+  color: var(--t1);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.lv-reorder-btn:active:not(:disabled) {
+  background: var(--s5);
+  transform: scale(.9);
+}
+
+.lv-reorder-btn:disabled {
+  opacity: .25;
+  cursor: default;
+}
+
 .lv-add-ex-btn {
   width: 100%;
   padding: 14px;

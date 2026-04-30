@@ -126,6 +126,15 @@
     </div>
   </div>
 
+  <div class="sov" id="shLvReorder">
+    <div class="sh">
+      <div class="sh-h"></div>
+      <div class="sh-title">Orden de ejercicios</div>
+      <div id="lvReorderList" class="sh-list" style="max-height:55vh;"></div>
+      <button class="sh-act center" onclick="closeSheet('shLvReorder')">Cerrar</button>
+    </div>
+  </div>
+
   <div class="sov" id="shLvEx">
     <div class="sh">
       <div class="sh-h"></div>
@@ -999,6 +1008,7 @@
       <div class="lv-ex-scroll" id="lvExScroll">
         <div class="lv-ex-name-row">
           <div class="lv-ex-name" id="lvExName">—</div>
+          <button class="lv-ex-reorder" onclick="openReorderSheet()" title="Reordenar ejercicios">⇅</button>
           <button class="lv-ex-change" onclick="openLvExSheet('replace')">Cambiar</button>
         </div>
         <div class="lv-ex-pr" id="lvExPr"></div>

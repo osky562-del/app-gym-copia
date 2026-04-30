@@ -217,6 +217,37 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && liveExs.length) saveLiveSession();
 });
 
+function openReorderSheet() {
+  renderReorderList();
+  $('shLvReorder').classList.add('on');
+}
+function renderReorderList() {
+  $('lvReorderList').innerHTML = liveExs.map((ex, i) => {
+    const done = ex.sets.filter(s => s.done).length;
+    const total = ex.sets.length;
+    const isCur = i === liveIdx;
+    return `<div class="lv-reorder-item${isCur ? ' current' : ''}">
+  <div class="lv-reorder-info">
+    <div class="lv-reorder-name">${ex.name}</div>
+    <div class="lv-reorder-meta">${done}/${total} series${isCur ? ' · Actual' : ''}</div>
+  </div>
+  <div class="lv-reorder-btns">
+    <button class="lv-reorder-btn" onclick="moveLiveEx(${i},-1)"${i === 0 ? ' disabled' : ''}>↑</button>
+    <button class="lv-reorder-btn" onclick="moveLiveEx(${i},1)"${i === liveExs.length - 1 ? ' disabled' : ''}>↓</button>
+  </div>
+</div>`;
+  }).join('');
+}
+function moveLiveEx(idx, dir) {
+  const to = idx + dir;
+  if (to < 0 || to >= liveExs.length) return;
+  [liveExs[idx], liveExs[to]] = [liveExs[to], liveExs[idx]];
+  if (liveIdx === idx) liveIdx = to;
+  else if (liveIdx === to) liveIdx = idx;
+  renderReorderList();
+  renderLiveEx();
+  saveLiveSession();
+}
 let lvExMode = 'add';
 function openLvExSheet(mode) {
   lvExMode = mode;
