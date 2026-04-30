@@ -258,14 +258,18 @@ function openLvExSheet(mode) {
   setTimeout(() => $('lvExSearch').focus(), 350);
 }
 function filterLvAC() {
-  const val = $('lvExSearch').value.trim().toLowerCase();
+  const raw = $('lvExSearch').value.trim();
+  const val = raw.toLowerCase();
   const list = $('lvExAC');
-  if (!val) { list.innerHTML = ''; return; }
-  const m = getAllExNames().filter(n => n.toLowerCase().includes(val)).slice(0, 8);
+  if (!raw) { list.innerHTML = ''; return; }
+  const all = getAllExNames();
+  const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
+  const exactMatch = all.some(n => n.toLowerCase() === val);
+  const newCard = !exactMatch ? `<div class="sh-card sh-card-new" onclick="pickLvEx('${raw.replace(/'/g, "\\'")}',false)"><span style="color:var(--a);font-weight:800;">+</span> Añadir "<b>${raw}</b>" como nuevo ejercicio</div>` : '';
   list.innerHTML = m.map(n => {
     const lk = getLastKg(n);
     return `<div class="sh-card" onclick="pickLvEx('${n.replace(/'/g, "\\'")}',false)" style="display:flex;justify-content:space-between;align-items:center;"><span>${n}</span>${lk ? `<span style="font-size:.75rem;color:var(--t3);font-family:var(--fm)">${lk}kg</span>` : ''}</div>`;
-  }).join('');
+  }).join('') + newCard;
 }
 function pickLvEx(name, isCardio) {
   closeSheet('shLvEx');

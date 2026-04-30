@@ -51,12 +51,16 @@ function addPlanEx(name) {
   vib([30]);
 }
 function filterAC() {
-  const val = $('planSearch').value.trim().toLowerCase();
+  const raw = $('planSearch').value.trim();
+  const val = raw.toLowerCase();
   const ac = $('planAC');
-  if (!val) { ac.classList.remove('show'); return; }
-  const m = getAllExNames().filter(n => n.toLowerCase().includes(val)).slice(0, 7);
-  if (!m.length) { ac.classList.remove('show'); return; }
-  ac.innerHTML = m.map(n => { const lk = getLastKg(n); return `<div class="plan-ac-item" onclick="addPlanEx('${n.replace(/'/g, "\\'")}')"><span>${n}</span>${lk ? `<span class="plan-ac-last">${lk}kg</span>` : ''}</div>`; }).join('');
+  if (!raw) { ac.classList.remove('show'); return; }
+  const all = getAllExNames();
+  const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 7);
+  const exactMatch = all.some(n => n.toLowerCase() === val);
+  const newItem = !exactMatch ? `<div class="plan-ac-item plan-ac-new" onclick="addPlanEx('${raw.replace(/'/g, "\\'")}')"><span style="color:var(--a);font-weight:800;">+</span> Crear "<b>${raw}</b>"</div>` : '';
+  if (!m.length && !newItem) { ac.classList.remove('show'); return; }
+  ac.innerHTML = m.map(n => { const lk = getLastKg(n); return `<div class="plan-ac-item" onclick="addPlanEx('${n.replace(/'/g, "\\'")}')"><span>${n}</span>${lk ? `<span class="plan-ac-last">${lk}kg</span>` : ''}</div>`; }).join('') + newItem;
   ac.classList.add('show');
 }
 document.addEventListener('click', e => { if (!e.target.closest('.plan-search-wrap')) $('planAC').classList.remove('show'); });
