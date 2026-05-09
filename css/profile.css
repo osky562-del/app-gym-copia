@@ -1,0 +1,267 @@
+/* ─── PROFILE ─── */
+.p-hero {
+  background: linear-gradient(135deg, #111, #000);
+  border: 1px solid rgba(255,59,48,0.2);
+  border-radius: 28px;
+  padding: 36px 20px 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+}
+.p-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle at 50% 10%, rgba(255, 59, 48, 0.15), transparent 70%);
+  pointer-events: none;
+}
+
+.p-av {
+  width: 100%;
+  max-width: 280px;
+  height: 160px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.p-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 20px rgba(0,0,0,0.5));
+}
+.p-av::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, var(--a), var(--purple));
+  z-index: -1;
+  opacity: 0.4;
+  filter: blur(8px);
+}
+.p-av svg {
+  width: 44px;
+  height: 44px;
+  color: var(--a);
+  filter: drop-shadow(0 0 12px var(--a));
+}
+
+.p-name {
+  font-size: 2.1rem;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  margin-bottom: 4px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
+  font-style: italic; /* Matching logo */
+  text-transform: uppercase;
+}
+.p-name .p-accent {
+  color: #ff3b30;
+  text-shadow: 0 0 20px rgba(255, 59, 48, 0.4);
+  font-size: 2.4rem;
+}
+.p-name .p-dot { display: none; }
+
+.p-sub {
+  font-size: .78rem;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.p-sr {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 24px;
+  padding: 16px 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.ps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ps-v {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.ps-l {
+  font-size: 0.65rem;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.p-hero:hover {
+  box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+  transform: translateY(-2px);
+  transition: all 0.4s ease;
+}
+.p-hero:hover::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
+  transform: skewX(-25deg);
+  animation: shine 1.5s infinite;
+}
+@keyframes shine {
+  100% { left: 200%; }
+}
+
+.inp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  padding: 10px 14px;
+}
+
+.inp-row svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--t3);
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.inp-row input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--t1);
+  font-size: .86rem;
+}
+
+.inp-row input::placeholder {
+  color: var(--t4);
+}
+
+.info-list {
+  background: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.ir {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  gap: 10px;
+}
+
+.ir:last-child {
+  border-bottom: none;
+}
+
+.ir-ic {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ir-ic svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.ir-ic.blue {
+  background: var(--ag);
+  color: var(--a);
+}
+
+.ir-ic.green {
+  background: var(--gg);
+  color: var(--green);
+}
+
+.ir-ic.amber {
+  background: var(--amg);
+  color: var(--amber);
+}
+
+.ir-ic.purple {
+  background: var(--pg);
+  color: var(--purple);
+}
+
+.ir-l {
+  font-size: .82rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+.ir-v {
+  font-family: var(--fm);
+  font-size: .82rem;
+  color: var(--t2);
+}
+
+/* Accent swatches */
+.acc-sw,
+.ob-color {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: all .25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.acc-sw.on,
+.ob-color.on {
+  border-color: #fff;
+  transform: scale(1.14);
+}
+
+.acc-sw svg,
+.ob-color svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  opacity: 0;
+  transition: opacity .2s;
+}
+
+.acc-sw.on svg,
+.ob-color.on svg {
+  opacity: 1;
+}

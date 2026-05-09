@@ -1,0 +1,325 @@
+/* ══ LIVE MODE ══ */
+function startLiveMode() {
+  if (!planExs.length) return;
+  // Desbloquear el contexto de audio (iOS exige un gesto de usuario para que sea activo)
+  if (typeof unlockAudioContext === 'function') unlockAudioContext();
+  liveExs = planExs.map(ex => ({ name: ex.name, restSec: ex.restSec, sets: Array.from({ length: ex.sets }, () => ({ kg: ex.kg || '', reps: ex.reps, done: false })) }));
+  liveIdx = 0; liveTotalSec = 0; livePauseSec = 0; liveIsPaused = false; livePauseCnt = 0;
+  liveStartWall = Date.now(); livePausedMs = 0; livePauseStartWall = 0;
+  $('lvTime').textContent = '00:00'; $('lvTime').className = 'lv-time';
+  $('lvPauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+  $('lvPausedOv').classList.remove('show'); stopRest();
+  $('planMode').classList.remove('show');
+  $('liveMode').classList.add('show');
+  liveTotalInt = setInterval(() => { if (!liveIsPaused) { liveTotalSec = Math.floor((Date.now() - liveStartWall - livePausedMs) / 1000); $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec); } }, 1000);
+  saveLiveSession(); renderLiveEx(); updateLvStats();
+}
+function backToPlan() {
+  if (!confirm('¿Volver a la planificación?')) return;
+  clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
+  STORE.set('live_session', null);
+  $('liveMode').classList.remove('show'); $('planMode').classList.add('show');
+}
+function togglePause() {
+  liveIsPaused = !liveIsPaused;
+  if (liveIsPaused) {
+    livePauseCnt++; livePauseStartWall = Date.now(); $('lvPauseCnt').textContent = livePauseCnt;
+    $('lvPausedOv').classList.add('show'); $('lvTime').className = 'lv-time paused';
+    $('lvPauseIco').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+    livePauseInt = setInterval(() => { livePauseSec = Math.floor((Date.now() - livePauseStartWall) / 1000); $('lvPauseTime').textContent = fmt(livePauseSec); }, 1000);
+    stopRest(); toast('Pausado ⏸');
+  } else {
+    livePausedMs += Date.now() - livePauseStartWall;
+    clearInterval(livePauseInt); $('lvPausedOv').classList.remove('show'); $('lvTime').className = 'lv-time';
+    $('lvPauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+    toast('¡Vamos! 💪', 'good');
+  }
+  saveLiveSession();
+}
+function navEx(dir) { const n = liveIdx + dir; if (n < 0 || n >= liveExs.length) return; liveIdx = n; stopRest(); renderLiveEx(); saveLiveSession(); }
+function renderLiveEx() {
+  const ex = liveExs[liveIdx], lk = getLastKg(ex.name), pr = getPR(ex.name);
+  $('lvExName').textContent = ex.name;
+  $('lvExCtr').textContent = (liveIdx + 1) + ' / ' + liveExs.length;
+  let prText = '';
+  if (ex.isCardio) {
+    prText = '🏃 Cardio';
+  } else {
+    prText = (lk ? 'Último: ' + lk + 'kg' : '') + ((lk && pr) ? ' · ' : '') + ((pr) ? 'PR: ' + pr + 'kg' : '');
+    if (Pro.can('advanced_analytics')) {
+      const sug = getSuggestedKg(ex.name);
+      if (sug && sug.reason === 'overload') prText += ' · 💡 Sube a ' + sug.kg + 'kg';
+    }
+  }
+  $('lvExPr').textContent = prText;
+  // Chip del descanso: muestra el valor actual y permite cambiarlo
+  const restPill = $('lvRestPill');
+  if (restPill) {
+    restPill.textContent = '⏱ Descanso: ' + (typeof fmtRestPill === 'function' ? fmtRestPill(ex.restSec || 0) : ((ex.restSec || 0) + 's'));
+  }
+  $('lvNavP').disabled = liveIdx === 0; $('lvNavN').disabled = liveIdx === liveExs.length - 1;
+  const canRemove = ex.sets.length > 1 && !ex.sets[ex.sets.length - 1].done;
+  $('lvSetsEl').innerHTML = ex.sets.map((s, si) => {
+    const isActive = !s.done && ex.sets.slice(0, si).every(p => p.done);
+    if (ex.isCardio) {
+      return `<div class="lv-set${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
+  <div class="lv-set-body">
+    <div class="lv-set-num">${si + 1}</div>
+    <div class="lv-set-inps">
+      <div class="lv-set-grp"><div class="lv-set-lbl">Min</div><input class="lv-inp" type="number" value="${s.min || ''}" placeholder="—" min="0" oninput="liveExs[${liveIdx}].sets[${si}].min=this.value" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
+      <div class="lv-set-grp"><div class="lv-set-lbl">Km</div><input class="lv-inp" type="number" value="${s.km || ''}" placeholder="—" min="0" step="0.1" oninput="liveExs[${liveIdx}].sets[${si}].km=this.value" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
+    </div>
+    <div class="lv-set-vol"></div>
+    <button class="lv-check${s.done ? ' done' : ''}" onclick="toggleSet(${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
+  </div>
+</div>`;
+    }
+    const isPR = +s.kg > 0 && pr > 0 && +s.kg > pr;
+    const vol = +s.kg && +s.reps ? Math.round(+s.kg * +s.reps) : null;
+    return `<div class="lv-set${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
+  <div class="lv-set-body">
+    <div class="lv-set-num">${si + 1}</div>
+    <div class="lv-set-inps">
+      <div class="lv-set-grp"><div class="lv-set-lbl">Kg</div><input class="lv-inp${isPR ? ' pr' : ''}" type="number" value="${s.kg || ''}" placeholder="—" min="0" oninput="liveExs[${liveIdx}].sets[${si}].kg=this.value;updVol(${si})" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
+      <div class="lv-set-grp"><div class="lv-set-lbl">Reps</div><input class="lv-inp" type="number" value="${s.reps || ''}" placeholder="—" min="1" oninput="liveExs[${liveIdx}].sets[${si}].reps=this.value;updVol(${si})" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
+    </div>
+    <div class="lv-set-vol${vol ? ' has' : ''}" id="lsv${si}">${vol || '—'}</div>
+    <button class="lv-check${s.done ? ' done' : ''}" onclick="toggleSet(${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
+  </div>
+</div>`;
+  }).join('') + `<div class="lv-set-actions">
+  <button class="lv-set-rm" onclick="removeLiveSet()"${canRemove ? '' : ' disabled'}>− Serie</button>
+  <button class="lv-set-add" onclick="addLiveSet()">+ Serie</button>
+</div>`;
+  $('lvExScroll').scrollTo({ top: 0, behavior: 'smooth' }); updateLvStats();
+}
+function addLiveSet() {
+  const ex = liveExs[liveIdx];
+  const last = ex.sets[ex.sets.length - 1];
+  if (ex.isCardio) {
+    ex.sets.push({ min: last?.min || '', km: last?.km || '', done: false });
+  } else {
+    ex.sets.push({ kg: last?.kg || '', reps: last?.reps || 10, done: false });
+  }
+  renderLiveEx(); saveLiveSession();
+}
+function removeLiveSet() {
+  const ex = liveExs[liveIdx];
+  if (ex.sets.length <= 1) return;
+  if (ex.sets[ex.sets.length - 1].done) { toast('No puedes quitar una serie ya completada', 'err'); return; }
+  ex.sets.pop();
+  renderLiveEx(); saveLiveSession();
+}
+function updVol(si) { const s = liveExs[liveIdx].sets[si]; const v = +s.kg && +s.reps ? Math.round(+s.kg * +s.reps) : null; const el = $('lsv' + si); if (el) { el.textContent = v || '—'; el.className = 'lv-set-vol' + (v ? ' has' : ''); } updateLvStats(); }
+function toggleSet(si) {
+  const ex = liveExs[liveIdx], s = ex.sets[si]; s.done = !s.done;
+  if (s.done) {
+    setTimeout(updateAutoRpe, 50); vib([60]); showXpFloat(XP.series); const kg = +s.kg || 0, pr = getPR(ex.name); if (kg > 0 && kg > pr) showPR(ex.name, kg); if (ex.restSec) startRest(ex.restSec, ex.sets.every(x => x.done) ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
+  }
+  renderLiveEx(); saveLiveSession();
+}
+function updateLvStats() {
+  let done = 0, vol = 0; liveExs.forEach(ex => ex.sets.forEach(s => { if (s.done) { done++; vol += (+s.kg || 0) * (+s.reps || 1); } }));
+  const total = liveExs.reduce((s, e) => s + e.sets.length, 0);
+  $('lvEx').textContent = (liveIdx + 1) + '/' + liveExs.length;
+  $('lvSets').textContent = done; $('lvVol').textContent = big(vol);
+  $('lvProg').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+}
+function finishLive() {
+  const total = liveExs.reduce((s, e) => s + e.sets.length, 0);
+  const done = liveExs.reduce((s, e) => s + e.sets.filter(s => s.done).length, 0);
+  const pct = total ? Math.round(done / total * 100) : 0;
+  if (pct < 100 && !confirm(`Has completado el ${pct}% (${done}/${total} series). ¿Finalizar?`)) return;
+  clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
+  const exercises = liveExs.map(ex => {
+    if (ex.isCardio) return { ex: ex.name, kg: '', sets: ex.sets.length, reps: 0, isCardio: true, setsDetail: ex.sets.map(s => ({ min: s.min || '', km: s.km || '', done: !!s.done })) };
+    return { ex: ex.name, kg: String(Math.max(...ex.sets.map(s => +s.kg || 0)) || ''), sets: ex.sets.length, reps: ex.sets[0]?.reps || 10, setsDetail: ex.sets.map(s => ({ kg: s.kg || '', reps: s.reps, done: !!s.done })) };
+  });
+  const wk = { id: uid(), date: $('planDate').value || new Date().toISOString().split('T')[0], duration: liveTotalSec ? Math.round(liveTotalSec / 60) : '', pauseDuration: livePauseSec ? Math.round(livePauseSec / 60) : '', pauseCount: livePauseCnt, rpe: getRpeValue(), notes: $('planNotes').value || '', exercises };
+  // Detect new PRs before saving
+  const newPRs = [];
+  exercises.forEach(ex => {
+    const prev = getPR(ex.ex);
+    if (+ex.kg > 0 && +ex.kg > prev) newPRs.push(ex.ex + ' ' + ex.kg + 'kg');
+  });
+
+  // Check session storage limit for free users
+  if (!Pro.canAddSession()) {
+    Pro.showUpgradeModal('unlimited_workouts');
+    toast('Límite de sesiones alcanzado. Los datos de esta sesión no se guardarán permanentemente.', 'err');
+  }
+  STORE.set('live_session', null);
+  workouts.unshift(wk); saveWorkouts();
+  try {
+    if (window.forceSyncCloud) window.forceSyncCloud();
+  } catch(e) { console.warn('Sync start failed:', e); }
+  $('liveMode').classList.remove('show');
+  planExs = []; liveExs = [];
+  updateXpBar();
+
+  const xpGained = XP.session + exercises.reduce((s, e) => s + XP.exercise + XP.series * e.sets, 0);
+  showXpFloat(xpGained);
+  showSummary(wk, xpGained, newPRs);
+}
+
+function saveLiveSession() {
+  if (!liveExs.length) return;
+  STORE.set('live_session', {
+    liveExs, liveIdx, liveTotalSec, livePauseSec,
+    liveIsPaused, livePauseCnt,
+    liveStartWall, livePausedMs, livePauseStartWall,
+    restStartWall, restTotal, restMsg: restInt ? restMsg : '',
+    planDate: $('planDate') ? $('planDate').value || '' : '',
+    planNotes: $('planNotes') ? $('planNotes').value || '' : '',
+    ts: Date.now()
+  });
+}
+
+function restoreLiveSession(saved) {
+  liveExs = saved.liveExs;
+  liveIdx = saved.liveIdx || 0;
+  livePauseSec = saved.livePauseSec || 0;
+  liveIsPaused = false;
+  livePauseCnt = saved.livePauseCnt || 0;
+  livePausedMs = saved.livePausedMs || 0;
+  livePauseStartWall = 0;
+  // Mantener liveStartWall original para que el tiempo siga corriendo mientras la app estuvo cerrada
+  liveStartWall = saved.liveStartWall || (Date.now() - (saved.liveTotalSec || 0) * 1000 - livePausedMs);
+  liveTotalSec = Math.floor((Date.now() - liveStartWall - livePausedMs) / 1000);
+
+  if (saved.planDate && $('planDate')) $('planDate').value = saved.planDate;
+  if (saved.planNotes && $('planNotes')) $('planNotes').value = saved.planNotes;
+
+  $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec);
+  $('lvTime').className = 'lv-time';
+  $('lvPauseCnt').textContent = livePauseCnt;
+  $('lvPauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+  $('lvPausedOv').classList.remove('show');
+  stopRest();
+  $('planMode').classList.remove('show');
+  $('liveMode').classList.add('show');
+  liveTotalInt = setInterval(() => {
+    if (!liveIsPaused) {
+      liveTotalSec = Math.floor((Date.now() - liveStartWall - livePausedMs) / 1000);
+      $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec);
+    }
+  }, 1000);
+  renderLiveEx(); updateLvStats();
+  // Restaurar descanso si estaba activo
+  if (saved.restTotal && saved.restStartWall) {
+    const elapsed = Math.floor((Date.now() - saved.restStartWall) / 1000);
+    const remaining = saved.restTotal - elapsed;
+    if (remaining > 0) {
+      startRest(remaining, saved.restMsg || 'Prepárate');
+      // Ajustar restStartWall para que el countdown sea correcto desde ahora
+      restTotal = saved.restTotal; restStartWall = saved.restStartWall;
+    } else {
+      toast('El descanso ya terminó 💪', 'good');
+    }
+  }
+  toast('Entreno restaurado 💪', 'good');
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && liveExs.length) saveLiveSession();
+});
+
+function openReorderSheet() {
+  renderReorderList();
+  $('shLvReorder').classList.add('on');
+}
+function renderReorderList() {
+  $('lvReorderList').innerHTML = liveExs.map((ex, i) => {
+    const done = ex.sets.filter(s => s.done).length;
+    const total = ex.sets.length;
+    const isCur = i === liveIdx;
+    return `<div class="lv-reorder-item${isCur ? ' current' : ''}">
+  <div class="lv-reorder-info">
+    <div class="lv-reorder-name">${ex.name}</div>
+    <div class="lv-reorder-meta">${done}/${total} series${isCur ? ' · Actual' : ''}</div>
+  </div>
+  <div class="lv-reorder-btns">
+    <button class="lv-reorder-btn" onclick="moveLiveEx(${i},-1)"${i === 0 ? ' disabled' : ''}>↑</button>
+    <button class="lv-reorder-btn" onclick="moveLiveEx(${i},1)"${i === liveExs.length - 1 ? ' disabled' : ''}>↓</button>
+  </div>
+</div>`;
+  }).join('');
+}
+function moveLiveEx(idx, dir) {
+  const to = idx + dir;
+  if (to < 0 || to >= liveExs.length) return;
+  [liveExs[idx], liveExs[to]] = [liveExs[to], liveExs[idx]];
+  if (liveIdx === idx) liveIdx = to;
+  else if (liveIdx === to) liveIdx = idx;
+  renderReorderList();
+  renderLiveEx();
+  saveLiveSession();
+}
+let lvExMode = 'add';
+function openLvExSheet(mode) {
+  lvExMode = mode;
+  $('shLvExTitle').textContent = mode === 'add' ? 'Añadir ejercicio' : 'Cambiar ejercicio';
+  $('lvExSearch').value = '';
+  $('lvExAC').innerHTML = '';
+  $('shLvEx').classList.add('on');
+  setTimeout(() => $('lvExSearch').focus(), 350);
+}
+function filterLvAC() {
+  const raw = $('lvExSearch').value.trim();
+  const val = raw.toLowerCase();
+  const list = $('lvExAC');
+  if (!raw) { list.innerHTML = ''; return; }
+  const all = getAllExNames();
+  const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
+  const exactMatch = all.some(n => n.toLowerCase() === val);
+  const newCard = !exactMatch ? `<div class="sh-card sh-card-new" onclick="pickLvEx('${raw.replace(/'/g, "\\'")}',false)"><span style="color:var(--a);font-weight:800;">+</span> Añadir "<b>${raw}</b>" como nuevo ejercicio</div>` : '';
+  list.innerHTML = m.map(n => {
+    const lk = getLastKg(n);
+    return `<div class="sh-card" onclick="pickLvEx('${n.replace(/'/g, "\\'")}',false)" style="display:flex;justify-content:space-between;align-items:center;"><span>${n}</span>${lk ? `<span style="font-size:.75rem;color:var(--t3);font-family:var(--fm)">${lk}kg</span>` : ''}</div>`;
+  }).join('') + newCard;
+}
+function pickLvEx(name, isCardio) {
+  closeSheet('shLvEx');
+  const lastDetail = getLastSetsDetail(name);
+  let sets;
+  if (isCardio) {
+    sets = lastDetail
+      ? lastDetail.map(s => ({ min: s.min || '', km: s.km || '', done: false }))
+      : [{ min: '', km: '', done: false }];
+  } else if (lastDetail) {
+    // Ejercicio ya hecho antes: replicar series, kg y reps de la última vez
+    sets = lastDetail.map(s => ({ kg: s.kg || '', reps: s.reps || '', done: false }));
+  } else {
+    // Ejercicio nuevo (nunca se ha hecho): 3 series vacías para empezar de cero
+    sets = Array.from({ length: 3 }, () => ({ kg: '', reps: '', done: false }));
+  }
+  const ex = { name, isCardio: !!isCardio, restSec: isCardio ? 0 : 90, sets };
+  if (lvExMode === 'replace') {
+    liveExs[liveIdx] = ex;
+  } else {
+    liveExs.push(ex);
+    liveIdx = liveExs.length - 1;
+  }
+  stopRest(); renderLiveEx(); updateLvStats(); saveLiveSession();
+  const msg = lvExMode === 'replace'
+    ? (lastDetail ? 'Cambiado a "' + name + '" — series cargadas de la última vez ✓' : 'Cambiado a "' + name + '" — ejercicio nuevo ✓')
+    : (lastDetail ? 'Añadido "' + name + '" — series cargadas de la última vez ✓' : 'Añadido "' + name + '" — ejercicio nuevo ✓');
+  toast(msg);
+}
+
+/* Eliminar el ejercicio actual del entrenamiento en curso */
+function removeLvEx() {
+  if (!liveExs || liveExs.length === 0) return;
+  const ex = liveExs[liveIdx];
+  if (!ex) return;
+  if (liveExs.length === 1) {
+    toast('No puedes quitar el único ejercicio. Añade otro primero o finaliza el entrenamiento.', 'err');
+    return;
+  }
+  const ok = confirm('¿Quitar "' + ex.name + '" de este entrenamiento?\n\nSe perderán las series no terminadas de este ejercicio.');
+  if (!ok) return;
+  liveExs.splice(liveIdx, 1);
+  if (liveIdx >= liveExs.length) liveIdx = liveExs.length - 1;
+  stopRest(); renderLiveEx(); updateLvStats(); saveLiveSession();
+  toast('Ejercicio "' + ex.name + '" eliminado ✓', 'ok');
+}

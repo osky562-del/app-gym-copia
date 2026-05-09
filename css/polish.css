@@ -1,0 +1,398 @@
+/* ══ PRODUCTION POLISH v3 ══ */
+
+/* Smoother page transitions */
+.page.on {
+  animation: pgIn .28s cubic-bezier(.4, 0, .2, 1) both;
+}
+
+@keyframes pgIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px)
+  }
+
+  to {
+    opacity: 1;
+    transform: none
+  }
+}
+
+/* Better check animation */
+@keyframes checkPop {
+  0% {
+    transform: scale(1)
+  }
+
+  40% {
+    transform: scale(1.42)
+  }
+
+  70% {
+    transform: scale(.9)
+  }
+
+  100% {
+    transform: scale(1)
+  }
+}
+
+.lv-check.done {
+  animation: checkPop .32s ease;
+}
+
+/* Streak fire when hot */
+.streak-chip.hot .sn {
+  display: inline-block;
+  animation: fireW .9s ease infinite;
+}
+
+@keyframes fireW {
+
+  0%,
+  100% {
+    transform: rotate(-4deg)
+  }
+
+  50% {
+    transform: rotate(4deg)
+  }
+}
+
+/* Hero name underline accent */
+.hero-name em {
+  position: relative;
+}
+
+.hero-name em::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--a), transparent);
+  border-radius: 1px;
+}
+
+/* KPI press effect */
+.kpi {
+  transition: transform .15s, box-shadow .15s;
+}
+
+.kpi:active {
+  transform: scale(.97);
+}
+
+/* Tab active indicator glow */
+.tab.on::after {
+  box-shadow: 0 0 14px var(--a);
+}
+
+/* Better volume bars */
+.vb-bar {
+  transition: height .45s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+/* Week bar animate */
+.wd-bar.hit {
+  animation: barPop .4s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@keyframes barPop {
+  0% {
+    transform: scaleY(0)
+  }
+
+  60% {
+    transform: scaleY(1.08)
+  }
+
+  100% {
+    transform: scaleY(1)
+  }
+}
+
+/* Session cards hover */
+.sc {
+  transition: border-color .2s, transform .15s;
+}
+
+.sc:active {
+  transform: scale(.99);
+}
+
+/* Inputs focus ring */
+.lv-inp:focus {
+  box-shadow: 0 0 0 3px var(--ag);
+}
+
+.pm-i:focus {
+  color: var(--a);
+}
+
+/* Better splash */
+.sp-glow {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  margin: 0 auto 28px;
+  background: radial-gradient(circle, rgba(79, 140, 255, .2) 0%, transparent 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sp-glow::before {
+  content: '';
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: var(--a);
+  opacity: .12;
+  animation: spPulse 2s ease-in-out infinite;
+}
+
+@keyframes spPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: .12
+  }
+
+  50% {
+    transform: scale(1.5);
+    opacity: .06
+  }
+}
+
+/* Plan mode search focus */
+.plan-search:focus {
+  box-shadow: 0 0 0 3px var(--ag);
+}
+
+/* Confetti pieces */
+.cfp {
+  position: fixed;
+  z-index: 9500;
+  pointer-events: none;
+  border-radius: 2px;
+  animation: cfFall linear both;
+}
+
+@keyframes cfFall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 1
+  }
+
+  80% {
+    opacity: 1
+  }
+
+  100% {
+    transform: translateY(105vh) rotate(900deg);
+    opacity: 0
+  }
+}
+
+/* Summary screen entrance */
+#summaryMode.show {
+  animation: sumIn .4s cubic-bezier(.32, .72, 0, 1) both;
+}
+
+@keyframes sumIn {
+  from {
+    opacity: 0;
+    transform: scale(.95)
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1)
+  }
+}
+
+/* XP bar fill pulse on update */
+.xp-fill {
+  transition: width .85s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+/* ══ PREMIUM POLISH v4 ══ */
+
+/* Animated CTA gradient border */
+.cta {
+  position: relative;
+  background: transparent;
+  overflow: hidden;
+  isolation: isolate;
+  border: none;
+}
+
+.cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r);
+  background: linear-gradient(135deg, var(--a), var(--purple), var(--a));
+  z-index: -2;
+  background-size: 200% 200%;
+  animation: ctaGrad 3s ease infinite;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  border-radius: calc(var(--r) - 1.5px);
+  background: linear-gradient(135deg, rgba(79, 140, 255, .15), rgba(155, 114, 245, .08));
+  z-index: -1;
+}
+
+@keyframes ctaGrad {
+
+  0%,
+  100% {
+    background-position: 0% 50%
+  }
+
+  50% {
+    background-position: 100% 50%
+  }
+}
+
+/* Topbar XP glow */
+.tb-xp {
+  transition: all .3s;
+  position: relative;
+}
+
+.tb-xp::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 100px;
+  background: radial-gradient(circle, rgba(255, 215, 0, .08), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .3s;
+}
+
+.tb-xp:active::after {
+  opacity: 1;
+}
+
+/* Better KPI cards */
+.kpi {
+  border-radius: 14px;
+  position: relative;
+  transition: transform .2s, border-color .3s;
+}
+
+.kpi:active {
+  transform: scale(.96);
+}
+
+/* Scrollbar subtle */
+.scroll::-webkit-scrollbar {
+  width: 3px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--s4);
+  border-radius: 2px;
+}
+
+/* Better plan search */
+.plan-search {
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.plan-search:focus {
+  border-color: var(--a);
+  box-shadow: 0 0 0 4px var(--ag), 0 4px 20px rgba(79, 140, 255, .12);
+}
+
+/* History search focus */
+#histSearch:focus {
+  border-color: var(--a);
+  box-shadow: 0 0 0 3px var(--ag);
+}
+
+/* Improved live mode set cards */
+.lv-set {
+  transition: all .25s cubic-bezier(.4, 0, .2, 1);
+}
+
+.lv-set.active {
+  transform: scale(1.01);
+}
+
+/* Better session cards in dashboard */
+.sc {
+  border-radius: 14px;
+  transition: border-color .25s, transform .15s, box-shadow .25s;
+}
+
+.sc:active {
+  transform: scale(.985);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .3);
+}
+
+/* Profile hero premium */
+.p-av {
+  position: relative;
+  overflow: hidden;
+}
+
+.p-av::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, .15) 50%, transparent 60%);
+  animation: avatarShine 3s ease-in-out infinite;
+}
+
+@keyframes avatarShine {
+
+  0%,
+  100% {
+    transform: translateX(-100%)
+  }
+
+  50% {
+    transform: translateX(100%)
+  }
+}
+
+/* Onboarding slide premium */
+.ob-icon {
+  position: relative;
+  overflow: hidden;
+}
+
+.ob-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  background: linear-gradient(135deg, transparent 30%, rgba(79, 140, 255, .08) 50%, transparent 70%);
+  animation: obIconShine 4s ease infinite;
+}
+
+@keyframes obIconShine {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: .8
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 1
+  }
+}
+

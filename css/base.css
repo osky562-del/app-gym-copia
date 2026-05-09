@@ -1,0 +1,91 @@
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+body {
+  font-family: var(--f);
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+}
+
+input,
+select,
+button {
+  font-family: var(--f);
+}
+
+@keyframes up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toastIn {
+  0% { opacity: 0; transform: translate(-50%, 15px) scale(0.92); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+/* Ambient particles */
+.particle {
+  position: fixed;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--a);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0)
+  }
+
+  15% {
+    opacity: .4
+  }
+
+  85% {
+    opacity: .2
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-100vh) scale(1)
+  }
+}
+
+/* Shimmer loading */
+@keyframes shimmer {
+  from {
+    background-position: -200% 0
+  }
+
+  to {
+    background-position: 200% 0
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, .04) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease infinite;
+}

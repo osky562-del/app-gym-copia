@@ -1,0 +1,11 @@
+firestore.rules
+index.original.html
+.claude/
+.gemini/
+servidor.js
+servir_app.cmd
+serve.cmd
+test_ai.js
+node_modules/
+package-lock.json
+worker.js

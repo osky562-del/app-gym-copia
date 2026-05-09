@@ -1,0 +1,161 @@
+/* ─── HISTORY ─── */
+.hi {
+  background: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 7px;
+}
+
+.hi-h {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.hi-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--a);
+  flex-shrink: 0;
+}
+
+.hi-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hi-date {
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.hi-meta {
+  font-size: .67rem;
+  color: var(--t3);
+  margin-top: 1px;
+  font-family: var(--fm);
+}
+
+.hi-r {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.hi-del {
+  width: 28px;
+  height: 28px;
+  background: var(--s3);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.hi-del svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.hi-del:active {
+  background: var(--rg);
+  color: var(--red);
+}
+
+.hi-chev {
+  color: var(--t3);
+  transition: transform .2s;
+}
+
+.hi-chev svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.hi-chev.open {
+  transform: rotate(90deg);
+}
+
+.hi-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .32s ease;
+}
+
+.hi-body.open {
+  max-height: 1500px;
+}
+
+.hi-vbar {
+  height: 2px;
+  background: var(--s3);
+  margin: 0 14px;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.hi-vfill {
+  height: 100%;
+  background: linear-gradient(to right, var(--a), rgba(79, 140, 255, .3));
+}
+
+.hi-ex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.hi-en {
+  font-size: .82rem;
+  color: var(--t2);
+}
+
+.hi-er {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.hi-es {
+  font-family: var(--fm);
+  font-size: .7rem;
+  color: var(--t3);
+}
+
+.hi-et {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--a);
+  background: var(--ag);
+  border: 1px solid rgba(79, 140, 255, .15);
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+
+.hi-notes {
+  margin: 0 14px 10px;
+  padding: 9px 11px;
+  background: var(--s2);
+  border-radius: 7px;
+  font-size: .78rem;
+  color: var(--t3);
+  line-height: 1.6;
+  border-left: 2px solid var(--a);
+}
+

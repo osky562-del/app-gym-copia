@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "89535695550",
+    "project_id": "consejosapp-5c0dd",
+    "storage_bucket": "consejosapp-5c0dd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:89535695550:android:e48d23fa58773f043f2cef",
+        "android_client_info": {
+          "package_name": "com.ko95fit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJ69PquSWkFKnEBoGrcHByXggEGrA3Xw8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
