@@ -51,9 +51,9 @@
       <img src="logo.png" class="auth-logo" alt="KO95FIT">
       <div class="auth-title">Crear Cuenta</div>
       <div class="auth-sub">Únete a la élite del entrenamiento</div>
-      <input type="text" class="auth-inp" id="authNewName" placeholder="Nombre de usuario único">
-      <input type="email" class="auth-inp" id="authNewEmail" placeholder="Correo electrónico">
-      <input type="password" class="auth-inp" id="authNewPass" placeholder="Contraseña">
+      <input type="text" class="auth-inp" id="authNewName" name="username" autocomplete="username" placeholder="Nombre de usuario único">
+      <input type="email" class="auth-inp" id="authNewEmail" name="email" autocomplete="email" placeholder="Correo electrónico">
+      <input type="password" class="auth-inp" id="authNewPass" name="new-password" autocomplete="new-password" placeholder="Contraseña">
       <button class="auth-btn" id="btnRegister" onclick="authRegister()">Registrarme</button>
       <div class="auth-switch">¿Ya tienes cuenta? <span onclick="authToggle(0)">Inicia sesión</span></div>
     </div>
@@ -62,11 +62,15 @@
       <img src="logo.png" class="auth-logo" alt="KO95FIT">
       <div class="auth-title">Bienvenido</div>
       <div class="auth-sub">Entra en tu zona de rendimiento</div>
-      <input type="email" class="auth-inp" id="authLogEmail" placeholder="Correo electrónico">
-      <input type="password" class="auth-inp" id="authLogPass" placeholder="Contraseña">
-      <div style="text-align:right; margin-bottom:20px">
+      <input type="email" class="auth-inp" id="authLogEmail" name="email" autocomplete="email" placeholder="Correo electrónico">
+      <input type="password" class="auth-inp" id="authLogPass" name="password" autocomplete="current-password" placeholder="Contraseña">
+      <div style="text-align:right; margin-bottom:14px">
         <span onclick="authResetPass()" style="color:var(--a); font-size:0.75rem; cursor:pointer; opacity:0.8; font-weight:700">¿Has olvidado la contraseña?</span>
       </div>
+      <label class="auth-remember" for="authRemember">
+        <input type="checkbox" id="authRemember">
+        <span>Recordar mis datos en este dispositivo</span>
+      </label>
       <button class="auth-btn" id="btnLogin" onclick="authEmailLogin()">Entrar</button>
       <div class="auth-switch">¿No tienes cuenta? <span onclick="authToggle(1)">Regístrate</span></div>
       <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line2);">
@@ -184,6 +188,13 @@
         <div class="rp-opt" onclick="pickRest(180,this)">
           <div class="rp-val">3m</div>
           <div class="rp-lbl">Fuerza</div>
+        </div>
+      </div>
+      <div class="rp-custom">
+        <div class="rp-cust-lbl">Personalizado</div>
+        <div class="rp-cust-row">
+          <input class="rp-cust-inp" type="number" id="rpCustomInp" placeholder="segundos" min="1" max="900" inputmode="numeric">
+          <button class="rp-cust-btn" onclick="pickRestCustom()">Aplicar</button>
         </div>
       </div>
     </div>
@@ -1010,8 +1021,12 @@
           <div class="lv-ex-name" id="lvExName">—</div>
           <button class="lv-ex-reorder" onclick="openReorderSheet()" title="Reordenar ejercicios">⇅</button>
           <button class="lv-ex-change" onclick="openLvExSheet('replace')">Cambiar</button>
+          <button class="lv-ex-remove" onclick="removeLvEx()" title="Quitar este ejercicio">✕</button>
         </div>
         <div class="lv-ex-pr" id="lvExPr"></div>
+        <div class="lv-ex-meta">
+          <button class="lv-rest-pill" id="lvRestPill" onclick="openLiveRestPicker()">⏱ Descanso: 90s</button>
+        </div>
         <div id="lvSetsEl"></div>
         <button class="lv-add-ex-btn" onclick="openLvExSheet('add')">+ Añadir ejercicio</button>
       </div>

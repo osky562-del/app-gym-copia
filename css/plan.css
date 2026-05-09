@@ -458,3 +458,57 @@
   letter-spacing: .06em;
 }
 
+.rp-custom {
+  padding: 14px 14px 18px;
+  border-top: 1px solid var(--line2);
+  margin-top: 10px;
+}
+
+.rp-cust-lbl {
+  font-size: .65rem;
+  color: var(--t3);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+}
+
+.rp-cust-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rp-cust-inp {
+  flex: 1;
+  background: var(--s3);
+  border: 1.5px solid var(--line2);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--t1);
+  font-size: .9rem;
+  font-weight: 700;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.rp-cust-inp:focus {
+  border-color: var(--a);
+}
+
+.rp-cust-btn {
+  background: var(--a);
+  border: none;
+  border-radius: 10px;
+  padding: 0 18px;
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .15s, opacity .15s;
+}
+
+.rp-cust-btn:active {
+  transform: scale(.96);
+  opacity: .85;
+}
+

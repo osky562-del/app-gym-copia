@@ -1,6 +1,14 @@
 /* ══ HELPERS ══ */
 function getLastKg(name) { for (const w of workouts) { const e = (w.exercises || []).find(e => e.ex === name); if (e && e.kg) return e.kg; } return null; }
 function getPR(name) { let pr = 0; workouts.forEach(w => (w.exercises || []).filter(e => e.ex === name).forEach(e => { if (+e.kg > pr) pr = +e.kg; })); return pr; }
+/** Devuelve el detalle de series de la última vez que se hizo el ejercicio (null si nunca) */
+function getLastSetsDetail(name) {
+  for (const w of workouts) {
+    const e = (w.exercises || []).find(ex => ex.ex === name && Array.isArray(ex.setsDetail));
+    if (e && e.setsDetail.length > 0) return e.setsDetail;
+  }
+  return null;
+}
 /** Progressive overload suggestion: +2.5% rounded to nearest 0.5kg */
 function getSuggestedKg(name) {
   const last = getLastKg(name);

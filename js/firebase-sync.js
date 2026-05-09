@@ -131,6 +131,12 @@ async function authEmailLogin() {
     if (firebase.apps.length === 0) initFirebase();
     
     await firebase.auth().signInWithEmailAndPassword(email, pass);
+
+    // Recordar credenciales si la casilla está marcada
+    const remEl = document.getElementById('authRemember');
+    if (remEl && remEl.checked) saveCreds(email, pass);
+    else clearCreds();
+
     toast('¡Bienvenido de nuevo! 💪', 'good');
   } catch (e) {
     btn.disabled = false;
@@ -407,8 +413,56 @@ if (syncEnabled && !isRemoteUpdate) {
 }
   };
 
+/* ── Recordar credenciales en el dispositivo (offuscación simple, no es cifrado real) ── */
+const _CR_K = 'KO95FIT_2026_K';
+function _crObf(s) {
+  let o = '';
+  for (let i = 0; i < s.length; i++) o += String.fromCharCode(s.charCodeAt(i) ^ _CR_K.charCodeAt(i % _CR_K.length));
+  try { return btoa(unescape(encodeURIComponent(o))); } catch(e) { return ''; }
+}
+function _crDeobf(b) {
+  try {
+    const d = decodeURIComponent(escape(atob(b)));
+    let r = '';
+    for (let i = 0; i < d.length; i++) r += String.fromCharCode(d.charCodeAt(i) ^ _CR_K.charCodeAt(i % _CR_K.length));
+    return r;
+  } catch(e) { return ''; }
+}
+function saveCreds(email, pass) {
+  try {
+    localStorage.setItem('ko95_em', _crObf(email));
+    localStorage.setItem('ko95_pw', _crObf(pass));
+  } catch(e) {}
+}
+function clearCreds() {
+  try {
+    localStorage.removeItem('ko95_em');
+    localStorage.removeItem('ko95_pw');
+  } catch(e) {}
+}
+function loadRememberedCreds() {
+  try {
+    const em = localStorage.getItem('ko95_em');
+    const pw = localStorage.getItem('ko95_pw');
+    if (!em || !pw) return;
+    const emEl = document.getElementById('authLogEmail');
+    const pwEl = document.getElementById('authLogPass');
+    const remEl = document.getElementById('authRemember');
+    if (emEl) emEl.value = _crDeobf(em);
+    if (pwEl) pwEl.value = _crDeobf(pw);
+    if (remEl) remEl.checked = true;
+  } catch(e) {}
+}
+
 // Inicialización inmediata al cargar el script
 initFirebase();
+
+// Cargar credenciales recordadas (cuando el DOM esté listo)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadRememberedCreds);
+} else {
+  loadRememberedCreds();
+}
 
 // Registro del Service Worker (PWA) — solo desde http/https
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {

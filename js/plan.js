@@ -74,8 +74,73 @@ function openCopy() {
   $('shCopy').classList.add('on');
 }
 function doCopy(id) { const w = workouts.find(x => x.id === id); if (!w) return; planExs = (w.exercises || []).map(e => ({ name: e.ex, sets: +e.sets || 3, reps: +e.reps || 10, kg: getLastKg(e.ex) || e.kg || '', restSec: 90 })); renderPlanList(); closeSheet('shCopy'); toast('Copiado ✓'); }
-function openRestPicker(idx) { restSelIdx = idx; const cur = planExs[idx].restSec; const vals = [0, 30, 60, 90, 120, 180]; document.querySelectorAll('.rp-opt').forEach((el, i) => el.classList.toggle('on', vals[i] === cur)); $('rpOv').classList.add('on'); }
-function pickRest(sec, btn) { document.querySelectorAll('.rp-opt').forEach(e => e.classList.remove('on')); btn.classList.add('on'); if (restSelIdx >= 0) planExs[restSelIdx].restSec = sec; renderPlanList(); $('rpOv').classList.remove('on'); }
+/* restPickerMode: 'plan' o 'live' */
+let restPickerMode = 'plan';
+
+function openRestPicker(idx) {
+  restPickerMode = 'plan';
+  restSelIdx = idx;
+  const cur = planExs[idx].restSec;
+  const vals = [0, 30, 60, 90, 120, 180];
+  document.querySelectorAll('.rp-opt').forEach((el, i) => el.classList.toggle('on', vals[i] === cur));
+  const inp = document.getElementById('rpCustomInp');
+  if (inp) inp.value = (vals.includes(cur) ? '' : cur);
+  $('rpOv').classList.add('on');
+}
+
+function openLiveRestPicker() {
+  if (typeof liveExs === 'undefined' || !liveExs[liveIdx]) return;
+  restPickerMode = 'live';
+  const cur = liveExs[liveIdx].restSec || 0;
+  const vals = [0, 30, 60, 90, 120, 180];
+  document.querySelectorAll('.rp-opt').forEach((el, i) => el.classList.toggle('on', vals[i] === cur));
+  const inp = document.getElementById('rpCustomInp');
+  if (inp) inp.value = (vals.includes(cur) ? '' : cur);
+  $('rpOv').classList.add('on');
+}
+
+function pickRest(sec, btn) {
+  document.querySelectorAll('.rp-opt').forEach(e => e.classList.remove('on'));
+  btn.classList.add('on');
+  if (restPickerMode === 'live' && typeof liveExs !== 'undefined' && liveExs[liveIdx]) {
+    liveExs[liveIdx].restSec = sec;
+    if (typeof saveLiveSession === 'function') saveLiveSession();
+    if (typeof renderLiveEx === 'function') renderLiveEx();
+    toast('Descanso: ' + (sec === 0 ? 'Sin pausa' : sec + 's') + ' ✓', 'good');
+  } else if (restSelIdx >= 0) {
+    planExs[restSelIdx].restSec = sec;
+    renderPlanList();
+  }
+  $('rpOv').classList.remove('on');
+}
+
+function pickRestCustom() {
+  const inp = document.getElementById('rpCustomInp');
+  const v = parseInt(inp && inp.value, 10);
+  if (!v || v < 1 || v > 900) {
+    toast('Pon un valor entre 1 y 900 segundos', 'err');
+    return;
+  }
+  if (restPickerMode === 'live' && typeof liveExs !== 'undefined' && liveExs[liveIdx]) {
+    liveExs[liveIdx].restSec = v;
+    if (typeof saveLiveSession === 'function') saveLiveSession();
+    if (typeof renderLiveEx === 'function') renderLiveEx();
+  } else if (restSelIdx >= 0) {
+    planExs[restSelIdx].restSec = v;
+    renderPlanList();
+  }
+  document.querySelectorAll('.rp-opt').forEach(e => e.classList.remove('on'));
+  $('rpOv').classList.remove('on');
+  toast('Descanso: ' + v + 's ✓', 'good');
+}
+
+function fmtRestPill(sec) {
+  if (!sec) return 'Off';
+  if (sec < 60) return sec + 's';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return s ? (m + 'm ' + s + 's') : (m + 'm');
+}
 
 
 /* ══ REORDER EXERCISES ══ */

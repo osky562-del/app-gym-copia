@@ -130,6 +130,28 @@
   cursor: pointer;
 }
 
+.auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  font-size: .76rem;
+  color: var(--t3);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-remember input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--a);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
 /* Auth consolidated in header */
 
 .auth-logo {

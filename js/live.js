@@ -1,6 +1,8 @@
 /* ══ LIVE MODE ══ */
 function startLiveMode() {
   if (!planExs.length) return;
+  // Desbloquear el contexto de audio (iOS exige un gesto de usuario para que sea activo)
+  if (typeof unlockAudioContext === 'function') unlockAudioContext();
   liveExs = planExs.map(ex => ({ name: ex.name, restSec: ex.restSec, sets: Array.from({ length: ex.sets }, () => ({ kg: ex.kg || '', reps: ex.reps, done: false })) }));
   liveIdx = 0; liveTotalSec = 0; livePauseSec = 0; liveIsPaused = false; livePauseCnt = 0;
   liveStartWall = Date.now(); livePausedMs = 0; livePauseStartWall = 0;
@@ -50,6 +52,11 @@ function renderLiveEx() {
     }
   }
   $('lvExPr').textContent = prText;
+  // Chip del descanso: muestra el valor actual y permite cambiarlo
+  const restPill = $('lvRestPill');
+  if (restPill) {
+    restPill.textContent = '⏱ Descanso: ' + (typeof fmtRestPill === 'function' ? fmtRestPill(ex.restSec || 0) : ((ex.restSec || 0) + 's'));
+  }
   $('lvNavP').disabled = liveIdx === 0; $('lvNavN').disabled = liveIdx === liveExs.length - 1;
   const canRemove = ex.sets.length > 1 && !ex.sets[ex.sets.length - 1].done;
   $('lvSetsEl').innerHTML = ex.sets.map((s, si) => {
@@ -273,9 +280,19 @@ function filterLvAC() {
 }
 function pickLvEx(name, isCardio) {
   closeSheet('shLvEx');
-  const sets = isCardio
-    ? [{ min: '', km: '', done: false }]
-    : Array.from({ length: 3 }, () => ({ kg: getLastKg(name) || '', reps: 10, done: false }));
+  const lastDetail = getLastSetsDetail(name);
+  let sets;
+  if (isCardio) {
+    sets = lastDetail
+      ? lastDetail.map(s => ({ min: s.min || '', km: s.km || '', done: false }))
+      : [{ min: '', km: '', done: false }];
+  } else if (lastDetail) {
+    // Ejercicio ya hecho antes: replicar series, kg y reps de la última vez
+    sets = lastDetail.map(s => ({ kg: s.kg || '', reps: s.reps || '', done: false }));
+  } else {
+    // Ejercicio nuevo (nunca se ha hecho): 3 series vacías para empezar de cero
+    sets = Array.from({ length: 3 }, () => ({ kg: '', reps: '', done: false }));
+  }
   const ex = { name, isCardio: !!isCardio, restSec: isCardio ? 0 : 90, sets };
   if (lvExMode === 'replace') {
     liveExs[liveIdx] = ex;
@@ -284,5 +301,25 @@ function pickLvEx(name, isCardio) {
     liveIdx = liveExs.length - 1;
   }
   stopRest(); renderLiveEx(); updateLvStats(); saveLiveSession();
-  toast((lvExMode === 'replace' ? 'Ejercicio cambiado' : 'Ejercicio añadido') + ' ✓');
+  const msg = lvExMode === 'replace'
+    ? (lastDetail ? 'Cambiado a "' + name + '" — series cargadas de la última vez ✓' : 'Cambiado a "' + name + '" — ejercicio nuevo ✓')
+    : (lastDetail ? 'Añadido "' + name + '" — series cargadas de la última vez ✓' : 'Añadido "' + name + '" — ejercicio nuevo ✓');
+  toast(msg);
+}
+
+/* Eliminar el ejercicio actual del entrenamiento en curso */
+function removeLvEx() {
+  if (!liveExs || liveExs.length === 0) return;
+  const ex = liveExs[liveIdx];
+  if (!ex) return;
+  if (liveExs.length === 1) {
+    toast('No puedes quitar el único ejercicio. Añade otro primero o finaliza el entrenamiento.', 'err');
+    return;
+  }
+  const ok = confirm('¿Quitar "' + ex.name + '" de este entrenamiento?\n\nSe perderán las series no terminadas de este ejercicio.');
+  if (!ok) return;
+  liveExs.splice(liveIdx, 1);
+  if (liveIdx >= liveExs.length) liveIdx = liveExs.length - 1;
+  stopRest(); renderLiveEx(); updateLvStats(); saveLiveSession();
+  toast('Ejercicio "' + ex.name + '" eliminado ✓', 'ok');
 }
