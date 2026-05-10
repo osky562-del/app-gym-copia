@@ -72,7 +72,30 @@ async function generarRutinaIA() {
   const prs = Object.entries(exMax).sort((a,b) => b[1]-a[1]).slice(0,3).map(([x,k]) => `${x}:${k}kg`).join(',');
   const musMenos = Object.entries(volMus).sort((a,b)=>a[1]-b[1])[0]?.[0] || '';
 
-  const prompt = `Responde EN ESPAÑOL solo JSON sin markdown. Rutina gym ${dias} dias x 5 ejercicios. Perfil: ${perfil.sexo||'h'},${perfil.edad||25}a,${nivel},obj:${objetivo},enf:${enfoque},eq:${equipo}${lesiones?',les:'+lesiones:''}. ${prs?'PRs:'+prs+'.':''} ${musMenos?'Priorizar:'+musMenos+'.':''} Devuelve EXACTO: {"nombre":"Plan ${enfoque}","dias":[{"titulo":"Día 1 - Grupo","ejercicios":[{"ex":"Nombre","sets":4,"reps":10,"nota":"breve"}]}]}`;
+  // ── 3 prompts de respaldo (completo → medio → mínimo) para reintentar si timeout ──
+  const ejemploDias = Array.from({ length: dias }, (_, i) =>
+    `{"titulo":"Día ${i + 1} - Grupo muscular","ejercicios":[{"ex":"Ejercicio","sets":4,"reps":10,"nota":"breve"}]}`
+  ).join(',');
+  const ejemploMin = Array.from({ length: dias }, (_, i) =>
+    `{"titulo":"Día ${i + 1}","ejercicios":[{"ex":"Ej","sets":4,"reps":10}]}`
+  ).join(',');
+
+  const promptFull = `Responde EN ESPAÑOL con SOLO JSON puro (sin markdown ni explicaciones). REGLA CRÍTICA: el array "dias" DEBE contener EXACTAMENTE ${dias} días, ni uno menos. Cada día con 5 ejercicios distintos.
+Perfil: ${perfil.sexo||'h'}, ${perfil.edad||25}a, nivel ${nivel}, objetivo ${objetivo}, enfoque ${enfoque}, equipo ${equipo}${lesiones ? ', lesiones: '+lesiones : ''}. ${prs ? 'PRs históricos: '+prs+'.' : ''} ${musMenos ? 'Priorizar músculo débil: '+musMenos+'.' : ''}
+Estructura JSON OBLIGATORIA — devuelve EXACTAMENTE ${dias} elementos en "dias":
+{"nombre":"Plan ${enfoque} ${dias}d","dias":[${ejemploDias}]}`;
+
+  const promptMedium = `JSON puro EN ESPAÑOL. Rutina ${dias} días, 5 ejercicios cada día. ${nivel}, ${enfoque}, ${equipo}. Devuelve EXACTAMENTE ${dias} días en "dias":
+{"nombre":"Plan ${enfoque}","dias":[${ejemploDias}]}`;
+
+  const promptShort = `JSON ${dias} dias rutina ${enfoque} ${equipo}. EXACTO ${dias} elementos:
+{"nombre":"Plan","dias":[${ejemploMin}]}`;
+
+  const intentos = [
+    { prompt: promptFull,   timeout: 45000, maxTokens: 2200, label: null },
+    { prompt: promptMedium, timeout: 30000, maxTokens: 1800, label: 'Reintentando con prompt más corto…' },
+    { prompt: promptShort,  timeout: 20000, maxTokens: 1500, label: 'Último intento con prompt mínimo…' }
+  ];
 
   btn.disabled = true;
   $('rutinaResult').innerHTML = '';
@@ -81,42 +104,68 @@ async function generarRutinaIA() {
   stat.style.color = '';
   _showRutinaProgress(stat, dias);
 
-  try {
-    const ac = new AbortController();
-    const tid = setTimeout(() => ac.abort(), 60000);
-    const r = await fetch(CONSEJOS_WORKER, {
-      method: 'POST',
-      signal: ac.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-        max_tokens: 1200
-      })
-    });
-    clearTimeout(tid);
+  let lastError = null;
+  let parsedRutina = null;
 
-    if (!r.ok) throw new Error(`Servidor IA (Error ${r.status})`);
-
-    let txt = await r.text();
-    if (txt.includes('{')) {
-      const clean = txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1);
-      rutinaGenerada = JSON.parse(clean);
-      if (rutinaGenerada && rutinaGenerada.dias) {
-        try { STORE.set(cacheKey, { rutina: rutinaGenerada, ts: Date.now() }); } catch(e) {}
-        _stopRutinaProgress();
-        renderRutinaResult();
-        stat.textContent = 'Rutina Generada ✓';
-        stat.style.background = 'var(--gg)';
-        stat.style.color = 'var(--green)';
-        setTimeout(() => stat.style.display = 'none', 3000);
-        return;
-      }
+  for (let i = 0; i < intentos.length; i++) {
+    const att = intentos[i];
+    if (att.label) {
+      _stopRutinaProgress();
+      stat.textContent = att.label;
+      await new Promise(r => setTimeout(r, 600));
+      _showRutinaProgress(stat, dias);
     }
-    throw new Error('Respuesta de IA no válida');
+    try {
+      const ac = new AbortController();
+      const tid = setTimeout(() => ac.abort(), att.timeout);
+      const r = await fetch(CONSEJOS_WORKER, {
+        method: 'POST',
+        signal: ac.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: att.prompt }],
+          temperature: 0.5,
+          max_tokens: att.maxTokens
+        })
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const txt = await r.text();
+      if (txt.includes('{')) {
+        const clean = txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1);
+        const parsed = JSON.parse(clean);
+        if (parsed && parsed.dias && parsed.dias.length > 0) {
+          parsedRutina = parsed;
+          break;
+        }
+      }
+      throw new Error('JSON inválido');
+    } catch (e) {
+      lastError = e;
+      console.warn(`Intento ${i + 1}/${intentos.length} falló:`, e.message);
+    }
+  }
+
+  try {
+    if (!parsedRutina) {
+      throw lastError || new Error('Todos los intentos fallaron');
+    }
+    rutinaGenerada = parsedRutina;
+    const diasReales = rutinaGenerada.dias.length;
+    if (diasReales === dias) {
+      try { STORE.set(cacheKey, { rutina: rutinaGenerada, ts: Date.now() }); } catch(e) {}
+    }
+    _stopRutinaProgress();
+    renderRutinaResult();
+    stat.textContent = diasReales === dias
+      ? 'Rutina Generada ✓'
+      : `⚠ Rutina con ${diasReales}/${dias} días — Pulsa otra vez para reintentar`;
+    stat.style.background = diasReales === dias ? 'var(--gg)' : 'var(--ag)';
+    stat.style.color = diasReales === dias ? 'var(--green)' : 'var(--amber)';
+    setTimeout(() => stat.style.display = 'none', diasReales === dias ? 3000 : 6000);
   } catch (e) {
     _stopRutinaProgress();
-    stat.textContent = 'Error: ' + (e.name === 'AbortError' ? 'Tiempo agotado (60s)' : e.message);
+    stat.textContent = 'IA no disponible ahora — Inténtalo en 1-2 min';
     stat.style.background = 'var(--rg)';
     stat.style.color = 'var(--red)';
   } finally {
