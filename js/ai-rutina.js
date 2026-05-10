@@ -1,8 +1,39 @@
 /* ══ RUTINA IA ══ */
 let rutinaGenerada = null; // {nombre, dias:[{titulo, ejercicios:[{ex,sets,reps,kg,nota}]}]}
+let _rutinaProgressInt = null;
+
+function _rutinaParamsHash(params) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(params)))).slice(0, 24);
+}
+
+function _showRutinaProgress(stat, dias) {
+  const steps = [
+    'Analizando tu perfil físico…',
+    'Estudiando tu historial de entrenos…',
+    'Identificando músculos a priorizar…',
+    `Diseñando día 1 de ${dias}…`,
+    `Diseñando día 2 de ${dias}…`,
+    dias >= 3 ? `Diseñando día 3 de ${dias}…` : null,
+    dias >= 4 ? `Diseñando día 4 de ${dias}…` : null,
+    dias >= 5 ? `Diseñando día 5 de ${dias}…` : null,
+    dias >= 6 ? `Diseñando día 6 de ${dias}…` : null,
+    'Optimizando series y repeticiones…',
+    'Aplicando técnicas avanzadas…',
+    'Casi listo…'
+  ].filter(Boolean);
+  let i = 0;
+  stat.textContent = steps[0];
+  _rutinaProgressInt = setInterval(() => {
+    i = (i + 1) % steps.length;
+    stat.textContent = steps[i];
+  }, 2200);
+}
+
+function _stopRutinaProgress() {
+  if (_rutinaProgressInt) { clearInterval(_rutinaProgressInt); _rutinaProgressInt = null; }
+}
 
 async function generarRutinaIA() {
-  // AI Rutina is Pro-only feature
   if (!Pro.requirePro('ai_rutina')) return;
 
   const btn = $('btnGenRutina');
@@ -15,9 +46,19 @@ async function generarRutinaIA() {
   const objetivo = perfil.objetivo || enfoque;
   const lesiones = perfil.lesiones && perfil.lesiones !== 'ninguna' ? perfil.lesiones : null;
 
-  const logs = workouts.slice(0, 10); 
-  
-  // Analizar fortalezas para la rutina
+  const cacheKey = 'rutinaCache_' + _rutinaParamsHash({ perfil, dias, enfoque, equipo, nivel, objetivo, lesiones });
+  const cached = STORE.get(cacheKey);
+  if (cached && cached.ts && (Date.now() - cached.ts) < 30 * 60 * 1000) {
+    rutinaGenerada = cached.rutina;
+    renderRutinaResult();
+    stat.style.display = 'block';
+    stat.textContent = 'Rutina cargada ✓ (caché < 30 min)';
+    stat.style.background = 'var(--gg)';
+    stat.style.color = 'var(--green)';
+    setTimeout(() => stat.style.display = 'none', 2500);
+    return;
+  }
+
   const exMax = {};
   const volMus = {};
   workouts.slice(0, 20).forEach(w => {
@@ -28,38 +69,42 @@ async function generarRutinaIA() {
       volMus[m] = (volMus[m] || 0) + (kg * (+e.sets || 1) * (+e.reps || 1));
     });
   });
-  const prs = Object.entries(exMax).sort((a,b) => b[1]-a[1]).slice(0,5).map(([x,k]) => `${x} (${k}kg)`).join(', ');
-  const totalV = Object.values(volMus).reduce((a,b) => a+b, 0) || 1;
-  const musDist = Object.entries(volMus).sort((a,b)=>b[1]-a[1]).map(([m,v]) => `${m} (${Math.round(v/totalV*100)}%)`).join(', ');
+  const prs = Object.entries(exMax).sort((a,b) => b[1]-a[1]).slice(0,3).map(([x,k]) => `${x}:${k}kg`).join(',');
+  const musMenos = Object.entries(volMus).sort((a,b)=>a[1]-b[1])[0]?.[0] || '';
 
-  const prompt = `RESPONDE SIEMPRE EN ESPAÑOL. Genera una rutina gym en JSON puro (sin markdown). PERFIL: ${perfil.sexo||'?'}, ${perfil.edad||'?'}a, ${perfil.peso||'?'}kg, nivel ${nivel}, objetivo ${objetivo}, enfoque ${enfoque}, equipo ${equipo}${lesiones ? ', lesiones: '+lesiones : ''}. PRs: ${prs||'ninguno'}. Vol muscular: ${musDist||'equilibrado'}. Genera ${dias} dias, 5-6 ejercicios/dia. JSON exacto: {"nombre":"Plan X","dias":[{"titulo":"Dia 1","ejercicios":[{"ex":"nombre","sets":4,"reps":10,"kg":"","nota":"tecnica"}]}]}`;
+  const prompt = `Responde EN ESPAÑOL solo JSON sin markdown. Rutina gym ${dias} dias x 5 ejercicios. Perfil: ${perfil.sexo||'h'},${perfil.edad||25}a,${nivel},obj:${objetivo},enf:${enfoque},eq:${equipo}${lesiones?',les:'+lesiones:''}. ${prs?'PRs:'+prs+'.':''} ${musMenos?'Priorizar:'+musMenos+'.':''} Devuelve EXACTO: {"nombre":"Plan ${enfoque}","dias":[{"titulo":"Día 1 - Grupo","ejercicios":[{"ex":"Nombre","sets":4,"reps":10,"nota":"breve"}]}]}`;
 
   btn.disabled = true;
   $('rutinaResult').innerHTML = '';
   stat.style.display = 'block';
-  stat.textContent = 'IA Generando rutina personalizada...';
-  
+  stat.style.background = '';
+  stat.style.color = '';
+  _showRutinaProgress(stat, dias);
+
   try {
     const ac = new AbortController();
-    const tid = setTimeout(() => ac.abort(), 60000); 
+    const tid = setTimeout(() => ac.abort(), 60000);
     const r = await fetch(CONSEJOS_WORKER, {
       method: 'POST',
       signal: ac.signal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7
+        temperature: 0.5,
+        max_tokens: 1200
       })
     });
     clearTimeout(tid);
 
     if (!r.ok) throw new Error(`Servidor IA (Error ${r.status})`);
-    
+
     let txt = await r.text();
     if (txt.includes('{')) {
       const clean = txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1);
       rutinaGenerada = JSON.parse(clean);
       if (rutinaGenerada && rutinaGenerada.dias) {
+        try { STORE.set(cacheKey, { rutina: rutinaGenerada, ts: Date.now() }); } catch(e) {}
+        _stopRutinaProgress();
         renderRutinaResult();
         stat.textContent = 'Rutina Generada ✓';
         stat.style.background = 'var(--gg)';
@@ -70,10 +115,12 @@ async function generarRutinaIA() {
     }
     throw new Error('Respuesta de IA no válida');
   } catch (e) {
+    _stopRutinaProgress();
     stat.textContent = 'Error: ' + (e.name === 'AbortError' ? 'Tiempo agotado (60s)' : e.message);
     stat.style.background = 'var(--rg)';
     stat.style.color = 'var(--red)';
   } finally {
+    _stopRutinaProgress();
     btn.disabled = false;
     btn.innerHTML = `<i class="fa-solid fa-wand-sparkles"></i> Generar Rutina Personalizada`;
   }
