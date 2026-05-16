@@ -58,16 +58,40 @@ function initFirebase() {
 
     firebase.auth().onAuthStateChanged(user => {
       if (user && !user.isAnonymous) {
+        // ─── Detectar cambio de usuario en el mismo dispositivo ───
+        // Si el UID actual es distinto al guardado, hay que limpiar todos
+        // los datos locales del usuario anterior para que no se mezclen
+        // (entrenamientos, perfil, peso, rutinas IA, etc.).
+        const prevUid = localStorage.getItem('ko95_uid');
+        const isNewUserOnDevice = prevUid && prevUid !== user.uid;
+        if (isNewUserOnDevice) {
+          console.log('KO95FIT: usuario distinto detectado, limpiando datos del anterior');
+          try {
+            STORE.set('workouts', []);
+            STORE.set('weightLogs', []);
+            STORE.set('perfil', {});
+            STORE.set('customTpl', []);
+            STORE.set('iaConsejos', null);
+            // Borrar todos los cachés de rutinas IA
+            Object.keys(localStorage).filter(k => k.startsWith('rutinaCache_')).forEach(k => localStorage.removeItem(k));
+            // Vaciar arrays globales en memoria
+            if (typeof workouts !== 'undefined') workouts.length = 0;
+            if (typeof weightLogs !== 'undefined') weightLogs.length = 0;
+          } catch(e) { console.warn(e); }
+        }
+        localStorage.setItem('ko95_uid', user.uid);
+
         fbUser = user;
         syncEnabled = true;
-        localStorage.setItem('ko95_sess', '1'); // Flag de sesión activa
+        localStorage.setItem('ko95_sess', '1');
         updateSyncStatus('on', 'Élite: ' + (user.displayName || user.email));
         document.getElementById('authOverlay').classList.remove('show');
 
-        // Check if user is admin → auto Pro+
         Pro.checkAdmin(user.uid);
-        
-        if (workouts.length > 0) pushToFirebase();
+
+        // Solo subir datos locales si NO somos un usuario nuevo en el dispositivo
+        // (si lo somos, los datos eran del anterior y no deben pegarse a nuestra cuenta)
+        if (!isNewUserOnDevice && workouts.length > 0) pushToFirebase();
         listenRemoteWorkouts();
       } else {
         fbUser = null;
@@ -180,11 +204,25 @@ async function authRegister() {
     const userKey = name.toLowerCase().replace(/\s/g, '');
     const userRef = fbDb.collection('usernames').doc(userKey);
     const nameDoc = await userRef.get();
-    if (nameDoc.exists) { 
+    if (nameDoc.exists) {
       btn.disabled = false; btn.textContent = 'Registrarme';
-      toast('🚫 El nombre "' + name + '" ya está en uso por otro atleta', 'err'); 
-      return; 
+      toast('🚫 El nombre "' + name + '" ya está en uso por otro atleta', 'err');
+      return;
     }
+
+    // Limpiar TODOS los datos locales antes de crear cuenta nueva
+    // Garantiza que el nuevo usuario empieza desde cero (sin entrenamientos
+    // ni perfil de quien usara antes la app en este dispositivo)
+    try {
+      STORE.set('workouts', []);
+      STORE.set('weightLogs', []);
+      STORE.set('perfil', {});
+      STORE.set('customTpl', []);
+      STORE.set('iaConsejos', null);
+      Object.keys(localStorage).filter(k => k.startsWith('rutinaCache_')).forEach(k => localStorage.removeItem(k));
+      if (typeof workouts !== 'undefined') workouts.length = 0;
+      if (typeof weightLogs !== 'undefined') weightLogs.length = 0;
+    } catch(e) {}
 
     const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
     const uid = cred.user.uid;
