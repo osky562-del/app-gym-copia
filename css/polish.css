@@ -1,5 +1,41 @@
 /* ══ PRODUCTION POLISH v3 ══ */
 
+/* ── Admin Panel buttons ── */
+.adm-act {
+  background: var(--a);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .12s, opacity .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.adm-act:active {
+  transform: scale(.96);
+  opacity: .85;
+}
+.adm-act.adm-danger {
+  background: var(--red);
+}
+.adm-mini {
+  background: var(--s3);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+  padding: 6px 11px;
+  color: var(--t2);
+  font-size: .72rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.adm-mini:active {
+  background: var(--s5);
+}
+
+
 /* Smoother page transitions */
 .page.on {
   animation: pgIn .28s cubic-bezier(.4, 0, .2, 1) both;
