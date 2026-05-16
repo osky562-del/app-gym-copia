@@ -9,7 +9,7 @@ function goPage(p) {
   if (p === 'prog') renderProgress();
   if (p === 'hist') renderHist();
   if (p === 'dash') { renderDash(); updateXpBar(); }
-  if (p === 'profile') renderProfile();
+  if (p === 'profile') { renderProfile(); if (typeof Admin !== 'undefined') Admin.onProfileVisible(); }
   if (p === 'ai') { loadPerfil(); updateAiUsageBadge(); }
   if (p === 'awards') renderAwards();
 }

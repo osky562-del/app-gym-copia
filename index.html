@@ -701,6 +701,40 @@
           </div>
         </div>
 
+        <!-- ADMIN PANEL (solo visible si admin) -->
+        <div id="adminPanel" style="display:none;margin:20px 0;">
+          <div class="sec" style="color:var(--a);">⚡ Panel Admin</div>
+
+          <div class="card" style="padding:14px;margin-bottom:9px;">
+            <div style="font-size:.68rem;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Stats globales</div>
+            <div id="admStats"></div>
+            <button class="adm-mini" style="margin-top:9px;width:100%;" onclick="Admin.loadStats()">↻ Actualizar</button>
+          </div>
+
+          <div class="card" style="padding:14px;margin-bottom:9px;">
+            <div style="font-size:.68rem;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Buscar usuario</div>
+            <div style="display:flex;gap:6px;">
+              <input id="admSearchInp" type="text" placeholder="Email o nombre…" style="flex:1;background:var(--s3);border:1.5px solid var(--line2);border-radius:9px;padding:10px 12px;color:var(--t1);font-size:.85rem;outline:none;">
+              <button class="adm-act" onclick="Admin.searchUser()">Buscar</button>
+            </div>
+            <div id="admSearchRes"></div>
+          </div>
+
+          <div class="card" style="padding:14px;margin-bottom:9px;">
+            <div style="font-size:.68rem;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Usuarios Pro activos</div>
+            <div id="admProList"></div>
+          </div>
+
+          <div class="card" style="padding:14px;margin-bottom:9px;">
+            <div style="font-size:.68rem;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">📢 Mensaje broadcast (visible para todos)</div>
+            <input id="admBroadcastInp" type="text" placeholder="Mensaje al lanzar la app…" style="width:100%;background:var(--s3);border:1.5px solid var(--line2);border-radius:9px;padding:10px 12px;color:var(--t1);font-size:.85rem;outline:none;box-sizing:border-box;margin-bottom:8px;">
+            <div style="display:flex;gap:6px;">
+              <button class="adm-act" style="flex:1;" onclick="Admin.setBroadcast()">Enviar</button>
+              <button class="adm-act adm-danger" onclick="Admin.clearBroadcast()">Borrar actual</button>
+            </div>
+          </div>
+        </div>
+
         <!-- LOGOUT TECHNICAL BUTTON -->
         <div style="margin: 20px 0 100px; padding: 0 16px;">
           <button class="btn-g" style="width:100%; background:transparent; border:1px solid var(--line); color:var(--t3); font-size:0.75rem; font-family:var(--fm); letter-spacing:1px; text-transform:uppercase;" onclick="logoutCloud()">
@@ -1060,6 +1094,7 @@
   <script src="js/effects.js"></script>
   <script src="js/onboarding.js"></script>
   <script src="js/firebase-sync.js?v=4"></script>
+  <script src="js/admin.js"></script>
   <script src="js/app.js"></script>
 
 </body>
