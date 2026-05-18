@@ -1,4 +1,40 @@
 /* ══ LIVE MODE ══ */
+
+/* Helper: enviar mensajes al bridge nativo de iOS para la Live Activity */
+function _liveActivityCall(name, body) {
+  try {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name]) {
+      window.webkit.messageHandlers[name].postMessage(body || {});
+    }
+  } catch (e) {}
+}
+
+/* Sincronizar el estado del JS con el de la Live Activity (cuando vuelve a primer plano) */
+window.__onLiveActivitySync = function(state) {
+  if (!state) return;
+  // Si la activity dice que NO estamos descansando pero el JS sí, parar el descanso
+  if (!state.isResting && typeof restInt !== 'undefined' && restInt) {
+    if (typeof stopRest === 'function') stopRest();
+    if (typeof toast === 'function') toast('Descanso saltado desde lock screen ✓', 'good');
+    return;
+  }
+  // Si la activity tiene un restEnd diferente al del JS, ajustar
+  if (state.isResting && state.restLeftSec != null && typeof restInt !== 'undefined' && restInt) {
+    const newLeft = Math.max(0, state.restLeftSec);
+    if (newLeft <= 0) {
+      if (typeof stopRest === 'function') stopRest();
+      return;
+    }
+    // Reajustar restTotal y restStartWall para que el contador siga desde newLeft
+    restTotal = newLeft;
+    restStartWall = Date.now();
+    if (typeof $ === 'function') {
+      $('lrrN').textContent = newLeft;
+      if (typeof updRing === 'function') updRing();
+    }
+  }
+};
+
 function startLiveMode() {
   if (!planExs.length) return;
   // Desbloquear el contexto de audio (iOS exige un gesto de usuario para que sea activo)
@@ -13,12 +49,22 @@ function startLiveMode() {
   $('liveMode').classList.add('show');
   liveTotalInt = setInterval(() => { if (!liveIsPaused) { liveTotalSec = Math.floor((Date.now() - liveStartWall - livePausedMs) / 1000); $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec); } }, 1000);
   saveLiveSession(); renderLiveEx(); updateLvStats();
+  // Iniciar Live Activity en iOS (lock screen + Dynamic Island)
+  const firstEx = liveExs[0];
+  if (firstEx) {
+    _liveActivityCall('startWorkoutActivity', {
+      exerciseName: firstEx.name,
+      currentSet: 1,
+      totalSets: firstEx.sets.length
+    });
+  }
 }
 function backToPlan() {
   if (!confirm('¿Volver a la planificación?')) return;
   clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
   STORE.set('live_session', null);
   $('liveMode').classList.remove('show'); $('planMode').classList.add('show');
+  _liveActivityCall('endWorkoutActivity', {});
 }
 function togglePause() {
   liveIsPaused = !liveIsPaused;
@@ -36,7 +82,24 @@ function togglePause() {
   }
   saveLiveSession();
 }
-function navEx(dir) { const n = liveIdx + dir; if (n < 0 || n >= liveExs.length) return; liveIdx = n; stopRest(); renderLiveEx(); saveLiveSession(); }
+function navEx(dir) {
+  const n = liveIdx + dir;
+  if (n < 0 || n >= liveExs.length) return;
+  liveIdx = n;
+  stopRest();
+  renderLiveEx();
+  saveLiveSession();
+  // Actualizar Live Activity con el nuevo ejercicio
+  const ex = liveExs[liveIdx];
+  if (ex) {
+    const doneSet = ex.sets.filter(s => s.done).length;
+    _liveActivityCall('updateWorkoutActivity', {
+      exerciseName: ex.name,
+      currentSet: Math.min(doneSet + 1, ex.sets.length),
+      totalSets: ex.sets.length
+    });
+  }
+}
 function renderLiveEx() {
   const ex = liveExs[liveIdx], lk = getLastKg(ex.name), pr = getPR(ex.name);
   $('lvExName').textContent = ex.name;
@@ -131,6 +194,7 @@ function finishLive() {
   const pct = total ? Math.round(done / total * 100) : 0;
   if (pct < 100 && !confirm(`Has completado el ${pct}% (${done}/${total} series). ¿Finalizar?`)) return;
   clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
+  _liveActivityCall('endWorkoutActivity', {});
   const exercises = liveExs.map(ex => {
     if (ex.isCardio) return { ex: ex.name, kg: '', sets: ex.sets.length, reps: 0, isCardio: true, setsDetail: ex.sets.map(s => ({ min: s.min || '', km: s.km || '', done: !!s.done })) };
     return { ex: ex.name, kg: String(Math.max(...ex.sets.map(s => +s.kg || 0)) || ''), sets: ex.sets.length, reps: ex.sets[0]?.reps || 10, setsDetail: ex.sets.map(s => ({ kg: s.kg || '', reps: s.reps, done: !!s.done })) };
@@ -272,7 +336,11 @@ function filterLvAC() {
   const all = getAllExNames();
   const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
   const exactMatch = all.some(n => n.toLowerCase() === val);
-  const newCard = !exactMatch ? `<div class="sh-card sh-card-new" onclick="pickLvEx('${raw.replace(/'/g, "\\'")}',false)"><span style="color:var(--a);font-weight:800;">+</span> Añadir "<b>${raw}</b>" como nuevo ejercicio</div>` : '';
+  // No permitir crear ejercicios fuera de la BD (cada ejercicio debe tener vídeo demo).
+  // Solo mostramos sugerencia "no encontrado" si no hay matches.
+  const newCard = m.length === 0
+    ? `<div class="sh-card" style="opacity:.6;cursor:default;"><span style="color:var(--t3);">🔍 No hay ejercicios que coincidan. Prueba con otra palabra.</span></div>`
+    : '';
   list.innerHTML = m.map(n => {
     const lk = getLastKg(n);
     return `<div class="sh-card" onclick="pickLvEx('${n.replace(/'/g, "\\'")}',false)" style="display:flex;justify-content:space-between;align-items:center;"><span>${n}</span>${lk ? `<span style="font-size:.75rem;color:var(--t3);font-family:var(--fm)">${lk}kg</span>` : ''}</div>`;

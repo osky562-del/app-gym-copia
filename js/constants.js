@@ -5,9 +5,40 @@ const MM = { banca: 'Pecho', inclinado: 'Pecho', apertura: 'Pecho', fondo: 'Pech
 const LEVELS = [{ lvl: 1, title: 'Novato', min: 0, max: 500 }, { lvl: 2, title: 'Guerrero', min: 500, max: 1200 }, { lvl: 3, title: 'Atleta', min: 1200, max: 2500 }, { lvl: 4, title: 'Campeón', min: 2500, max: 5000 }, { lvl: 5, title: 'Élite', min: 5000, max: 10000 }, { lvl: 6, title: 'Maestro', min: 10000, max: 20000 }, { lvl: 7, title: 'Leyenda', min: 20000, max: Infinity }];
 const XP = { session: 50, exercise: 10, series: 5, pr: 100 };
 recalculateBonusXp();
+/* TPL: nombres EXACTOS del exercises-db.js para que el ▶ Ver técnica
+   funcione al 100% en cada ejercicio */
 const TPL = {
-  1: [{ ex: "Press banca", s: 4, r: 10 }, { ex: "Press inclinado", s: 3, r: 12 }, { ex: "Aperturas", s: 3, r: 15 }, { ex: "Fondos", s: 3, r: 12 }, { ex: "Extensión tríceps", s: 3, r: 12 }, { ex: "Press francés", s: 3, r: 10 }],
-  2: [{ ex: "Dominadas", s: 4, r: 10 }, { ex: "Remo con barra", s: 4, r: 10 }, { ex: "Jalón al pecho", s: 3, r: 12 }, { ex: "Curl bíceps barra", s: 3, r: 10 }, { ex: "Curl alterno", s: 3, r: 12 }, { ex: "Curl concentrado", s: 2, r: 12 }],
-  3: [{ ex: "Sentadilla", s: 4, r: 10 }, { ex: "Prensa de piernas", s: 4, r: 12 }, { ex: "Peso muerto rumano", s: 3, r: 10 }, { ex: "Curl femoral", s: 3, r: 12 }, { ex: "Extensión cuádriceps", s: 3, r: 15 }, { ex: "Gemelos", s: 4, r: 15 }],
-  4: [{ ex: "Press militar", s: 4, r: 10 }, { ex: "Elevaciones laterales", s: 3, r: 15 }, { ex: "Elevaciones frontales", s: 3, r: 12 }, { ex: "Pájaros", s: 3, r: 15 }, { ex: "Encogimientos", s: 3, r: 15 }, { ex: "Crunch", s: 3, r: 20 }, { ex: "Plancha", s: 3, r: 60 }]
+  1: [
+    { ex: "Press de banca con barra - Agarre medio", s: 4, r: 10 },
+    { ex: "Press de banca inclinado con barra - Agarre medio", s: 3, r: 12 },
+    { ex: "Aperturas con mancuernas", s: 3, r: 15 },
+    { ex: "Inmersiones - Versión para el pecho", s: 3, r: 12 },
+    { ex: "Flexión de tríceps", s: 3, r: 12 },
+    { ex: "Press de tríceps acostado", s: 3, r: 10 }
+  ],
+  2: [
+    { ex: "dominadas", s: 4, r: 10 },
+    { ex: "Remo inclinado con barra", s: 4, r: 10 },
+    { ex: "Pulldown lateral con agarre ancho", s: 3, r: 12 },
+    { ex: "Curl con barra", s: 3, r: 10 },
+    { ex: "Curl de bíceps alternativo con mancuernas", s: 3, r: 12 },
+    { ex: "Rizos de concentración", s: 2, r: 12 }
+  ],
+  3: [
+    { ex: "Sentadilla con barra", s: 4, r: 10 },
+    { ex: "Prensa de piernas", s: 4, r: 12 },
+    { ex: "Peso muerto rumano", s: 3, r: 10 },
+    { ex: "Flexiones de piernas acostadas", s: 3, r: 12 },
+    { ex: "Extensiones de piernas", s: 3, r: 15 },
+    { ex: "Elevaciones de pantorrillas de pie", s: 4, r: 15 }
+  ],
+  4: [
+    { ex: "Press de hombros con barra", s: 4, r: 10 },
+    { ex: "Elevación lateral lateral", s: 3, r: 15 },
+    { ex: "Elevación frontal con mancuernas", s: 3, r: 12 },
+    { ex: "Moscas inversas", s: 3, r: 15 },
+    { ex: "Encogimiento de hombros con barra", s: 3, r: 15 },
+    { ex: "abdominales", s: 3, r: 20 },
+    { ex: "tablón", s: 3, r: 60 }
+  ]
 };
