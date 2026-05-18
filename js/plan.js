@@ -58,12 +58,22 @@ function filterAC() {
   const all = getAllExNames();
   const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 7);
   const exactMatch = all.some(n => n.toLowerCase() === val);
-  const newItem = !exactMatch ? `<div class="plan-ac-item plan-ac-new" onclick="addPlanEx('${raw.replace(/'/g, "\\'")}')"><span style="color:var(--a);font-weight:800;">+</span> Crear "<b>${raw}</b>"</div>` : '';
+  const newItem = !exactMatch ? `<div class="plan-ac-item plan-ac-new" onclick="addPlanExCustom('${raw.replace(/'/g, "\\'")}')"><div><span style="color:var(--a);font-weight:800;">+</span> Crear "<b>${raw}</b>"</div><div style="font-size:.62rem;color:var(--amber);">⚠️ Sin vídeo demo</div></div>` : '';
   if (!m.length && !newItem) { ac.classList.remove('show'); return; }
   ac.innerHTML = m.map(n => { const lk = getLastKg(n); return `<div class="plan-ac-item" onclick="addPlanEx('${n.replace(/'/g, "\\'")}')"><span>${n}</span>${lk ? `<span class="plan-ac-last">${lk}kg</span>` : ''}</div>`; }).join('') + newItem;
   ac.classList.add('show');
 }
 document.addEventListener('click', e => { if (!e.target.closest('.plan-search-wrap')) $('planAC').classList.remove('show'); });
+/* Variante que pide confirmación al usuario antes de crear un ejercicio
+   que NO está en la base de datos de 873 (sin vídeo demo). */
+function addPlanExCustom(name) {
+  const msg = `Este ejercicio NO está en nuestra base de datos.\n\n` +
+              `Se añadirá igualmente pero NO tendrá vídeo demostrativo cuando pulses "▶ Ver técnica" (verás un botón para buscarlo en YouTube).\n\n` +
+              `¿Continuar y añadir "${name}"?`;
+  if (!confirm(msg)) return;
+  addPlanEx(name);
+}
+
 function loadTpl(id) {
   planExs = TPL[id].map(t => ({ name: t.ex, sets: t.s, reps: t.r, kg: getLastKg(t.ex) || '', restSec: 90 }));
   renderPlanList(); closeSheet('shTpl'); toast('Rutina cargada ✓');
@@ -74,7 +84,7 @@ function openCopy() {
   $('shCopy').classList.add('on');
 }
 function doCopy(id) { const w = workouts.find(x => x.id === id); if (!w) return; planExs = (w.exercises || []).map(e => ({ name: e.ex, sets: +e.sets || 3, reps: +e.reps || 10, kg: getLastKg(e.ex) || e.kg || '', restSec: 90 })); renderPlanList(); closeSheet('shCopy'); toast('Copiado ✓'); }
-/* restPickerMode: 'plan' o 'live' */
+/* restPickerMode: 'plan' (planificación) o 'live' (entrenando) */
 let restPickerMode = 'plan';
 
 function openRestPicker(idx) {
@@ -88,6 +98,7 @@ function openRestPicker(idx) {
   $('rpOv').classList.add('on');
 }
 
+/* Abrir el selector de descanso desde el modo entrenamiento (cambia el descanso del ejercicio actual) */
 function openLiveRestPicker() {
   if (typeof liveExs === 'undefined' || !liveExs[liveIdx]) return;
   restPickerMode = 'live';
@@ -134,6 +145,7 @@ function pickRestCustom() {
   toast('Descanso: ' + v + 's ✓', 'good');
 }
 
+/* Formatea segundos a "Off / 90s / 1m 30s / 3m" */
 function fmtRestPill(sec) {
   if (!sec) return 'Off';
   if (sec < 60) return sec + 's';
