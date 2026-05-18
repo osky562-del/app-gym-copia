@@ -336,16 +336,33 @@ function filterLvAC() {
   const all = getAllExNames();
   const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
   const exactMatch = all.some(n => n.toLowerCase() === val);
-  // No permitir crear ejercicios fuera de la BD (cada ejercicio debe tener vídeo demo).
-  // Solo mostramos sugerencia "no encontrado" si no hay matches.
-  const newCard = m.length === 0
-    ? `<div class="sh-card" style="opacity:.6;cursor:default;"><span style="color:var(--t3);">🔍 No hay ejercicios que coincidan. Prueba con otra palabra.</span></div>`
+  // Permitir crear ejercicios fuera de la BD pero con aviso de "sin vídeo demo"
+  const newCard = !exactMatch
+    ? `<div class="sh-card sh-card-new" onclick="pickLvExCustom('${raw.replace(/'/g, "\\'")}')">
+         <div style="display:flex;align-items:center;gap:8px;">
+           <span style="color:var(--a);font-weight:800;font-size:1.1rem;">+</span>
+           <div style="flex:1;">
+             <div>Añadir "<b>${raw}</b>" como nuevo ejercicio</div>
+             <div style="font-size:.65rem;color:var(--amber);margin-top:2px;">⚠️ Sin vídeo demo</div>
+           </div>
+         </div>
+       </div>`
     : '';
   list.innerHTML = m.map(n => {
     const lk = getLastKg(n);
     return `<div class="sh-card" onclick="pickLvEx('${n.replace(/'/g, "\\'")}',false)" style="display:flex;justify-content:space-between;align-items:center;"><span>${n}</span>${lk ? `<span style="font-size:.75rem;color:var(--t3);font-family:var(--fm)">${lk}kg</span>` : ''}</div>`;
   }).join('') + newCard;
 }
+/* Variante que pide confirmación al usuario antes de crear un ejercicio
+   que NO está en la base de datos de 873 (sin vídeo demo). */
+function pickLvExCustom(name) {
+  const msg = `Este ejercicio NO está en nuestra base de datos.\n\n` +
+              `Se añadirá igualmente pero NO tendrá vídeo demostrativo cuando pulses "▶ Ver técnica" (verás un botón para buscarlo en YouTube).\n\n` +
+              `¿Continuar y añadir "${name}"?`;
+  if (!confirm(msg)) return;
+  pickLvEx(name, false);
+}
+
 function pickLvEx(name, isCardio) {
   closeSheet('shLvEx');
   const lastDetail = getLastSetsDetail(name);
