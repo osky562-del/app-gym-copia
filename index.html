@@ -1053,6 +1053,7 @@
       <div class="lv-ex-scroll" id="lvExScroll">
         <div class="lv-ex-name-row">
           <div class="lv-ex-name" id="lvExName">—</div>
+          <button class="lv-ex-video" onclick="openExerciseVideo(liveExs[liveIdx]?.name||'')" title="Ver técnica">▶</button>
           <button class="lv-ex-reorder" onclick="openReorderSheet()" title="Reordenar ejercicios">⇅</button>
           <button class="lv-ex-change" onclick="openLvExSheet('replace')">Cambiar</button>
           <button class="lv-ex-remove" onclick="removeLvEx()" title="Quitar este ejercicio">✕</button>
@@ -1095,6 +1096,8 @@
   <script src="js/onboarding.js"></script>
   <script src="js/firebase-sync.js?v=4"></script>
   <script src="js/admin.js"></script>
+  <script src="js/exercises-db.js"></script>
+  <script src="js/exercise-video.js"></script>
   <script src="js/app.js"></script>
 
 </body>
