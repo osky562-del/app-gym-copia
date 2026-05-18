@@ -51,6 +51,21 @@ function estimateRecovery(muscle, volume, rpe) {
   else if (rpe <= 6) hours *= 0.8;
   return Math.round(hours);
 }
-function getAllExNames() { const s = new Set(); workouts.forEach(w => (w.exercises || []).forEach(e => s.add(e.ex))); Object.values(TPL).flat().forEach(e => s.add(e.ex)); return [...s].sort(); }
+/* Lista completa de ejercicios disponibles para añadir/buscar.
+   Prioriza la BD de 873 ejercicios (todos con vídeo demo) y mezcla los
+   que el usuario ya haya hecho en su historial (para retro-compatibilidad
+   con cuentas antiguas que tengan ejercicios con nombres distintos). */
+function getAllExNames() {
+  const s = new Set();
+  // 1) Base de datos de 873 ejercicios (todos con vídeo)
+  if (typeof window !== 'undefined' && Array.isArray(window.EXERCISES_DB)) {
+    window.EXERCISES_DB.forEach(e => { if (e.name) s.add(e.name); });
+  }
+  // 2) Plantillas predefinidas
+  Object.values(TPL).flat().forEach(e => s.add(e.ex));
+  // 3) Ejercicios que el usuario ya usó (aunque no estén en la BD)
+  workouts.forEach(w => (w.exercises || []).forEach(e => s.add(e.ex)));
+  return [...s].sort((a, b) => a.localeCompare(b, 'es'));
+}
 function calcStreak() { if (!workouts.length) return 0; const d = [...new Set(workouts.map(w => w.date))].sort().reverse(); let s = 0, cur = new Date(); cur.setHours(0, 0, 0, 0); for (const x of d) { const wd = new Date(x + 'T00:00:00'); if (Math.round((cur - wd) / 86400000) <= 1) { s++; cur = wd; } else break; } return s; }
 function calcMaxStreak() { const d = [...new Set(workouts.map(w => w.date))].sort(); let max = 0, cur = 0; for (let i = 0; i < d.length; i++) { cur = i === 0 ? 1 : Math.round((new Date(d[i] + 'T00:00:00') - new Date(d[i - 1] + 'T00:00:00')) / 86400000) <= 1 ? cur + 1 : 1; if (cur > max) max = cur; } return max; }
