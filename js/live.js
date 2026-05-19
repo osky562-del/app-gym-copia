@@ -39,7 +39,27 @@ function startLiveMode() {
   if (!planExs.length) return;
   // Desbloquear el contexto de audio (iOS exige un gesto de usuario para que sea activo)
   if (typeof unlockAudioContext === 'function') unlockAudioContext();
-  liveExs = planExs.map(ex => ({ name: ex.name, restSec: ex.restSec, sets: Array.from({ length: ex.sets }, () => ({ kg: ex.kg || '', reps: ex.reps, done: false })) }));
+  // Cada ejercicio del plan se mapea a un ejercicio "live". Si ya existe un historial de
+  // este ejercicio, se cargan los kg/reps INDIVIDUALES de cada serie de la última vez
+  // (no el mismo peso copiado en todas las series). El flag `warmup` se hereda también.
+  liveExs = planExs.map(ex => {
+    const lastDetail = (typeof getLastSetsDetail === 'function') ? getLastSetsDetail(ex.name) : null;
+    let sets;
+    if (lastDetail && lastDetail.length > 0) {
+      sets = Array.from({ length: ex.sets }, (_, i) => {
+        const src = lastDetail[i] || lastDetail[lastDetail.length - 1];
+        return {
+          kg: (src && src.kg !== undefined && src.kg !== '') ? src.kg : (ex.kg || ''),
+          reps: (src && src.reps) ? src.reps : ex.reps,
+          done: false,
+          warmup: !!(src && src.warmup)
+        };
+      });
+    } else {
+      sets = Array.from({ length: ex.sets }, () => ({ kg: ex.kg || '', reps: ex.reps, done: false, warmup: false }));
+    }
+    return { name: ex.name, restSec: ex.restSec, sets };
+  });
   liveIdx = 0; liveTotalSec = 0; livePauseSec = 0; liveIsPaused = false; livePauseCnt = 0;
   liveStartWall = Date.now(); livePausedMs = 0; livePauseStartWall = 0;
   $('lvTime').textContent = '00:00'; $('lvTime').className = 'lv-time';
@@ -122,12 +142,19 @@ function renderLiveEx() {
   }
   $('lvNavP').disabled = liveIdx === 0; $('lvNavN').disabled = liveIdx === liveExs.length - 1;
   const canRemove = ex.sets.length > 1 && !ex.sets[ex.sets.length - 1].done;
+  // Numera las series "reales" ignorando las de calentamiento (1, 2, 3...).
+  // Las series de calentamiento muestran 🔥 en lugar del número.
+  let realSetNum = 0;
   $('lvSetsEl').innerHTML = ex.sets.map((s, si) => {
     const isActive = !s.done && ex.sets.slice(0, si).every(p => p.done);
+    if (!s.warmup) realSetNum++;
+    const setLabel = s.warmup ? '🔥' : realSetNum;
+    const numTitle = s.warmup ? 'Quitar calentamiento' : 'Marcar como calentamiento';
+    const warmupCls = s.warmup ? ' warmup' : '';
     if (ex.isCardio) {
-      return `<div class="lv-set${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
+      return `<div class="lv-set${warmupCls}${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
   <div class="lv-set-body">
-    <div class="lv-set-num">${si + 1}</div>
+    <div class="lv-set-num" onclick="toggleWarmup(${si})" title="${numTitle}" style="cursor:pointer;user-select:none;">${setLabel}</div>
     <div class="lv-set-inps">
       <div class="lv-set-grp"><div class="lv-set-lbl">Min</div><input class="lv-inp" type="number" value="${s.min || ''}" placeholder="—" min="0" oninput="liveExs[${liveIdx}].sets[${si}].min=this.value" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
       <div class="lv-set-grp"><div class="lv-set-lbl">Km</div><input class="lv-inp" type="number" value="${s.km || ''}" placeholder="—" min="0" step="0.1" oninput="liveExs[${liveIdx}].sets[${si}].km=this.value" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
@@ -137,16 +164,16 @@ function renderLiveEx() {
   </div>
 </div>`;
     }
-    const isPR = +s.kg > 0 && pr > 0 && +s.kg > pr;
-    const vol = +s.kg && +s.reps ? Math.round(+s.kg * +s.reps) : null;
-    return `<div class="lv-set${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
+    const isPR = !s.warmup && +s.kg > 0 && pr > 0 && +s.kg > pr;
+    const vol = !s.warmup && +s.kg && +s.reps ? Math.round(+s.kg * +s.reps) : null;
+    return `<div class="lv-set${warmupCls}${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
   <div class="lv-set-body">
-    <div class="lv-set-num">${si + 1}</div>
+    <div class="lv-set-num" onclick="toggleWarmup(${si})" title="${numTitle}" style="cursor:pointer;user-select:none;">${setLabel}</div>
     <div class="lv-set-inps">
       <div class="lv-set-grp"><div class="lv-set-lbl">Kg</div><input class="lv-inp${isPR ? ' pr' : ''}" type="number" value="${s.kg || ''}" placeholder="—" min="0" oninput="liveExs[${liveIdx}].sets[${si}].kg=this.value;updVol(${si})" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
       <div class="lv-set-grp"><div class="lv-set-lbl">Reps</div><input class="lv-inp" type="number" value="${s.reps || ''}" placeholder="—" min="1" oninput="liveExs[${liveIdx}].sets[${si}].reps=this.value;updVol(${si})" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
     </div>
-    <div class="lv-set-vol${vol ? ' has' : ''}" id="lsv${si}">${vol || '—'}</div>
+    <div class="lv-set-vol${vol ? ' has' : ''}" id="lsv${si}">${s.warmup ? 'Cal' : (vol || '—')}</div>
     <button class="lv-check${s.done ? ' done' : ''}" onclick="toggleSet(${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
   </div>
 </div>`;
@@ -160,11 +187,22 @@ function addLiveSet() {
   const ex = liveExs[liveIdx];
   const last = ex.sets[ex.sets.length - 1];
   if (ex.isCardio) {
-    ex.sets.push({ min: last?.min || '', km: last?.km || '', done: false });
+    ex.sets.push({ min: last?.min || '', km: last?.km || '', done: false, warmup: false });
   } else {
-    ex.sets.push({ kg: last?.kg || '', reps: last?.reps || 10, done: false });
+    ex.sets.push({ kg: last?.kg || '', reps: last?.reps || 10, done: false, warmup: false });
   }
   renderLiveEx(); saveLiveSession();
+}
+/* Marcar/desmarcar una serie como calentamiento. No se puede modificar una serie ya completada. */
+function toggleWarmup(si) {
+  const ex = liveExs[liveIdx];
+  if (!ex || !ex.sets[si]) return;
+  const s = ex.sets[si];
+  if (s.done) { toast('No puedes cambiar una serie ya completada', 'err'); return; }
+  s.warmup = !s.warmup;
+  renderLiveEx();
+  saveLiveSession();
+  if (typeof vib === 'function') vib([20]);
 }
 function removeLiveSet() {
   const ex = liveExs[liveIdx];
@@ -177,27 +215,86 @@ function updVol(si) { const s = liveExs[liveIdx].sets[si]; const v = +s.kg && +s
 function toggleSet(si) {
   const ex = liveExs[liveIdx], s = ex.sets[si]; s.done = !s.done;
   if (s.done) {
-    setTimeout(updateAutoRpe, 50); vib([60]); showXpFloat(XP.series); const kg = +s.kg || 0, pr = getPR(ex.name); if (kg > 0 && kg > pr) showPR(ex.name, kg); if (ex.restSec) startRest(ex.restSec, ex.sets.every(x => x.done) ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
+    vib([60]);
+    // Las series de calentamiento NO suman XP ni cuentan para PR ni para el RPE auto.
+    // Sí inician descanso normal (puedes saltarlo manualmente si no lo necesitas).
+    if (!s.warmup) {
+      setTimeout(updateAutoRpe, 50);
+      showXpFloat(XP.series);
+      const kg = +s.kg || 0, pr = getPR(ex.name);
+      if (kg > 0 && kg > pr) showPR(ex.name, kg);
+    }
+    if (ex.restSec) startRest(ex.restSec, ex.sets.every(x => x.done) ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
   }
   renderLiveEx(); saveLiveSession();
 }
 function updateLvStats() {
-  let done = 0, vol = 0; liveExs.forEach(ex => ex.sets.forEach(s => { if (s.done) { done++; vol += (+s.kg || 0) * (+s.reps || 1); } }));
-  const total = liveExs.reduce((s, e) => s + e.sets.length, 0);
+  // El volumen y el contador de series ignoran las series de calentamiento.
+  let done = 0, vol = 0, totalReal = 0;
+  liveExs.forEach(ex => ex.sets.forEach(s => {
+    if (s.warmup) return;
+    totalReal++;
+    if (s.done) { done++; vol += (+s.kg || 0) * (+s.reps || 1); }
+  }));
   $('lvEx').textContent = (liveIdx + 1) + '/' + liveExs.length;
   $('lvSets').textContent = done; $('lvVol').textContent = big(vol);
-  $('lvProg').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+  $('lvProg').style.width = (totalReal ? Math.round(done / totalReal * 100) : 0) + '%';
+}
+/* Llamado por rest.js cuando el contador de descanso llega a 0.
+   - Si hay una siguiente serie no completada en el ejercicio actual: scroll + focus a su input.
+   - Si todas las series del ejercicio actual están done: pasa al siguiente ejercicio. */
+function autoAdvanceAfterRest() {
+  if (typeof liveExs === 'undefined' || !Array.isArray(liveExs) || !liveExs.length) return;
+  const ex = liveExs[liveIdx];
+  if (!ex) return;
+  const nextSetIdx = ex.sets.findIndex(s => !s.done);
+  if (nextSetIdx === -1) {
+    // Todas hechas: saltar al siguiente ejercicio si existe.
+    if (liveIdx < liveExs.length - 1) {
+      navEx(1);
+      setTimeout(() => {
+        const setEl = document.getElementById('lvs0');
+        if (setEl) setEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const inp = setEl ? setEl.querySelector('.lv-inp') : null;
+        if (inp) try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
+      }, 200);
+    }
+    return;
+  }
+  setTimeout(() => {
+    const setEl = document.getElementById('lvs' + nextSetIdx);
+    if (setEl) setEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const inp = setEl ? setEl.querySelector('.lv-inp') : null;
+    if (inp) try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
+  }, 150);
 }
 function finishLive() {
-  const total = liveExs.reduce((s, e) => s + e.sets.length, 0);
-  const done = liveExs.reduce((s, e) => s + e.sets.filter(s => s.done).length, 0);
+  // El porcentaje de progreso ignora las series de calentamiento (no son objetivo del entreno).
+  const total = liveExs.reduce((s, e) => s + e.sets.filter(x => !x.warmup).length, 0);
+  const done = liveExs.reduce((s, e) => s + e.sets.filter(x => x.done && !x.warmup).length, 0);
   const pct = total ? Math.round(done / total * 100) : 0;
   if (pct < 100 && !confirm(`Has completado el ${pct}% (${done}/${total} series). ¿Finalizar?`)) return;
   clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
   _liveActivityCall('endWorkoutActivity', {});
   const exercises = liveExs.map(ex => {
-    if (ex.isCardio) return { ex: ex.name, kg: '', sets: ex.sets.length, reps: 0, isCardio: true, setsDetail: ex.sets.map(s => ({ min: s.min || '', km: s.km || '', done: !!s.done })) };
-    return { ex: ex.name, kg: String(Math.max(...ex.sets.map(s => +s.kg || 0)) || ''), sets: ex.sets.length, reps: ex.sets[0]?.reps || 10, setsDetail: ex.sets.map(s => ({ kg: s.kg || '', reps: s.reps, done: !!s.done })) };
+    if (ex.isCardio) {
+      return {
+        ex: ex.name, kg: '', sets: ex.sets.filter(s => !s.warmup).length, reps: 0, isCardio: true,
+        setsDetail: ex.sets.map(s => ({ min: s.min || '', km: s.km || '', done: !!s.done, warmup: !!s.warmup }))
+      };
+    }
+    // Para el resumen "agregado" (kg / reps / sets) solo contamos las series NO de calentamiento.
+    // El detalle por serie sí incluye las warmup con su flag, para reproducirlas la próxima vez.
+    const realSets = ex.sets.filter(s => !s.warmup);
+    const maxKg = realSets.length ? Math.max(...realSets.map(s => +s.kg || 0)) : 0;
+    const firstReps = realSets[0]?.reps || ex.sets[0]?.reps || 10;
+    return {
+      ex: ex.name,
+      kg: String(maxKg || ''),
+      sets: realSets.length,
+      reps: firstReps,
+      setsDetail: ex.sets.map(s => ({ kg: s.kg || '', reps: s.reps, done: !!s.done, warmup: !!s.warmup }))
+    };
   });
   const wk = { id: uid(), date: $('planDate').value || new Date().toISOString().split('T')[0], duration: liveTotalSec ? Math.round(liveTotalSec / 60) : '', pauseDuration: livePauseSec ? Math.round(livePauseSec / 60) : '', pauseCount: livePauseCnt, rpe: getRpeValue(), notes: $('planNotes').value || '', exercises };
   // Detect new PRs before saving

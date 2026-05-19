@@ -441,6 +441,32 @@
   color: var(--green);
 }
 
+/* ── Serie de calentamiento ──
+   No cuenta para volumen / PR / XP. Visualmente: borde y número en naranja. */
+.lv-set.warmup {
+  border-color: rgba(245, 166, 35, .35);
+  background: rgba(245, 166, 35, .04);
+}
+.lv-set.warmup .lv-set-num {
+  background: rgba(245, 166, 35, .14);
+  border-color: rgba(245, 166, 35, .4);
+  color: #f5a623;
+  font-size: 1rem;
+}
+.lv-set.warmup.done {
+  border-color: rgba(245, 166, 35, .5);
+  background: rgba(245, 166, 35, .08);
+}
+.lv-set.warmup.done .lv-set-num {
+  background: rgba(245, 166, 35, .25);
+  border-color: rgba(245, 166, 35, .5);
+}
+.lv-set.warmup .lv-set-vol {
+  color: #f5a623;
+  font-weight: 700;
+  font-size: .68rem;
+}
+
 .lv-set-inps {
   flex: 1;
   display: grid;
