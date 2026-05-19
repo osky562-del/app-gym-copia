@@ -16,6 +16,7 @@ window.__onLiveActivitySync = function(state) {
   if (!state.isResting && typeof restInt !== 'undefined' && restInt) {
     if (typeof stopRest === 'function') stopRest();
     if (typeof toast === 'function') toast('Descanso saltado desde lock screen ✓', 'good');
+    if (typeof autoAdvanceAfterRest === 'function') autoAdvanceAfterRest();
     return;
   }
   // Si la activity tiene un restEnd diferente al del JS, ajustar
@@ -23,6 +24,7 @@ window.__onLiveActivitySync = function(state) {
     const newLeft = Math.max(0, state.restLeftSec);
     if (newLeft <= 0) {
       if (typeof stopRest === 'function') stopRest();
+      if (typeof autoAdvanceAfterRest === 'function') autoAdvanceAfterRest();
       return;
     }
     // Reajustar restTotal y restStartWall para que el contador siga desde newLeft
@@ -224,8 +226,11 @@ function toggleSet(si) {
       const kg = +s.kg || 0, pr = getPR(ex.name);
       if (kg > 0 && kg > pr) showPR(ex.name, kg);
     }
+    // "Todas done" para el mensaje del descanso: ignora las warmup pendientes (el usuario
+    // puede tener warmups sin marcar y aun así estar listo para el siguiente ejercicio).
+    const allRealDone = ex.sets.every(x => x.warmup || x.done);
     if (ex.restSec) {
-      startRest(ex.restSec, ex.sets.every(x => x.done) ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
+      startRest(ex.restSec, allRealDone ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
     } else {
       // Sin descanso configurado: auto-advance inmediato a la siguiente serie / ejercicio.
       if (typeof autoAdvanceAfterRest === 'function') setTimeout(autoAdvanceAfterRest, 250);
@@ -245,27 +250,32 @@ function updateLvStats() {
   $('lvSets').textContent = done; $('lvVol').textContent = big(vol);
   $('lvProg').style.width = (totalReal ? Math.round(done / totalReal * 100) : 0) + '%';
 }
-/* Llamado por rest.js cuando el contador de descanso llega a 0.
-   - Si hay una siguiente serie no completada en el ejercicio actual: scroll + focus a su input.
-   - Si todas las series del ejercicio actual están done: pasa al siguiente ejercicio. */
+/* Llamado por rest.js cuando el contador de descanso llega a 0, cuando se salta
+   el descanso manualmente, o por toggleSet cuando no hay descanso configurado.
+   - Si hay una siguiente serie no completada (no warmup pendiente): scroll + focus a su input.
+   - Si todas las series "reales" del ejercicio actual están done: pasa al siguiente ejercicio. */
 function autoAdvanceAfterRest() {
   if (typeof liveExs === 'undefined' || !Array.isArray(liveExs) || !liveExs.length) return;
   const ex = liveExs[liveIdx];
   if (!ex) return;
-  const nextSetIdx = ex.sets.findIndex(s => !s.done);
+  // Una serie cuenta como "pendiente" solo si NO es warmup. Las warmup no completadas
+  // no bloquean el avance al siguiente ejercicio (el usuario puede haber decidido saltárselas).
+  const nextSetIdx = ex.sets.findIndex(s => !s.done && !s.warmup);
   if (nextSetIdx === -1) {
-    // Todas hechas: saltar al siguiente ejercicio si existe.
+    // Todas las series reales hechas: saltar al siguiente ejercicio si existe.
     if (liveIdx < liveExs.length - 1) {
+      const nextEx = liveExs[liveIdx + 1];
       navEx(1);
-      setTimeout(() => {
-        const setEl = document.getElementById('lvs0');
-        if (setEl) setEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const inp = setEl ? setEl.querySelector('.lv-inp') : null;
-        if (inp) try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
-      }, 200);
+      if (typeof toast === 'function' && nextEx) {
+        toast('▶ ' + nextEx.name, 'good');
+      }
+    } else {
+      // Era el último ejercicio del entreno.
+      if (typeof toast === 'function') toast('🎉 ¡Entreno completo! Pulsa Finalizar', 'good');
     }
     return;
   }
+  // Hay una siguiente serie pendiente: scroll + focus a su input.
   setTimeout(() => {
     const setEl = document.getElementById('lvs' + nextSetIdx);
     if (setEl) setEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
