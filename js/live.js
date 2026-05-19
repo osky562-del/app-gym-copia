@@ -224,7 +224,12 @@ function toggleSet(si) {
       const kg = +s.kg || 0, pr = getPR(ex.name);
       if (kg > 0 && kg > pr) showPR(ex.name, kg);
     }
-    if (ex.restSec) startRest(ex.restSec, ex.sets.every(x => x.done) ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
+    if (ex.restSec) {
+      startRest(ex.restSec, ex.sets.every(x => x.done) ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
+    } else {
+      // Sin descanso configurado: auto-advance inmediato a la siguiente serie / ejercicio.
+      if (typeof autoAdvanceAfterRest === 'function') setTimeout(autoAdvanceAfterRest, 250);
+    }
   }
   renderLiveEx(); saveLiveSession();
 }

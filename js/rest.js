@@ -117,4 +117,8 @@ function stopRest() {
     }
   } catch (e) {}
 }
-function skipRest() { stopRest(); }
+function skipRest() {
+  stopRest();
+  // Saltar también dispara el auto-advance (mismo comportamiento que cuando termina solo).
+  if (typeof autoAdvanceAfterRest === 'function') autoAdvanceAfterRest();
+}
