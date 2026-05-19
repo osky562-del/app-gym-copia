@@ -17,28 +17,28 @@ const TPL = {
     { ex: "Press de tríceps acostado", s: 3, r: 10 }
   ],
   2: [
-    { ex: "dominadas", s: 4, r: 10 },
+    { ex: "Dominadas", s: 4, r: 10 },
     { ex: "Remo inclinado con barra", s: 4, r: 10 },
-    { ex: "Pulldown lateral con agarre ancho", s: 3, r: 12 },
+    { ex: "Jalón al pecho con agarre ancho", s: 3, r: 12 },
     { ex: "Curl con barra", s: 3, r: 10 },
     { ex: "Curl de bíceps alternativo con mancuernas", s: 3, r: 12 },
-    { ex: "Rizos de concentración", s: 2, r: 12 }
+    { ex: "Curl de concentración", s: 2, r: 12 }
   ],
   3: [
     { ex: "Sentadilla con barra", s: 4, r: 10 },
     { ex: "Prensa de piernas", s: 4, r: 12 },
     { ex: "Peso muerto rumano", s: 3, r: 10 },
-    { ex: "Flexiones de piernas acostadas", s: 3, r: 12 },
+    { ex: "Curl femoral tumbado", s: 3, r: 12 },
     { ex: "Extensiones de piernas", s: 3, r: 15 },
     { ex: "Elevaciones de pantorrillas de pie", s: 4, r: 15 }
   ],
   4: [
     { ex: "Press de hombros con barra", s: 4, r: 10 },
-    { ex: "Elevación lateral lateral", s: 3, r: 15 },
+    { ex: "Elevación lateral con mancuernas", s: 3, r: 15 },
     { ex: "Elevación frontal con mancuernas", s: 3, r: 12 },
     { ex: "Moscas inversas", s: 3, r: 15 },
     { ex: "Encogimiento de hombros con barra", s: 3, r: 15 },
-    { ex: "abdominales", s: 3, r: 20 },
-    { ex: "tablón", s: 3, r: 60 }
+    { ex: "Abdominales", s: 3, r: 20 },
+    { ex: "Plancha", s: 3, r: 60 }
   ]
 };
