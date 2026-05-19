@@ -231,10 +231,22 @@ function toggleSet(si) {
     const allRealDone = ex.sets.every(x => x.warmup || x.done);
     if (ex.restSec) {
       startRest(ex.restSec, allRealDone ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
-    } else {
-      // Sin descanso configurado: auto-advance inmediato a la siguiente serie / ejercicio.
-      if (typeof autoAdvanceAfterRest === 'function') setTimeout(autoAdvanceAfterRest, 250);
     }
+    // Programar el auto-advance INDEPENDIENTEMENTE del callback del descanso.
+    // Esto es un respaldo: si por cualquier motivo (app en background, setInterval
+    // pausado, callback que no se dispara) el rest.js no llama autoAdvanceAfterRest,
+    // este setTimeout lo hace por wall-clock. Es idempotente: si autoAdvance ya
+    // se ejecutó (por skipRest o por el callback), esta segunda llamada
+    // detecta que el ejercicio ya cambió y no hace nada.
+    const wait = (ex.restSec ? ex.restSec * 1000 : 250) + 80;
+    setTimeout(() => {
+      // Si el usuario navegó manualmente, está pausado, o ya estamos en otro
+      // ejercicio, no hacemos nada.
+      if (typeof liveIsPaused !== 'undefined' && liveIsPaused) return;
+      if (liveExs[liveIdx] !== ex) return;
+      if (!ex.sets[si] || !ex.sets[si].done) return;
+      if (typeof autoAdvanceAfterRest === 'function') autoAdvanceAfterRest();
+    }, wait);
   }
   renderLiveEx(); saveLiveSession();
 }
