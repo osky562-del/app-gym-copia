@@ -72,8 +72,14 @@
       .exv-ov {
         display: none; position: fixed; inset: 0;
         background: rgba(0,0,0,.88); z-index: 999;
-        align-items: center; justify-content: center;
-        padding: 16px;
+        /* flex-start: ancla el modal arriba en vez de centrarlo. Si el contenido es
+           más alto que el viewport, el header con la X queda siempre accesible. */
+        align-items: flex-start; justify-content: center;
+        /* Respeta el notch / Dynamic Island en iOS y la home-bar abajo. */
+        padding-top: max(16px, env(safe-area-inset-top));
+        padding-right: 16px;
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        padding-left: 16px;
         backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
       }
       .exv-ov.on { display: flex; animation: exvFade .2s ease; }
@@ -82,22 +88,37 @@
         background: var(--s1, #131316);
         border: 1.5px solid var(--line2, #2a2a32);
         border-radius: 18px;
-        width: 100%; max-width: 480px; max-height: 92vh;
+        width: 100%; max-width: 480px;
+        /* fallback para navegadores sin dvh */
+        max-height: calc(100vh - 32px);
+        /* dvh tiene en cuenta la URL bar de iOS Safari */
+        max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)) - 16px);
         overflow-y: auto;
         animation: exvPop .25s ease;
+        -webkit-overflow-scrolling: touch;
       }
       @keyframes exvPop { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
       .exv-head {
         display: flex; justify-content: space-between; align-items: center;
         padding: 14px 16px; border-bottom: 1px solid var(--line, #1f1f25); gap: 10px;
+        /* Header pegado arriba al hacer scroll del modal: la X siempre accesible. */
+        position: sticky; top: 0;
+        background: var(--s1, #131316);
+        z-index: 2;
       }
       .exv-title { font-size: 1rem; font-weight: 800; line-height: 1.25; flex: 1; min-width: 0; }
       .exv-close {
         background: var(--s3, #222228); border: 1px solid var(--line2, #2a2a32);
-        width: 34px; height: 34px; border-radius: 9px;
-        color: var(--t1, #fff); font-size: 1.05rem; cursor: pointer; font-weight: 700;
+        /* Apple HIG: target táctil mínimo 44x44 */
+        min-width: 44px; min-height: 44px; border-radius: 10px;
+        color: var(--t1, #fff); font-size: 1.15rem; cursor: pointer; font-weight: 700;
         flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-appearance: none; appearance: none;
+        touch-action: manipulation;
       }
+      .exv-close:active { background: var(--line2, #2a2a32); transform: scale(.96); }
       .exv-video {
         width: 100%; aspect-ratio: 1; background: #fff;
         display: flex; align-items: center; justify-content: center;
