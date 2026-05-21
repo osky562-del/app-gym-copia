@@ -733,6 +733,16 @@
               <button class="adm-act adm-danger" onclick="Admin.clearBroadcast()">Borrar actual</button>
             </div>
           </div>
+
+          <div class="card" style="padding:14px;margin-bottom:9px;">
+            <div style="font-size:.68rem;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">🔒 Seguridad del panel</div>
+            <div style="font-size:.72rem;color:var(--t3);margin-bottom:10px;line-height:1.45;">Cambia el PIN que desbloquea este panel. PIN inicial: <b>0000</b>. Si lo olvidas no podrás entrar (tendrías que borrar la app).</div>
+            <input id="admNewPinInp" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Nuevo PIN (4-8 dígitos)" style="width:100%;background:var(--s3);border:1.5px solid var(--line2);border-radius:9px;padding:10px 12px;color:var(--t1);font-size:.85rem;outline:none;box-sizing:border-box;margin-bottom:8px;">
+            <div style="display:flex;gap:6px;">
+              <button class="adm-act" style="flex:1;" onclick="Admin.changePinFromInput()">Cambiar PIN</button>
+              <button class="adm-act adm-danger" onclick="Admin.lockPanel()">🔒 Bloquear</button>
+            </div>
+          </div>
         </div>
 
         <!-- LOGOUT TECHNICAL BUTTON -->
