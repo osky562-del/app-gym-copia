@@ -47,9 +47,13 @@ function initFirebase() {
       fbApp = firebase.initializeApp(FIREBASE_CONFIG);
       console.log("KO95FIT: Firebase Initialized (v4) ✓");
     }
+
+    // Persistencia de Auth: LOCAL (localStorage) para mantener sesión entre cierres
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+
     fbDb = firebase.firestore();
 
-    // Configuración de persistencia compatible con v8/v9 compat
+    // Persistencia offline de Firestore (IndexedDB)
     try {
       fbDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
         console.warn("Dato: Persistencia local limitada", err.code);
@@ -57,27 +61,21 @@ function initFirebase() {
     } catch(e) { console.warn("Dato: Saltando persistencia"); }
 
     firebase.auth().onAuthStateChanged(user => {
+      // CRÍTICO: cualquier cambio de auth-state debe cortar el listener anterior.
+      // Si no lo hacemos y el usuario cambia de cuenta sin pasar por logoutCloud,
+      // el listener antiguo sigue activo y trae workouts de la cuenta vieja,
+      // que se MEZCLAN con los de la cuenta nueva (los suma).
+      if (fbUnsub) {
+        try { fbUnsub(); } catch (e) {}
+        fbUnsub = null;
+      }
+
       if (user && !user.isAnonymous) {
-        // ─── Detectar cambio de usuario en el mismo dispositivo ───
-        // Si el UID actual es distinto al guardado, hay que limpiar todos
-        // los datos locales del usuario anterior para que no se mezclen
-        // (entrenamientos, perfil, peso, rutinas IA, etc.).
         const prevUid = localStorage.getItem('ko95_uid');
         const isNewUserOnDevice = prevUid && prevUid !== user.uid;
         if (isNewUserOnDevice) {
           console.log('KO95FIT: usuario distinto detectado, limpiando datos del anterior');
-          try {
-            STORE.set('workouts', []);
-            STORE.set('weightLogs', []);
-            STORE.set('perfil', {});
-            STORE.set('customTpl', []);
-            STORE.set('iaConsejos', null);
-            // Borrar todos los cachés de rutinas IA
-            Object.keys(localStorage).filter(k => k.startsWith('rutinaCache_')).forEach(k => localStorage.removeItem(k));
-            // Vaciar arrays globales en memoria
-            if (typeof workouts !== 'undefined') workouts.length = 0;
-            if (typeof weightLogs !== 'undefined') weightLogs.length = 0;
-          } catch(e) { console.warn(e); }
+          clearLocalUserData();
         }
         localStorage.setItem('ko95_uid', user.uid);
 
@@ -89,10 +87,20 @@ function initFirebase() {
 
         Pro.checkAdmin(user.uid);
 
-        // Solo subir datos locales si NO somos un usuario nuevo en el dispositivo
-        // (si lo somos, los datos eran del anterior y no deben pegarse a nuestra cuenta)
         if (!isNewUserOnDevice && workouts.length > 0) pushToFirebase();
         listenRemoteWorkouts();
+
+        // Si era un cambio de usuario, refrescar TODA la UI: saludo, dashboard,
+        // perfil y bloquear el panel admin (no debe quedar abierto al cambiar de cuenta).
+        if (isNewUserOnDevice) {
+          try { sessionStorage.removeItem('ko95_admin_unlocked'); } catch (e) {}
+          setTimeout(() => {
+            if (typeof updateGreeting === 'function') updateGreeting();
+            if (typeof renderDash === 'function') renderDash();
+            if (typeof renderProfile === 'function') renderProfile();
+            if (typeof Admin !== 'undefined' && Admin.refreshPanelVisibility) Admin.refreshPanelVisibility();
+          }, 100);
+        }
       } else {
         fbUser = null;
         syncEnabled = false;
@@ -146,15 +154,20 @@ async function authEmailLogin() {
   const pass = $('authLogPass').value.trim();
   const btn = $('btnLogin');
   if (!email || !pass) { toast('Rellena todos los campos', 'err'); return; }
-  
+
   btn.disabled = true;
   btn.textContent = 'Comprobando...';
-  
+
   try {
     // Asegurar inicialización si por algún motivo no ocurrió
     if (firebase.apps.length === 0) initFirebase();
-    
-    await firebase.auth().signInWithEmailAndPassword(email, pass);
+
+    // Timeout de 20s por si la red se queda colgada
+    const signInPromise = firebase.auth().signInWithEmailAndPassword(email, pass);
+    const timeoutPromise = new Promise((_, rej) =>
+      setTimeout(() => rej(new Error('Tiempo de espera agotado. Revisa tu conexión.')), 20000)
+    );
+    await Promise.race([signInPromise, timeoutPromise]);
 
     // Recordar credenciales si la casilla está marcada
     const remEl = document.getElementById('authRemember');
@@ -171,7 +184,7 @@ async function authEmailLogin() {
     else if (e.code === 'auth/invalid-email') toast('⚠️ Email no válido', 'err');
     else if (e.code === 'auth/too-many-requests') toast('⏳ Bloqueo temporal: Demasiados intentos. Espera unos minutos.', 'err');
     else if (e.code === 'auth/invalid-credential') toast('🔐 Credenciales inválidas. Revisa email y contraseña.', 'err');
-    else toast('Error: ' + e.message, 'err');
+    else toast('Error: ' + (e.message || e.code || 'desconocido'), 'err');
   }
 }
 
@@ -211,8 +224,6 @@ async function authRegister() {
     }
 
     // Limpiar TODOS los datos locales antes de crear cuenta nueva
-    // Garantiza que el nuevo usuario empieza desde cero (sin entrenamientos
-    // ni perfil de quien usara antes la app en este dispositivo)
     try {
       STORE.set('workouts', []);
       STORE.set('weightLogs', []);
@@ -367,15 +378,42 @@ document.addEventListener('visibilitychange', () => {
 // Exponer pushToFirebase globalmente para forzar sincronización desde otros módulos
 window.forceSyncCloud = pushToFirebase;
 
+/* Limpia TODOS los datos personales del dispositivo. Centralizado para que tanto
+   el logout como la detección de "usuario distinto" usen la misma lista. */
+function clearLocalUserData() {
+  try {
+    STORE.set('workouts', []);
+    STORE.set('weightLogs', []);
+    STORE.set('perfil', {});
+    STORE.set('customTpl', []);
+    STORE.set('iaConsejos', null);
+    // 'name' es el saludo "Hola X" — sin esto, al cambiar de cuenta seguía
+    // mostrándose el nombre del usuario anterior.
+    localStorage.removeItem('name');
+    localStorage.removeItem('live_session');
+    Object.keys(localStorage).filter(k => k.startsWith('rutinaCache_')).forEach(k => localStorage.removeItem(k));
+    if (typeof workouts !== 'undefined') workouts.length = 0;
+    if (typeof weightLogs !== 'undefined') weightLogs.length = 0;
+    // Bloquear panel admin al cambiar de cuenta.
+    try { sessionStorage.removeItem('ko95_admin_unlocked'); } catch (e) {}
+  } catch (e) { console.warn('clearLocalUserData:', e); }
+}
+
 async function logoutCloud() {
   try {
     toast('Cerrando sesión...', 'ok');
-    localStorage.removeItem('ko95_sess'); 
-    localStorage.removeItem('perfil');
-    localStorage.removeItem('workouts');
-    if (fbUnsub) fbUnsub();
+    // 1. Cortar listener remoto ANTES de signOut para evitar fugas.
+    if (fbUnsub) {
+      try { fbUnsub(); } catch (e) {}
+      fbUnsub = null;
+    }
+    // 2. Limpieza completa de localStorage + sessionStorage.
+    clearLocalUserData();
+    localStorage.removeItem('ko95_sess');
+    localStorage.removeItem('ko95_uid');
+    // 3. Cerrar sesión Firebase.
     await firebase.auth().signOut();
-    $('authOverlay').classList.add('show'); // Mostrar antes de salir
+    $('authOverlay').classList.add('show');
     location.href = location.pathname; // Recarga limpia
   } catch (e) {
     console.error('Logout error:', e);
@@ -404,9 +442,15 @@ try {
 
   function listenRemoteWorkouts() {
 if (!fbUser || !fbDb) return;
-const col = fbDb.collection('users').doc(fbUser.uid).collection('workouts');
+// Capturamos el uid para el que se creó este listener. Si para cuando llegan los
+// snapshots ya hemos cambiado de cuenta, los descartamos. Doble cinturón frente
+// a listeners zombies (el primero es el fbUnsub() en onAuthStateChanged).
+const listenerUid = fbUser.uid;
+const col = fbDb.collection('users').doc(listenerUid).collection('workouts');
 
 fbUnsub = col.onSnapshot(snap => {
+  // Si el usuario ya cambió o se ha deslogueado, ignorar este snapshot.
+  if (!fbUser || fbUser.uid !== listenerUid) return;
   if (snap.metadata.hasPendingWrites) return;
   let changed = false;
   snap.docChanges().forEach(change => {
@@ -502,8 +546,8 @@ if (document.readyState === 'loading') {
   loadRememberedCreds();
 }
 
-// Registro del Service Worker (PWA) — solo desde http/https
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+// Registro del Service Worker (PWA) — solo en http/https (ni file:// ni esquemas custom de WebView)
+  if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.protocol === 'https:')) {
 window.addEventListener('load', () => {
   navigator.serviceWorker.register('sw.js').catch(err => {
     console.warn('SW register failed:', err);
