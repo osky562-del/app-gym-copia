@@ -429,16 +429,72 @@ if (!localStorage.getItem('ko95_sess')) {
 }
 
 
+  /* Set de IDs cuyo borrado en Firestore falló (sin red, error transitorio).
+     Se reintenta en background hasta que se confirme. */
+  const _failedDeletes = new Set();
+
   async function removeFromFirebase(id) {
-if (!syncEnabled || !fbUser || !fbDb) return;
+if (!fbUser || !fbDb) {
+  // No hay nube: nada que borrar. Si se intentó borrar offline, recordamos
+  // el id para reintentarlo cuando haya sesión otra vez.
+  _failedDeletes.add(id);
+  try { localStorage.setItem('ko95_failedDeletes', JSON.stringify([..._failedDeletes])); } catch (e) {}
+  return;
+}
 try {
   const userDoc = fbDb.collection('users').doc(fbUser.uid);
   await userDoc.collection('workouts').doc(id).delete();
-  console.log('🗑 Workout removed from cloud:', id);
+  _failedDeletes.delete(id);
+  try { localStorage.setItem('ko95_failedDeletes', JSON.stringify([..._failedDeletes])); } catch (e) {}
+  console.log('🗑 Workout borrado en Firebase:', id);
 } catch (e) {
-  console.error('Failed to remove from cloud:', e);
+  console.error('No se pudo borrar de Firebase:', e);
+  _failedDeletes.add(id);
+  try { localStorage.setItem('ko95_failedDeletes', JSON.stringify([..._failedDeletes])); } catch (e) {}
+  if (typeof toast === 'function') {
+    toast('⚠ Sin red: el borrado se aplicará cuando vuelvas online', 'err');
+  }
+  scheduleRetryFailedDeletes();
 }
   }
+
+  /* Reintento periódico mientras haya deletes pendientes. */
+  async function retryFailedDeletes() {
+if (!_failedDeletes.size || !fbUser || !fbDb) return;
+const ids = [..._failedDeletes];
+for (const id of ids) {
+  try {
+    const userDoc = fbDb.collection('users').doc(fbUser.uid);
+    await userDoc.collection('workouts').doc(id).delete();
+    _failedDeletes.delete(id);
+    console.log('🗑 Reintento exitoso:', id);
+  } catch (e) {
+    console.warn('Reintento falló para', id);
+  }
+}
+try { localStorage.setItem('ko95_failedDeletes', JSON.stringify([..._failedDeletes])); } catch (e) {}
+if (_failedDeletes.size > 0) scheduleRetryFailedDeletes();
+  }
+
+  function scheduleRetryFailedDeletes() {
+clearTimeout(window._failedDeleteRetryTimer);
+window._failedDeleteRetryTimer = setTimeout(retryFailedDeletes, 30000);
+  }
+
+  /* Restaurar la lista de deletes pendientes al iniciar la app (si en la sesión
+     anterior se borraron sin red, se completarán ahora). */
+  try {
+const saved = JSON.parse(localStorage.getItem('ko95_failedDeletes') || '[]');
+if (Array.isArray(saved)) saved.forEach(id => _failedDeletes.add(id));
+if (_failedDeletes.size > 0) scheduleRetryFailedDeletes();
+  } catch (e) {}
+
+  /* Cuando la app vuelve a foreground y hay deletes pendientes, reintentar al instante. */
+  document.addEventListener('visibilitychange', () => {
+if (document.visibilityState === 'visible' && _failedDeletes.size > 0) {
+  retryFailedDeletes();
+}
+  });
 
   function listenRemoteWorkouts() {
 if (!fbUser || !fbDb) return;
@@ -464,14 +520,14 @@ fbUnsub = col.onSnapshot(snap => {
       if (idx === -1) { workouts.push(rw); changed = true; }
       else if (JSON.stringify(workouts[idx]) !== JSON.stringify(rw)) { workouts[idx] = rw; changed = true; }
     } else if (change.type === 'removed') {
-      // SOLO borrar si fue una eliminación intencional del usuario
-      // (evita que writes fallidos borren datos locales)
-      if (_pendingDeletes.has(rw.id)) {
-        _pendingDeletes.delete(rw.id);
-        const oldLen = workouts.length;
-        workouts = workouts.filter(w => w.id !== rw.id);
-        if (workouts.length !== oldLen) changed = true;
-      }
+      // Firestore solo emite 'removed' cuando el documento se ha borrado de
+      // verdad en el servidor (no por writes fallidos). Por tanto refleja
+      // SIEMPRE el borrado en local — esto cubre tanto los borrados desde
+      // este dispositivo como los desde otro dispositivo del mismo usuario.
+      const oldLen = workouts.length;
+      workouts = workouts.filter(w => w.id !== rw.id);
+      if (workouts.length !== oldLen) changed = true;
+      _pendingDeletes.delete(rw.id);
     }
   });
   if (changed) {
