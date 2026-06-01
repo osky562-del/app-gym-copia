@@ -30,10 +30,12 @@ function playRestEndSound() {
 
 /* Programa una notificación nativa de iOS con sonido para que se oiga aunque la
    pantalla esté bloqueada. Si no estamos en iOS, se ignora silenciosamente. */
-function scheduleNativeRestSound(sec) {
+function scheduleNativeRestSound(sec, nextUp) {
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scheduleRestSound) {
-      window.webkit.messageHandlers.scheduleRestSound.postMessage({ delay: sec });
+      // nextUp: texto "qué viene después" que se muestra en la notificación
+      // (visible en el Apple Watch al vibrar). Si va vacío, Swift usa el texto genérico.
+      window.webkit.messageHandlers.scheduleRestSound.postMessage({ delay: sec, nextUp: nextUp || '' });
     }
   } catch (e) {}
 }
@@ -65,7 +67,7 @@ function unlockAudioContext() {
   } catch (e) {}
 }
 
-function startRest(sec, msg) {
+function startRest(sec, msg, nextUp) {
   if (!sec || liveIsPaused) return;
   stopRest();
   restTotal = sec;
@@ -78,8 +80,9 @@ function startRest(sec, msg) {
   updRing();
 
   // iOS: programa una notificación nativa con sonido para que suene aunque
-  // se bloquee la pantalla y la app pase a segundo plano.
-  scheduleNativeRestSound(sec);
+  // se bloquee la pantalla y la app pase a segundo plano. nextUp se muestra
+  // en la notificación (visible en el Apple Watch).
+  scheduleNativeRestSound(sec, nextUp);
 
   // iOS: actualizar la Live Activity con el descanso en curso
   try {
