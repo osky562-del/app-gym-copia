@@ -318,6 +318,34 @@ function autoAdvanceAfterRest() {
     if (inp) try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
   }, 150);
 }
+
+/* ── Marcar serie como hecha desde la notificación (Apple Watch / lock screen) ──
+   Lo llama el lado nativo (Swift) cuando pulsas "✓ Hecho" en la notificación.
+   Marca la primera serie no completada del ejercicio actual (la que la notificación
+   anunciaba con "A por la serie N"). Reutiliza toggleSet, así que arranca el
+   siguiente descanso y programa la siguiente notificación automáticamente. */
+window.__pendingWatchDone = false;
+function __markActiveSetDoneFromWatch() {
+  try {
+    // Si la sesión aún no está cargada (relanzamiento en frío de la app), dejamos
+    // la intención pendiente; restoreLiveSession la aplicará al terminar de cargar.
+    if (typeof liveExs === 'undefined' || !Array.isArray(liveExs) || !liveExs.length) {
+      window.__pendingWatchDone = true;
+      return;
+    }
+    const ex = liveExs[liveIdx];
+    if (!ex) { window.__pendingWatchDone = true; return; }
+    const idx = ex.sets.findIndex(s => !s.done);
+    if (idx === -1) {
+      if (typeof toast === 'function') toast('No quedan series pendientes en este ejercicio', 'ok');
+      return;
+    }
+    toggleSet(idx);
+    if (typeof toast === 'function') toast('Serie marcada desde el reloj ✓', 'good');
+  } catch (e) { console.warn('markActiveSetDoneFromWatch:', e); }
+}
+window.__markActiveSetDoneFromWatch = __markActiveSetDoneFromWatch;
+
 function finishLive() {
   // El porcentaje de progreso ignora las series de calentamiento (no son objetivo del entreno).
   const total = liveExs.reduce((s, e) => s + e.sets.filter(x => !x.warmup).length, 0);
@@ -429,6 +457,14 @@ function restoreLiveSession(saved) {
     }
   }
   toast('Entreno restaurado 💪', 'good');
+  // Si el usuario pulsó "✓ Hecho" en el reloj mientras la app estaba cerrada,
+  // aplicar ahora esa acción (la sesión ya está restaurada).
+  if (window.__pendingWatchDone) {
+    window.__pendingWatchDone = false;
+    setTimeout(() => {
+      if (typeof __markActiveSetDoneFromWatch === 'function') __markActiveSetDoneFromWatch();
+    }, 400);
+  }
 }
 
 document.addEventListener('visibilitychange', () => {
