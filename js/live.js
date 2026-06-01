@@ -333,14 +333,28 @@ function __markActiveSetDoneFromWatch() {
       window.__pendingWatchDone = true;
       return;
     }
-    const ex = liveExs[liveIdx];
-    if (!ex) { window.__pendingWatchDone = true; return; }
-    const idx = ex.sets.findIndex(s => !s.done);
-    if (idx === -1) {
-      if (typeof toast === 'function') toast('No quedan series pendientes en este ejercicio', 'ok');
+    // Buscar la primera serie sin hacer EMPEZANDO por el ejercicio actual y avanzando.
+    // Así, cuando se acaban las series del ejercicio actual, cruza solo al siguiente
+    // ejercicio sin tener que tocar el móvil.
+    let targetEx = -1, setIdx = -1;
+    for (let i = liveIdx; i < liveExs.length; i++) {
+      const j = liveExs[i].sets.findIndex(s => !s.done);
+      if (j !== -1) { targetEx = i; setIdx = j; break; }
+    }
+    // Por si quedaran series pendientes en ejercicios anteriores (reordenó / saltó).
+    if (setIdx === -1) {
+      for (let i = 0; i < liveIdx; i++) {
+        const j = liveExs[i].sets.findIndex(s => !s.done);
+        if (j !== -1) { targetEx = i; setIdx = j; break; }
+      }
+    }
+    if (setIdx === -1) {
+      if (typeof toast === 'function') toast('🎉 ¡Entreno completo! Pulsa Finalizar', 'good');
       return;
     }
-    toggleSet(idx);
+    // Cambiar de ejercicio si la serie pendiente está en otro.
+    if (targetEx !== liveIdx) navEx(targetEx - liveIdx);
+    toggleSet(setIdx);
     if (typeof toast === 'function') toast('Serie marcada desde el reloj ✓', 'good');
   } catch (e) { console.warn('markActiveSetDoneFromWatch:', e); }
 }
