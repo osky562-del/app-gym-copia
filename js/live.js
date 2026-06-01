@@ -214,6 +214,28 @@ function removeLiveSet() {
   renderLiveEx(); saveLiveSession();
 }
 function updVol(si) { const s = liveExs[liveIdx].sets[si]; const v = +s.kg && +s.reps ? Math.round(+s.kg * +s.reps) : null; const el = $('lsv' + si); if (el) { el.textContent = v || '—'; el.className = 'lv-set-vol' + (v ? ' has' : ''); } updateLvStats(); }
+/* Texto "qué viene después" para la notificación de fin de descanso. Esta notificación
+   se refleja en el Apple Watch y vibra, así que de un vistazo sabes qué toca sin sacar
+   el móvil. Se calcula al INICIAR el descanso, por lo que describe lo que tocará justo
+   cuando el descanso termine. */
+function getNextUpText() {
+  if (typeof liveExs === 'undefined' || !Array.isArray(liveExs) || !liveExs.length) return '';
+  const ex = liveExs[liveIdx];
+  if (!ex) return '';
+  // ¿Queda alguna serie real (no calentamiento) pendiente en este ejercicio?
+  const realSets = ex.sets.filter(s => !s.warmup);
+  const nextRealIdx = realSets.findIndex(s => !s.done);
+  if (nextRealIdx !== -1) {
+    return `A por la serie ${nextRealIdx + 1} de ${realSets.length} · ${ex.name}`;
+  }
+  // Todas las series reales hechas → siguiente ejercicio si lo hay.
+  if (liveIdx < liveExs.length - 1) {
+    const next = liveExs[liveIdx + 1];
+    return next ? `Siguiente ejercicio: ${next.name}` : '';
+  }
+  // Era el último ejercicio del entreno.
+  return '¡Último esfuerzo! Entreno casi completo 🔥';
+}
 function toggleSet(si) {
   const ex = liveExs[liveIdx], s = ex.sets[si]; s.done = !s.done;
   if (s.done) {
@@ -230,7 +252,8 @@ function toggleSet(si) {
     // puede tener warmups sin marcar y aun así estar listo para el siguiente ejercicio).
     const allRealDone = ex.sets.every(x => x.warmup || x.done);
     if (ex.restSec) {
-      startRest(ex.restSec, allRealDone ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie');
+      const nextUp = (typeof getNextUpText === 'function') ? getNextUpText() : '';
+      startRest(ex.restSec, allRealDone ? 'Descansa antes del siguiente' : 'Prepárate para la siguiente serie', nextUp);
     }
     // Programar el auto-advance INDEPENDIENTEMENTE del callback del descanso.
     // Esto es un respaldo: si por cualquier motivo (app en background, setInterval
