@@ -39,6 +39,8 @@ window.__onLiveActivitySync = function(state) {
 
 function startLiveMode() {
   if (!planExs.length) return;
+  // Empezar de cero en el gestor nativo (descarta cualquier entreno anterior).
+  if (typeof __endWorkoutNative === 'function') __endWorkoutNative();
   // Desbloquear el contexto de audio (iOS exige un gesto de usuario para que sea activo)
   if (typeof unlockAudioContext === 'function') unlockAudioContext();
   // Cada ejercicio del plan se mapea a un ejercicio "live". Si ya existe un historial de
@@ -85,6 +87,7 @@ function backToPlan() {
   if (!confirm('¿Volver a la planificación?')) return;
   clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
   STORE.set('live_session', null);
+  if (typeof __endWorkoutNative === 'function') __endWorkoutNative();
   $('liveMode').classList.remove('show'); $('planMode').classList.add('show');
   _liveActivityCall('endWorkoutActivity', {});
 }
@@ -319,46 +322,73 @@ function autoAdvanceAfterRest() {
   }, 150);
 }
 
-/* ── Marcar serie como hecha desde la notificación (Apple Watch / lock screen) ──
-   Lo llama el lado nativo (Swift) cuando pulsas "✓ Hecho" en la notificación.
-   Marca la primera serie no completada del ejercicio actual (la que la notificación
-   anunciaba con "A por la serie N"). Reutiliza toggleSet, así que arranca el
-   siguiente descanso y programa la siguiente notificación automáticamente. */
-window.__pendingWatchDone = false;
-function __markActiveSetDoneFromWatch() {
+/* ══ SINCRONIZACIÓN CON EL GESTOR DE ENTRENO NATIVO (iOS) ══
+   Para entrenar sin coger el móvil: el lado nativo (Swift) lleva la cuenta del entreno
+   y maneja la cadena de notificaciones con la app en segundo plano (el WebView congela
+   el JS, así que no se puede depender de él en background). Aquí solo:
+   - enviamos el plan + cuántas series llevamos hechas (en cada cambio),
+   - y aplicamos el cursor que el nativo nos devuelve al volver a primer plano. */
+
+/* Construye el payload para el nativo: lista de ejercicios (nombre, descanso, qué
+   series son calentamiento) + total de series ya completadas. */
+function __buildWorkoutSyncPayload() {
+  const exercises = liveExs.map(ex => ({
+    name: ex.name,
+    restSec: ex.restSec || 0,
+    sets: ex.sets.map(s => !!s.warmup)
+  }));
+  let completed = 0;
+  liveExs.forEach(ex => ex.sets.forEach(s => { if (s.done) completed++; }));
+  return { exercises, completed };
+}
+function __syncWorkoutToNative() {
   try {
-    // Si la sesión aún no está cargada (relanzamiento en frío de la app), dejamos
-    // la intención pendiente; restoreLiveSession la aplicará al terminar de cargar.
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.workoutSyncState
+        && Array.isArray(liveExs) && liveExs.length) {
+      window.webkit.messageHandlers.workoutSyncState.postMessage(__buildWorkoutSyncPayload());
+    }
+  } catch (e) {}
+}
+function __endWorkoutNative() {
+  try {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.workoutEnd) {
+      window.webkit.messageHandlers.workoutEnd.postMessage({});
+    }
+  } catch (e) {}
+}
+
+/* Lo llama el lado nativo al volver a primer plano: marca como hechas TODAS las series
+   anteriores al cursor (targetEx, targetSet). Es idempotente (solo marca, nunca desmarca),
+   así que aplicarlo varias veces no causa problemas. No reinicia descansos: las
+   notificaciones siguientes ya las programó el nativo. */
+window.__pendingWatchCursor = null;
+function __applyWatchCursor(targetEx, targetSet) {
+  try {
     if (typeof liveExs === 'undefined' || !Array.isArray(liveExs) || !liveExs.length) {
-      window.__pendingWatchDone = true;
+      window.__pendingWatchCursor = { ex: targetEx, set: targetSet };
       return;
     }
-    // Buscar la primera serie sin hacer EMPEZANDO por el ejercicio actual y avanzando.
-    // Así, cuando se acaban las series del ejercicio actual, cruza solo al siguiente
-    // ejercicio sin tener que tocar el móvil.
-    let targetEx = -1, setIdx = -1;
-    for (let i = liveIdx; i < liveExs.length; i++) {
-      const j = liveExs[i].sets.findIndex(s => !s.done);
-      if (j !== -1) { targetEx = i; setIdx = j; break; }
-    }
-    // Por si quedaran series pendientes en ejercicios anteriores (reordenó / saltó).
-    if (setIdx === -1) {
-      for (let i = 0; i < liveIdx; i++) {
-        const j = liveExs[i].sets.findIndex(s => !s.done);
-        if (j !== -1) { targetEx = i; setIdx = j; break; }
+    let changed = false;
+    for (let i = 0; i < liveExs.length; i++) {
+      const sets = liveExs[i].sets;
+      for (let j = 0; j < sets.length; j++) {
+        const shouldBeDone = (i < targetEx) || (i === targetEx && j < targetSet);
+        if (shouldBeDone && !sets[j].done) { sets[j].done = true; changed = true; }
       }
     }
-    if (setIdx === -1) {
-      if (typeof toast === 'function') toast('🎉 ¡Entreno completo! Pulsa Finalizar', 'good');
-      return;
-    }
-    // Cambiar de ejercicio si la serie pendiente está en otro.
-    if (targetEx !== liveIdx) navEx(targetEx - liveIdx);
-    toggleSet(setIdx);
-    if (typeof toast === 'function') toast('Serie marcada desde el reloj ✓', 'good');
-  } catch (e) { console.warn('markActiveSetDoneFromWatch:', e); }
+    if (!changed) return;
+    // Posicionar el ejercicio visible en el primero con series pendientes.
+    let cur = liveExs.findIndex(ex => ex.sets.some(s => !s.done));
+    if (cur === -1) cur = liveExs.length - 1;
+    liveIdx = cur;
+    if (typeof renderLiveEx === 'function') renderLiveEx();
+    if (typeof updateLvStats === 'function') updateLvStats();
+    if (typeof saveLiveSession === 'function') saveLiveSession();
+    try { if (window.forceSyncCloud) window.forceSyncCloud(); } catch (e) {}
+    if (typeof toast === 'function') toast('Series marcadas desde el reloj ✓', 'good');
+  } catch (e) { console.warn('applyWatchCursor:', e); }
 }
-window.__markActiveSetDoneFromWatch = __markActiveSetDoneFromWatch;
+window.__applyWatchCursor = __applyWatchCursor;
 
 function finishLive() {
   // El porcentaje de progreso ignora las series de calentamiento (no son objetivo del entreno).
@@ -367,6 +397,7 @@ function finishLive() {
   const pct = total ? Math.round(done / total * 100) : 0;
   if (pct < 100 && !confirm(`Has completado el ${pct}% (${done}/${total} series). ¿Finalizar?`)) return;
   clearInterval(liveTotalInt); clearInterval(livePauseInt); stopRest();
+  if (typeof __endWorkoutNative === 'function') __endWorkoutNative();
   _liveActivityCall('endWorkoutActivity', {});
   const exercises = liveExs.map(ex => {
     if (ex.isCardio) {
@@ -426,6 +457,8 @@ function saveLiveSession() {
     planNotes: $('planNotes') ? $('planNotes').value || '' : '',
     ts: Date.now()
   });
+  // Mantener al gestor nativo al día (para el bucle de notificaciones del reloj).
+  if (typeof __syncWorkoutToNative === 'function') __syncWorkoutToNative();
 }
 
 function restoreLiveSession(saved) {
@@ -471,12 +504,15 @@ function restoreLiveSession(saved) {
     }
   }
   toast('Entreno restaurado 💪', 'good');
-  // Si el usuario pulsó "✓ Hecho" en el reloj mientras la app estaba cerrada,
-  // aplicar ahora esa acción (la sesión ya está restaurada).
-  if (window.__pendingWatchDone) {
-    window.__pendingWatchDone = false;
+  // Reenviar el plan al gestor nativo tras restaurar.
+  if (typeof __syncWorkoutToNative === 'function') __syncWorkoutToNative();
+  // Si el usuario pulsó "✓ Hecho" en el reloj con la app cerrada, el nativo dejó un
+  // cursor pendiente: aplicarlo ahora que la sesión ya está cargada.
+  if (window.__pendingWatchCursor) {
+    const c = window.__pendingWatchCursor;
+    window.__pendingWatchCursor = null;
     setTimeout(() => {
-      if (typeof __markActiveSetDoneFromWatch === 'function') __markActiveSetDoneFromWatch();
+      if (typeof __applyWatchCursor === 'function') __applyWatchCursor(c.ex, c.set);
     }, 400);
   }
 }
