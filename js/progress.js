@@ -1,6 +1,6 @@
 /* ══ PROGRESS ══ */
 function getMuscle(ex) { const lc = ex.toLowerCase(); const k = Object.keys(MM).find(k => lc.includes(k)); return k ? MM[k] : 'Otros'; }
-function renderProgress() { renderHeatmap(); renderSummaryStats(); renderMuscleChart(); renderMuscleRadar(); renderVolChart(); renderRpeChart(); renderPRTable(); fillProgSel(); drawExChart(); }
+function renderProgress() { renderHeatmap(); renderSummaryStats(); renderMuscleChart(); renderMuscleRadar(); renderVolChart(); renderRpeChart(); if (typeof renderStrengthCard === 'function') renderStrengthCard(); renderPRTable(); fillProgSel(); drawExChart(); }
 function renderHeatmap() {
   const container = $('hmGrid');
   if (!Pro.can('heatmap')) {
