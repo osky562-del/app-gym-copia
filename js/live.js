@@ -184,6 +184,7 @@ function renderLiveEx() {
 </div>`;
   }).join('') + `<div class="lv-set-actions">
   <button class="lv-set-rm" onclick="removeLiveSet()"${canRemove ? '' : ' disabled'}>− Serie</button>
+  <button class="lv-set-warm" onclick="addLiveWarmupSet()" title="Añadir serie de calentamiento">🔥 Calent.</button>
   <button class="lv-set-add" onclick="addLiveSet()">+ Serie</button>
 </div>`;
   $('lvExScroll').scrollTo({ top: 0, behavior: 'smooth' }); updateLvStats();
@@ -197,6 +198,25 @@ function addLiveSet() {
     ex.sets.push({ kg: last?.kg || '', reps: last?.reps || 10, done: false, warmup: false });
   }
   renderLiveEx(); saveLiveSession();
+}
+/* Añade una serie de CALENTAMIENTO justo antes de la primera serie sin hacer (o al final
+   si ya están todas hechas). El peso por defecto es ~50% del de trabajo como sugerencia. */
+function addLiveWarmupSet() {
+  const ex = liveExs[liveIdx];
+  if (!ex) return;
+  const firstPending = ex.sets.findIndex(s => !s.done);
+  const insertAt = firstPending === -1 ? ex.sets.length : firstPending;
+  const ref = ex.sets[insertAt] || ex.sets[ex.sets.length - 1];
+  let newSet;
+  if (ex.isCardio) {
+    newSet = { min: '', km: '', done: false, warmup: true };
+  } else {
+    const workKg = +((ref && ref.kg) || 0);
+    newSet = { kg: workKg ? Math.round(workKg * 0.5) : '', reps: (ref && ref.reps) || 10, done: false, warmup: true };
+  }
+  ex.sets.splice(insertAt, 0, newSet);
+  renderLiveEx(); saveLiveSession();
+  if (typeof vib === 'function') vib([20]);
 }
 /* Marcar/desmarcar una serie como calentamiento. No se puede modificar una serie ya completada. */
 function toggleWarmup(si) {

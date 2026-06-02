@@ -764,7 +764,8 @@
 }
 
 .lv-set-add,
-.lv-set-rm {
+.lv-set-rm,
+.lv-set-warm {
   flex: 1;
   padding: 12px;
   border-radius: 12px;
@@ -773,6 +774,16 @@
   cursor: pointer;
   transition: all .18s;
   border: 1.5px solid;
+}
+
+.lv-set-warm {
+  background: none;
+  border-color: rgba(245, 166, 35, .55);
+  color: #f5a623;
+  white-space: nowrap;
+}
+.lv-set-warm:active {
+  background: rgba(245, 166, 35, .14);
 }
 
 .lv-set-add {
