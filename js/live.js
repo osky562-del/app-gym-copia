@@ -164,12 +164,13 @@ function renderLiveEx() {
     const isActive = !s.done && ex.sets.slice(0, si).every(p => p.done);
     if (!s.warmup) realSetNum++;
     const setLabel = s.warmup ? '🔥' : realSetNum;
-    const numTitle = s.warmup ? 'Quitar calentamiento' : 'Marcar como calentamiento';
+    const numTitle = 'Tipo de serie';
+    const _ti = (!s.warmup && s.type && s.type !== 'normal' && typeof SET_TYPES !== 'undefined' && SET_TYPES[s.type]) ? SET_TYPES[s.type] : null;
     const warmupCls = s.warmup ? ' warmup' : '';
     if (ex.isCardio) {
       return `<div class="lv-set${warmupCls}${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
   <div class="lv-set-body">
-    <div class="lv-set-num" onclick="toggleWarmup(${si})" title="${numTitle}" style="cursor:pointer;user-select:none;">${setLabel}</div>
+    <div class="lv-set-num" onclick="openSetTypePicker(${si})" title="${numTitle}" style="cursor:pointer;user-select:none;">${setLabel}</div>
     <div class="lv-set-inps">
       <div class="lv-set-grp"><div class="lv-set-lbl">Min</div><input class="lv-inp" type="number" value="${s.min || ''}" placeholder="—" min="0" oninput="liveExs[${liveIdx}].sets[${si}].min=this.value" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
       <div class="lv-set-grp"><div class="lv-set-lbl">Km</div><input class="lv-inp" type="number" value="${s.km || ''}" placeholder="—" min="0" step="0.1" oninput="liveExs[${liveIdx}].sets[${si}].km=this.value" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
@@ -183,12 +184,12 @@ function renderLiveEx() {
     const vol = !s.warmup && +s.kg && +s.reps ? Math.round(+s.kg * +s.reps) : null;
     return `<div class="lv-set${warmupCls}${s.done ? ' done' : isActive ? ' active' : ''}" id="lvs${si}">
   <div class="lv-set-body">
-    <div class="lv-set-num" onclick="toggleWarmup(${si})" title="${numTitle}" style="cursor:pointer;user-select:none;">${setLabel}</div>
+    <div class="lv-set-num" onclick="openSetTypePicker(${si})" title="${numTitle}" style="cursor:pointer;user-select:none;">${setLabel}</div>
     <div class="lv-set-inps">
       <div class="lv-set-grp"><div class="lv-set-lbl">Kg</div><input class="lv-inp${isPR ? ' pr' : ''}" type="number" value="${s.kg || ''}" placeholder="—" min="0" oninput="liveExs[${liveIdx}].sets[${si}].kg=this.value;updVol(${si})" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
       <div class="lv-set-grp"><div class="lv-set-lbl">Reps</div><input class="lv-inp" type="number" value="${s.reps || ''}" placeholder="—" min="1" oninput="liveExs[${liveIdx}].sets[${si}].reps=this.value;updVol(${si})" style="-moz-appearance:textfield;"${s.done ? ' disabled' : ''}></div>
     </div>
-    <div class="lv-set-vol${vol ? ' has' : ''}" id="lsv${si}">${s.warmup ? 'Cal' : (vol || '—')}</div>
+    <div class="lv-set-vol${vol ? ' has' : ''}" id="lsv${si}">${s.warmup ? 'Cal' : (_ti ? `<span style="color:${_ti.color};font-weight:800;font-size:.6rem;">${_ti.label}</span>` : (vol || '—'))}</div>
     <button class="lv-check${s.done ? ' done' : ''}" onclick="toggleSet(${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
   </div>
 </div>`;
@@ -228,6 +229,58 @@ function addLiveWarmupSet() {
   renderLiveEx(); saveLiveSession();
   if (typeof vib === 'function') vib([20]);
 }
+/* ── Tipos de serie especiales (para registro): drop set, rest-pause, AMRAP, al fallo ── */
+const SET_TYPES = {
+  drop:      { label: 'DROP',  color: '#ff6b6b' },
+  restpause: { label: 'R-P',   color: '#f5a623' },
+  amrap:     { label: 'AMRAP', color: '#4dd4e8' },
+  failure:   { label: 'FALLO', color: '#ff4d4f' }
+};
+let _setTypeIdx = -1;
+function openSetTypePicker(si) {
+  const ex = liveExs[liveIdx];
+  if (!ex || !ex.sets[si]) return;
+  if (ex.sets[si].done) { if (typeof toast === 'function') toast('No puedes cambiar una serie ya completada', 'err'); return; }
+  _setTypeIdx = si;
+  ensureSetTypeOverlay();
+  document.getElementById('stOv').style.display = 'flex';
+}
+function ensureSetTypeOverlay() {
+  if (document.getElementById('stOv')) return;
+  const m = document.createElement('div');
+  m.id = 'stOv';
+  m.style.cssText = 'display:none;position:fixed;inset:0;z-index:1003;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);';
+  m.onclick = (e) => { if (e.target === m) closeSetType(); };
+  const rows = [
+    ['normal', 'Normal', 'Serie estándar'],
+    ['warmup', '🔥 Calentamiento', 'No cuenta para volumen ni récords'],
+    ['drop', '🔻 Drop set', 'Bajas el peso y sigues sin descanso'],
+    ['restpause', '⏸ Rest-pause', 'Pausas cortas hasta completar las reps'],
+    ['amrap', '🔁 AMRAP', 'Máximas repeticiones posibles'],
+    ['failure', '💥 Al fallo', 'Hasta el fallo muscular']
+  ];
+  m.innerHTML = `<div style="background:var(--s1,#131316);border-top-left-radius:20px;border-top-right-radius:20px;width:100%;max-width:480px;padding:18px 16px max(20px,env(safe-area-inset-bottom));border:1px solid var(--line2,#2a2a32);max-height:80vh;overflow-y:auto;">
+    <div style="font-size:1.05rem;font-weight:800;margin-bottom:3px;">Tipo de serie</div>
+    <div style="font-size:.72rem;color:var(--t3,#7a7a86);margin-bottom:14px;">Marca series especiales para tu registro.</div>
+    ${rows.map(([t, n, d]) => `<button onclick="setSetType('${t}')" style="width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:var(--s2,#1a1a1f);border:1px solid var(--line2,#2a2a32);border-radius:11px;padding:12px 14px;margin-bottom:7px;cursor:pointer;text-align:left;color:var(--t1,#fff);-webkit-tap-highlight-color:transparent;"><span style="font-weight:700;font-size:.92rem;">${n}</span><span style="font-size:.66rem;color:var(--t3,#7a7a86);">${d}</span></button>`).join('')}
+  </div>`;
+  document.body.appendChild(m);
+}
+function closeSetType() { const m = document.getElementById('stOv'); if (m) m.style.display = 'none'; }
+function setSetType(type) {
+  const ex = liveExs[liveIdx];
+  if (!ex || !ex.sets[_setTypeIdx]) { closeSetType(); return; }
+  const s = ex.sets[_setTypeIdx];
+  if (type === 'warmup') { s.warmup = true; s.type = 'normal'; }
+  else { s.warmup = false; s.type = type; }
+  closeSetType();
+  renderLiveEx(); saveLiveSession();
+  if (typeof vib === 'function') vib([20]);
+}
+window.openSetTypePicker = openSetTypePicker;
+window.closeSetType = closeSetType;
+window.setSetType = setSetType;
+
 /* Marcar/desmarcar una serie como calentamiento. No se puede modificar una serie ya completada. */
 function toggleWarmup(si) {
   const ex = liveExs[liveIdx];
@@ -504,7 +557,7 @@ function finishLive() {
       kg: String(maxKg || ''),
       sets: realSets.length,
       reps: firstReps,
-      setsDetail: ex.sets.map(s => ({ kg: s.kg || '', reps: s.reps, done: !!s.done, warmup: !!s.warmup }))
+      setsDetail: ex.sets.map(s => ({ kg: s.kg || '', reps: s.reps, done: !!s.done, warmup: !!s.warmup, type: s.type || 'normal' }))
     };
   });
   const _dur = liveTotalSec ? Math.round(liveTotalSec / 60) : '';
@@ -516,6 +569,11 @@ function finishLive() {
   exercises.forEach(ex => {
     const prev = getPR(ex.ex);
     if (+ex.kg > 0 && +ex.kg > prev) newPRs.push(ex.ex + ' ' + ex.kg + 'kg');
+    // Récord de repeticiones (máximas reps en una serie real)
+    if (typeof getRepPR === 'function' && Array.isArray(ex.setsDetail)) {
+      const maxReps = Math.max(0, ...ex.setsDetail.filter(s => !s.warmup).map(s => +s.reps || 0));
+      if (maxReps > 0 && maxReps > getRepPR(ex.ex)) newPRs.push('💪 ' + maxReps + ' reps · ' + ex.ex);
+    }
   });
 
   // Check session storage limit for free users
