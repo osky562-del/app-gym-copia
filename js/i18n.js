@@ -502,5 +502,6 @@
   if (document.readyState !== 'loading') init();
   else document.addEventListener('DOMContentLoaded', init);
 
-  window.I18N = { setLang, getLang, t, apply: applyLang };
+  function locale() { return lang === 'en' ? 'en-GB' : 'es-ES'; }
+  window.I18N = { setLang, getLang, t, apply: applyLang, locale };
 })();
