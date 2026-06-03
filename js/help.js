@@ -51,6 +51,8 @@
       <div class="hlp-body">
         <div class="hlp-intro">Guía rápida de todo lo que puedes hacer. Toca cada sección para desplegarla.</div>
 
+        <button onclick="closeHelp(); setTimeout(function(){ if(window.startFeatureTour) startFeatureTour(); }, 300);" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ag,rgba(79,140,255,.14));border:1px solid rgba(79,140,255,.4);color:var(--a,#4f8cff);border-radius:12px;padding:13px;font-weight:800;font-size:.88rem;cursor:pointer;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">▶ Ver el tutorial de bienvenida</button>
+
         <details class="hlp-sec" open><summary>🚀 Empezar</summary><div class="hlp-sec-c"><ul>
           <li><b>Crea tu cuenta</b> con email y contraseña, o entra si ya la tienes. Tus entrenos se guardan en la nube y se sincronizan en todos tus dispositivos.</li>
           <li>Marca <b>"Recordar mis datos"</b> para no tener que escribirlos cada vez.</li>
