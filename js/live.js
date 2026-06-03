@@ -507,7 +507,10 @@ function finishLive() {
       setsDetail: ex.sets.map(s => ({ kg: s.kg || '', reps: s.reps, done: !!s.done, warmup: !!s.warmup }))
     };
   });
-  const wk = { id: uid(), date: $('planDate').value || new Date().toISOString().split('T')[0], duration: liveTotalSec ? Math.round(liveTotalSec / 60) : '', pauseDuration: livePauseSec ? Math.round(livePauseSec / 60) : '', pauseCount: livePauseCnt, rpe: getRpeValue(), notes: $('planNotes').value || '', exercises };
+  const _dur = liveTotalSec ? Math.round(liveTotalSec / 60) : '';
+  const _name = (($('planName') && $('planName').value.trim()) || (typeof suggestWorkoutName === 'function' ? suggestWorkoutName(exercises) : 'Entreno'));
+  const _cal = (typeof estimateCalories === 'function') ? estimateCalories(_dur) : 0;
+  const wk = { id: uid(), name: _name, date: $('planDate').value || new Date().toISOString().split('T')[0], duration: _dur, calories: _cal, pauseDuration: livePauseSec ? Math.round(livePauseSec / 60) : '', pauseCount: livePauseCnt, rpe: getRpeValue(), notes: $('planNotes').value || '', exercises };
   // Detect new PRs before saving
   const newPRs = [];
   exercises.forEach(ex => {
@@ -543,6 +546,7 @@ function saveLiveSession() {
     restStartWall, restTotal, restMsg: restInt ? restMsg : '',
     planDate: $('planDate') ? $('planDate').value || '' : '',
     planNotes: $('planNotes') ? $('planNotes').value || '' : '',
+    planName: $('planName') ? $('planName').value || '' : '',
     ts: Date.now()
   });
   // Mantener al gestor nativo al día (para el bucle de notificaciones del reloj).
@@ -563,6 +567,7 @@ function restoreLiveSession(saved) {
 
   if (saved.planDate && $('planDate')) $('planDate').value = saved.planDate;
   if (saved.planNotes && $('planNotes')) $('planNotes').value = saved.planNotes;
+  if (saved.planName && $('planName')) $('planName').value = saved.planName;
 
   $('lvTime').textContent = fmt(liveTotalSec); $('lvClock').textContent = fmt(liveTotalSec);
   $('lvTime').className = 'lv-time';

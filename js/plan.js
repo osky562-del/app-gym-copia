@@ -3,6 +3,7 @@ function openPlan() {
   planExs = [];
   $('planDate').value = new Date().toISOString().split('T')[0];
   $('planRpe').value = ''; $('planNotes').value = '';
+  if ($('planName')) $('planName').value = '';
   rpeMode = 'auto';
   if ($('rpeModeLabel')) { $('rpeModeLabel').textContent = 'AUTO'; $('rpeModeLabel').style.color = 'var(--a)'; }
   if ($('rpeAutoDisplay')) { $('rpeAutoDisplay').style.display = ''; $('rpeAutoDisplay').textContent = '—'; }
@@ -93,7 +94,17 @@ function openCopy() {
   $('copyList').innerHTML = workouts.slice(0, 15).map(w => `<div class="sh-card" onclick="doCopy('${w.id}')"><div class="sh-ct">${w.date}${w.duration ? ' · ⏱ ' + w.duration + 'min' : ''}</div><div class="sh-cd">${(w.exercises || []).map(e => e.ex).join(' · ')}</div></div>`).join('');
   $('shCopy').classList.add('on');
 }
-function doCopy(id) { const w = workouts.find(x => x.id === id); if (!w) return; planExs = (w.exercises || []).map(e => ({ name: e.ex, sets: +e.sets || 3, reps: +e.reps || 10, kg: getLastKg(e.ex) || e.kg || '', restSec: 90 })); renderPlanList(); closeSheet('shCopy'); toast('Copiado ✓'); }
+function doCopy(id) { const w = workouts.find(x => x.id === id); if (!w) return; planExs = (w.exercises || []).map(e => ({ name: e.ex, sets: +e.sets || 3, reps: +e.reps || 10, kg: getLastKg(e.ex) || e.kg || '', restSec: 90 })); if ($('planName')) $('planName').value = w.name || ''; renderPlanList(); closeSheet('shCopy'); toast('Copiado ✓'); }
+/* Repetir el último entreno: carga sus ejercicios y nombre en el planificador. */
+function repeatLastWorkout() {
+  if (!workouts.length) return toast('Aún no tienes entrenos para repetir', 'err');
+  const w = workouts[0];
+  openPlan();
+  planExs = (w.exercises || []).map(e => ({ name: e.ex, sets: +e.sets || 3, reps: +e.reps || 10, kg: getLastKg(e.ex) || e.kg || '', restSec: 90 }));
+  if ($('planName')) $('planName').value = w.name || '';
+  renderPlanList();
+  toast('Último entreno cargado ✓', 'good');
+}
 /* restPickerMode: 'plan' (planificación) o 'live' (entrenando) */
 let restPickerMode = 'plan';
 

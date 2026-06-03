@@ -423,6 +423,7 @@
           </div>
           <span style="font-size:1.2rem;color:rgba(255,255,255,.35)">›</span>
         </button>
+        <button onclick="repeatLastWorkout()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--s1);border:1px solid var(--line2);border-radius:12px;padding:13px;color:var(--t2);font-weight:700;font-size:.88rem;cursor:pointer;margin-bottom:9px;-webkit-tap-highlight-color:transparent;">🔁 Repetir último entreno</button>
         <div style="display:flex;gap:8px;margin-bottom:9px;margin-top:0;">
           <button onclick="exportData()"
             style="flex:1;height:46px;background:var(--s1);border:1px solid var(--line2);border-radius:10px;color:var(--t2);font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s;">
@@ -955,6 +956,7 @@
       <button class="btn-g btn-empezar" id="btnEmpezar" onclick="startLiveMode()" disabled>Empezar ▶</button>
     </div>
     <div class="plan-scroll">
+      <input class="pm-i" type="text" id="planName" placeholder="Nombre del entreno (ej. Pecho y tríceps)" style="width:100%;box-sizing:border-box;background:var(--s1);border:1px solid var(--line2);border-radius:10px;padding:12px 14px;color:var(--t1);font-size:.95rem;font-weight:700;margin-bottom:9px;outline:none;">
       <div class="plan-meta">
         <div class="pm-chip" style="flex:1.2">
           <div class="pm-l">Fecha</div><input class="pm-i" type="date" id="planDate">

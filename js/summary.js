@@ -1,16 +1,20 @@
 /* ══ POST-WORKOUT SUMMARY ══ */
 function showSummary(wk, xpGained, newPRs) {
   window.__lastSummaryWk = wk;   // para el botón "Compartir imagen"
+  const _st = document.querySelector('#summaryMode .sum-title');
+  if (_st) _st.innerHTML = wk.name ? `${wk.name} <em>✓</em>` : 'Entreno <em>completado</em> 💪';
   const exs = wk.exercises || [];
   const totalSets = exs.reduce((s, e) => s + (+e.sets || 0), 0);
   const totalVol = exs.reduce((s, e) => s + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1), 0);
   const dur = wk.duration ? wk.duration + 'min' : '—';
 
+  const _cal = wk.calories || (typeof estimateCalories === 'function' ? estimateCalories(wk.duration) : 0);
   $('sumStats').innerHTML = [
     { v: dur, l: 'Duración', c: 'var(--a)' },
     { v: exs.length, l: 'Ejercicios', c: 'var(--green)' },
     { v: totalSets, l: 'Series', c: 'var(--purple)' },
     { v: big(totalVol) + 'kg', l: 'Volumen', c: 'var(--amber)' },
+    { v: _cal + ' kcal', l: 'Calorías', c: 'var(--red, #ff6b6b)' },
   ].map(s => `<div class="sum-stat" style="--sc:${s.c}">
 <div class="sum-stat-v">${s.v}</div>
 <div class="sum-stat-l">${s.l}</div>

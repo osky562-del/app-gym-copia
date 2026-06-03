@@ -9,6 +9,26 @@ function getLastSetsDetail(name) {
   }
   return null;
 }
+/** Sugiere un nombre de entreno a partir de los músculos trabajados (ej. "Pecho y tríceps"). */
+function suggestWorkoutName(exercises) {
+  const cnt = {};
+  (exercises || []).forEach(e => {
+    const m = (typeof getMuscle === 'function') ? getMuscle(e.ex || e.name || '') : 'Otros';
+    cnt[m] = (cnt[m] || 0) + 1;
+  });
+  const sorted = Object.entries(cnt).filter(([m]) => m !== 'Otros').sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) return 'Entreno';
+  if (sorted.length === 1) return 'Entreno de ' + sorted[0][0].toLowerCase();
+  return sorted[0][0] + ' y ' + sorted[1][0].toLowerCase();
+}
+/** Estima las calorías quemadas en un entreno de fuerza según duración y peso corporal. */
+function estimateCalories(durationMin) {
+  const min = +durationMin || 0;
+  if (min <= 0) return 0;
+  const bw = (typeof getBodyweight === 'function' ? getBodyweight() : 0) || 70;
+  // ~0,09 kcal por minuto y kg (≈ 6 MET; ~7 kcal/min a 70 kg)
+  return Math.round(min * bw * 0.09);
+}
 /** Progressive overload suggestion: +2.5% rounded to nearest 0.5kg */
 function getSuggestedKg(name) {
   const last = getLastKg(name);
