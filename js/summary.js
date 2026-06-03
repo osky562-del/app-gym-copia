@@ -1,5 +1,6 @@
 /* ══ POST-WORKOUT SUMMARY ══ */
 function showSummary(wk, xpGained, newPRs) {
+  window.__lastSummaryWk = wk;   // para el botón "Compartir imagen"
   const exs = wk.exercises || [];
   const totalSets = exs.reduce((s, e) => s + (+e.sets || 0), 0);
   const totalVol = exs.reduce((s, e) => s + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1), 0);
