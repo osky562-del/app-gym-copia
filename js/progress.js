@@ -1,6 +1,6 @@
 /* ══ PROGRESS ══ */
 function getMuscle(ex) { const lc = ex.toLowerCase(); const k = Object.keys(MM).find(k => lc.includes(k)); return k ? MM[k] : 'Otros'; }
-function renderProgress() { renderHeatmap(); renderSummaryStats(); renderMuscleChart(); renderMuscleRadar(); renderVolChart(); renderRpeChart(); if (typeof renderStrengthCard === 'function') renderStrengthCard(); renderPRTable(); renderPRTimeline(); fillProgSel(); drawExChart(); }
+function renderProgress() { renderHeatmap(); renderSummaryStats(); if (typeof renderMuscleMap === 'function') renderMuscleMap('muscleMap', recentMuscles(30)); renderMuscleChart(); renderMuscleRadar(); renderVolChart(); renderRpeChart(); if (typeof renderStrengthCard === 'function') renderStrengthCard(); renderPRTable(); renderPRTimeline(); fillProgSel(); drawExChart(); }
 /* Línea de tiempo de récords: cada vez que el peso máximo de un ejercicio sube, es un PR. */
 function renderPRTimeline() {
   const el = document.getElementById('prTimeline');
