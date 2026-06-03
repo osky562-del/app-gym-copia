@@ -2,6 +2,7 @@
 function renderDash() {
   updateGreeting();
   setTimeout(updateStreakAnim, 100);
+  if (typeof renderInsights === 'function') renderInsights();
   const now = new Date();
   $('greetDate').textContent = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][now.getDay()] + ', ' + now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
   $('strN').textContent = calcStreak(); $('strMax').textContent = calcMaxStreak();
