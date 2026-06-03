@@ -1,6 +1,40 @@
 /* ══ PROGRESS ══ */
 function getMuscle(ex) { const lc = ex.toLowerCase(); const k = Object.keys(MM).find(k => lc.includes(k)); return k ? MM[k] : 'Otros'; }
-function renderProgress() { renderHeatmap(); renderSummaryStats(); renderMuscleChart(); renderMuscleRadar(); renderVolChart(); renderRpeChart(); if (typeof renderStrengthCard === 'function') renderStrengthCard(); renderPRTable(); fillProgSel(); drawExChart(); }
+function renderProgress() { renderHeatmap(); renderSummaryStats(); renderMuscleChart(); renderMuscleRadar(); renderVolChart(); renderRpeChart(); if (typeof renderStrengthCard === 'function') renderStrengthCard(); renderPRTable(); renderPRTimeline(); fillProgSel(); drawExChart(); }
+/* Línea de tiempo de récords: cada vez que el peso máximo de un ejercicio sube, es un PR. */
+function renderPRTimeline() {
+  const el = document.getElementById('prTimeline');
+  if (!el) return;
+  const exNames = new Set();
+  workouts.forEach(w => (w.exercises || []).forEach(e => exNames.add(e.ex)));
+  const events = [];
+  exNames.forEach(ex => {
+    const ss = workouts.filter(w => (w.exercises || []).some(e => e.ex === ex)).sort((a, b) => a.date.localeCompare(b.date));
+    let best = 0;
+    ss.forEach(w => {
+      let dayMax = 0;
+      (w.exercises || []).filter(e => e.ex === ex).forEach(e => { const k = +e.kg || 0; if (k > dayMax) dayMax = k; });
+      if (dayMax > best) { best = dayMax; events.push({ date: w.date, ex, kg: dayMax }); }
+    });
+  });
+  if (!events.length) {
+    el.innerHTML = `<div style="color:var(--t3);font-size:.85rem;text-align:center;padding:8px;">Aún no hay récords. ¡A por ellos! 💪</div>`;
+    return;
+  }
+  events.sort((a, b) => b.date.localeCompare(a.date));
+  const M = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const fd = d => { const p = (d || '').split('-'); return p.length === 3 ? `${+p[2]} ${M[+p[1] - 1] || ''} ${p[0]}` : d; };
+  const shown = events.slice(0, 25);
+  el.innerHTML = shown.map(ev => `
+    <div style="display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line);">
+      <div style="width:34px;height:34px;border-radius:9px;background:rgba(245,166,35,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;">🏆</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.86rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ev.ex}</div>
+        <div style="font-size:.66rem;color:var(--t3);">${fd(ev.date)}</div>
+      </div>
+      <div style="font-weight:800;color:var(--amber);font-family:var(--fm);flex-shrink:0;">${ev.kg} kg</div>
+    </div>`).join('') + (events.length > 25 ? `<div style="text-align:center;color:var(--t3);font-size:.7rem;padding-top:8px;">+${events.length - 25} récords anteriores</div>` : '');
+}
 function renderHeatmap() {
   const container = $('hmGrid');
   if (!Pro.can('heatmap')) {
