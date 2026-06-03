@@ -64,8 +64,10 @@
           <ul>
           <li><b>Plantillas rápidas</b>: rutinas listas (Empuje, Tirón, Pierna, Hombro), todas con vídeo en cada ejercicio.</li>
           <li><b>Generar con IA</b>: di los días y el enfoque y la IA te crea la rutina.</li>
-          <li><b>Copiar anterior</b>: repite un entreno pasado tal cual.</li>
+          <li><b>Copiar anterior</b> o <span class="hlp-k">🔁 Repetir último entreno</span> (botón del inicio): repite una sesión tal cual.</li>
+          <li><b>Ponle nombre</b> al entreno (ej. "Pecho y tríceps"). Si lo dejas vacío, la app le pone uno automático según los músculos.</li>
           <li><b>Buscar y añadir</b>: escribe el nombre; si no está, puedes crearlo igual (sin vídeo demo).</li>
+          <li><b>★ Favoritos y 🕐 recientes</b>: con el buscador vacío salen tus ejercicios favoritos y los últimos usados, para añadir en un toque. Toca la <b>★</b> para marcar favorito.</li>
           <li>Ajusta <b>series, reps, kg y descanso</b> de cada ejercicio. Reordena con las flechas ↑↓.</li>
           </ul>
         </div></details>
@@ -82,10 +84,22 @@
           <li><span class="hlp-k">🔥 Calent.</span> añade una serie de calentamiento (no cuenta para volumen ni récords).</li>
           <li><span class="hlp-k">▶</span> muestra el <b>vídeo de la técnica</b> y los pasos del ejercicio.</li>
           <li><span class="hlp-k">🏋 Discos</span> abre la <b>calculadora de discos</b>: te dice qué poner en la barra para un peso.</li>
-          <li>Toca el <b>número de una serie</b> para marcarla como calentamiento. Toca el chip del <b>descanso</b> para cambiarlo.</li>
+          <li>Toca el <b>número de una serie</b> para elegir su <b>tipo</b> (normal, calentamiento, drop set, rest-pause, AMRAP, al fallo). Toca el chip del <b>descanso</b> para cambiarlo.</li>
           <li>Puedes <b>pausar</b>, <b>reordenar</b>, <b>cambiar</b>, <b>añadir</b> o <b>quitar</b> ejercicios a mitad del entreno.</li>
-          <li>Al terminar pulsa <b>Finalizar</b>: verás el resumen, tu XP y los récords.</li>
+          <li>Al terminar pulsa <b>Finalizar</b>: verás el resumen con tu XP, <b>calorías estimadas</b>, y tus récords (de peso y de <b>repeticiones</b>).</li>
         </ul></div></details>
+
+        <details class="hlp-sec"><summary>🏷️ Tipos de serie</summary><div class="hlp-sec-c">
+          Toca el número de una serie para marcar su tipo (solo para tu registro):
+          <ul>
+          <li><b>🔥 Calentamiento</b>: serie suave previa. No cuenta para volumen ni récords.</li>
+          <li><b>🔻 Drop set</b>: bajas el peso y sigues sin descanso para rematar el músculo.</li>
+          <li><b>⏸ Rest-pause</b>: pausas muy cortas (10-15s) con el mismo peso para sacar más reps.</li>
+          <li><b>🔁 AMRAP</b>: las máximas repeticiones que puedas con buena técnica.</li>
+          <li><b>💥 Al fallo</b>: hasta que no puedas hacer ni una rep más.</li>
+          </ul>
+          Si empiezas, con <b>Normal</b> (y algún calentamiento) te sobra; el resto son técnicas avanzadas.
+        </div></details>
 
         <details class="hlp-sec"><summary>⌚ Apple Watch (iPhone)</summary><div class="hlp-sec-c"><ul>
           <li>Cuando acaba el descanso te llega una <b>notificación al reloj</b> diciendo qué serie/ejercicio toca, aunque tengas el móvil en el bolsillo.</li>
@@ -94,11 +108,16 @@
         </ul></div></details>
 
         <details class="hlp-sec"><summary>📊 Progreso</summary><div class="hlp-sec-c"><ul>
+          <li><b>🫀 Mapa muscular</b>: dos figuras (frente y espalda) que se iluminan según los músculos que trabajas (últimos 30 días).</li>
           <li><b>Mapa de actividad</b> y resumen de tus últimas semanas.</li>
           <li><b>Grupos musculares</b> y <b>balance</b>: detecta si descuidas algún grupo.</li>
           <li><b>💪 Fuerza estimada</b>: tu 1RM por ejercicio y tu nivel (Novato → Élite) según tu peso corporal.</li>
-          <li><b>Récords</b> y <b>🏆 Historial de récords</b>: cada vez que subes tu máximo.</li>
+          <li><b>Récords</b> y <b>🏆 Historial de récords</b>: cada vez que subes tu máximo (peso y reps).</li>
           <li><b>Evolución</b>: gráfica de un ejercicio por máximo, 1RM o volumen.</li>
+        </ul></div></details>
+
+        <details class="hlp-sec"><summary>💡 Para ti (inicio)</summary><div class="hlp-sec-c"><ul>
+          <li>En el <b>inicio</b> aparecen tarjetas inteligentes con tus <b>tendencias</b>: si tu volumen sube respecto al mes pasado, cómo evoluciona tu fuerza (kg/mes), tu grupo muscular estrella del mes, tu racha y tus entrenos del mes.</li>
         </ul></div></details>
 
         <details class="hlp-sec"><summary>👤 Perfil y peso</summary><div class="hlp-sec-c"><ul>
