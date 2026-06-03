@@ -239,14 +239,19 @@ async function generarConsejosIA(p) {
   // IMC
   const imc = (p.peso && p.altura) ? +(p.peso / ((p.altura / 100) ** 2)).toFixed(1) : null;
 
-  const prompt = `RESPONDE SIEMPRE EN ESPAÑOL. Coach IA KO95FIT - Entrenador Personal Pro.
+  const _en = (typeof I18N !== 'undefined' && I18N.getLang && I18N.getLang() === 'en');
+  const _respLine = _en ? 'ALWAYS RESPOND IN ENGLISH.' : 'RESPONDE SIEMPRE EN ESPAÑOL.';
+  const _instr = _en
+    ? `ANALYZE thoroughly and RESPOND with: 🎯DIAGNOSIS | 💪TRAINING | 🥗NUTRITION (specific to their ${p.dieta}) | 😴RECOVERY | 🔥MOTIVATION | ⚡CHALLENGE. Max 250 words, professional technical tone.`
+    : `ANALIZA minuciosamente y RESPONDE con: 🎯DIAGNOSTICO | 💪ENTRENAMIENTO | 🥗NUTRICION (específica para su ${p.dieta}) | 😴RECUPERACION | 🔥MOTIVACION | ⚡RETO. Max 250 palabras, tono profesional y técnico.`;
+  const prompt = `${_respLine} Coach IA KO95FIT - Entrenador Personal Pro.
   PERFIL: ${p.sexo||'?'}, ${p.edad||'?'}a, ${p.peso||'?'}kg, ${p.altura||'?'}cm, ${p.grasa ? 'Grasa:'+p.grasa+'%,' : ''} Dieta: ${p.dieta}, Actividad: ${p.actividad}, IMC ${imc||'?'}, nivel ${p.nivel}, objetivo ${p.objetivo}, ${p.dias||3} d/sem, lesiones: ${p.lesiones}. 
   HISTORIAL: ${totalSess} ses, racha ${streak}d, vol ${big(volTotal)}kg, RPE ${rpeMedio||'?'}, consistencia ${consistencia||'?'}%. 
   TOP PRs: ${prsText||'sin datos'}. 
   MUSCULOS: ${musBalance||'sin datos'}. 
   SEMANA: vol ${weekComp.volDelta>=0?'+':''}${weekComp.volDelta}%, ${weekComp.curSess} ses. 
   ULTIMAS: ${last5||'ninguna'}. 
-  ANALIZA minuciosamente y RESPONDE con: 🎯DIAGNOSTICO | 💪ENTRENAMIENTO | 🥗NUTRICION (específica para su ${p.dieta}) | 😴RECUPERACION | 🔥MOTIVACION | ⚡RETO. Max 250 palabras, tono profesional y técnico.`;
+  ${_instr}`;
 
   statusEl.textContent = 'Coach IA consultando...';
   try {

@@ -4,7 +4,10 @@ function renderDash() {
   setTimeout(updateStreakAnim, 100);
   if (typeof renderInsights === 'function') renderInsights();
   const now = new Date();
-  $('greetDate').textContent = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][now.getDay()] + ', ' + now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  const _loc = (typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES';
+  let _wd = now.toLocaleDateString(_loc, { weekday: 'long' });
+  _wd = _wd.charAt(0).toUpperCase() + _wd.slice(1);
+  $('greetDate').textContent = _wd + ', ' + now.toLocaleDateString(_loc, { day: 'numeric', month: 'long' });
   $('strN').textContent = calcStreak(); $('strMax').textContent = calcMaxStreak();
   $('weekStrip').innerHTML = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); const ds = d.toISOString().split('T')[0]; const hit = workouts.some(w => w.date === ds); const isT = i === 6; return `<div class="wd"><div class="wd-bar${hit ? ' hit' : ''}${isT ? ' today' : ''}"></div><div class="wd-l">${DAYS[d.getDay()]}</div></div>`; }).join('');
   const wv = []; for (let w = 6; w >= 0; w--) { const sun = new Date(); sun.setDate(sun.getDate() - sun.getDay() - w * 7); let v = 0; for (let d = 0; d < 7; d++) { const dd = new Date(sun); dd.setDate(sun.getDate() + d); workouts.filter(x => x.date === dd.toISOString().split('T')[0]).forEach(x => (x.exercises || []).forEach(e => v += (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1))); } wv.push(v); }
