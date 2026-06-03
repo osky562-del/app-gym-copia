@@ -88,6 +88,14 @@ input:focus, textarea:focus, select:focus,
   box-shadow: 0 0 10px rgba(255, 59, 48, .45);
 }
 
+/* ── Selector de idioma ── */
+.lang-btn { transition: all .18s; }
+.lang-btn.on {
+  background: var(--ag) !important;
+  border-color: rgba(255, 59, 48, .5) !important;
+  color: var(--a) !important;
+}
+
 /* ── Scroll más fino y discreto ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .12); border-radius: 3px; }
