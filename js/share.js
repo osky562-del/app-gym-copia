@@ -40,9 +40,12 @@
     x.textAlign = 'right'; x.fillStyle = 'rgba(255,255,255,.55)'; x.font = '600 34px Inter, Arial, sans-serif';
     x.fillText(fmtDate(wk.date), W - P, 124);
 
-    // Título
-    x.textAlign = 'left'; x.fillStyle = '#fff'; x.font = '800 58px Inter, Arial, sans-serif';
-    x.fillText('Entreno completado', P, 250);
+    // Título (nombre del entreno si lo tiene)
+    x.textAlign = 'left'; x.fillStyle = '#fff';
+    let _title = (wk.name || 'Entreno completado'), _ts = 58;
+    x.font = `800 ${_ts}px Inter, Arial, sans-serif`;
+    while (x.measureText(_title).width > W - P * 2 && _ts > 34) { _ts -= 4; x.font = `800 ${_ts}px Inter, Arial, sans-serif`; }
+    x.fillText(_title, P, 250);
 
     // 4 cajas de stats (2×2)
     const stats = [
