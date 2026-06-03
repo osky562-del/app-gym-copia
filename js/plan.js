@@ -61,17 +61,31 @@ function addPlanEx(name) {
   setTimeout(() => $('planExList').lastElementChild?.scrollIntoView({ behavior: 'smooth' }), 80);
   vib([30]);
 }
+function planAcRow(n) {
+  const lk = getLastKg(n); const esc = n.replace(/'/g, "\\'");
+  return `<div class="plan-ac-item" onclick="addPlanEx('${esc}')"><span>${n}</span><span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">${favStar(n, 'filterAC')}${lk ? `<span class="plan-ac-last">${lk}kg</span>` : ''}</span></div>`;
+}
 function filterAC() {
   const raw = $('planSearch').value.trim();
   const val = raw.toLowerCase();
   const ac = $('planAC');
-  if (!raw) { ac.classList.remove('show'); return; }
+  if (!raw) {
+    // Con el buscador vacío: favoritos + recientes para añadir rápido.
+    const favs = getFavs(), recents = getRecentExs(6).filter(n => favs.indexOf(n) < 0);
+    let html = '';
+    if (favs.length) html += quickListHeader('★ Favoritos') + favs.slice(0, 8).map(planAcRow).join('');
+    if (recents.length) html += quickListHeader('🕐 Recientes') + recents.map(planAcRow).join('');
+    if (html) { ac.innerHTML = html; ac.classList.add('show'); } else ac.classList.remove('show');
+    return;
+  }
   const all = getAllExNames();
-  const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 7);
+  let m = all.filter(n => n.toLowerCase().includes(val));
+  m.sort((a, b) => (isFav(b) ? 1 : 0) - (isFav(a) ? 1 : 0));   // favoritos primero
+  m = m.slice(0, 7);
   const exactMatch = all.some(n => n.toLowerCase() === val);
   const newItem = !exactMatch ? `<div class="plan-ac-item plan-ac-new" onclick="addPlanExCustom('${raw.replace(/'/g, "\\'")}')"><div><span style="color:var(--a);font-weight:800;">+</span> Crear "<b>${raw}</b>"</div><div style="font-size:.62rem;color:var(--amber);">⚠️ Sin vídeo demo</div></div>` : '';
   if (!m.length && !newItem) { ac.classList.remove('show'); return; }
-  ac.innerHTML = m.map(n => { const lk = getLastKg(n); return `<div class="plan-ac-item" onclick="addPlanEx('${n.replace(/'/g, "\\'")}')"><span>${n}</span>${lk ? `<span class="plan-ac-last">${lk}kg</span>` : ''}</div>`; }).join('') + newItem;
+  ac.innerHTML = m.map(planAcRow).join('') + newItem;
   ac.classList.add('show');
 }
 document.addEventListener('click', e => { if (!e.target.closest('.plan-search-wrap')) $('planAC').classList.remove('show'); });

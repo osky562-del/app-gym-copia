@@ -650,17 +650,31 @@ function openLvExSheet(mode) {
   lvExMode = mode;
   $('shLvExTitle').textContent = mode === 'add' ? 'Añadir ejercicio' : 'Cambiar ejercicio';
   $('lvExSearch').value = '';
-  $('lvExAC').innerHTML = '';
   $('shLvEx').classList.add('on');
+  filterLvAC();   // muestra favoritos + recientes al abrir
   setTimeout(() => $('lvExSearch').focus(), 350);
+}
+function lvAcRow(n) {
+  const lk = getLastKg(n); const esc = n.replace(/'/g, "\\'");
+  return `<div class="sh-card" onclick="pickLvEx('${esc}',false)" style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><span style="flex:1;min-width:0;">${n}</span><span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">${favStar(n, 'filterLvAC')}${lk ? `<span style="font-size:.75rem;color:var(--t3);font-family:var(--fm)">${lk}kg</span>` : ''}</span></div>`;
 }
 function filterLvAC() {
   const raw = $('lvExSearch').value.trim();
   const val = raw.toLowerCase();
   const list = $('lvExAC');
-  if (!raw) { list.innerHTML = ''; return; }
+  if (!raw) {
+    // Con el buscador vacío: favoritos + recientes.
+    const favs = getFavs(), recents = getRecentExs(6).filter(n => favs.indexOf(n) < 0);
+    let html = '';
+    if (favs.length) html += quickListHeader('★ Favoritos') + favs.slice(0, 8).map(lvAcRow).join('');
+    if (recents.length) html += quickListHeader('🕐 Recientes') + recents.map(lvAcRow).join('');
+    list.innerHTML = html;
+    return;
+  }
   const all = getAllExNames();
-  const m = all.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
+  let m = all.filter(n => n.toLowerCase().includes(val));
+  m.sort((a, b) => (isFav(b) ? 1 : 0) - (isFav(a) ? 1 : 0));   // favoritos primero
+  m = m.slice(0, 8);
   const exactMatch = all.some(n => n.toLowerCase() === val);
   // Permitir crear ejercicios fuera de la BD pero con aviso de "sin vídeo demo"
   const newCard = !exactMatch
@@ -674,10 +688,7 @@ function filterLvAC() {
          </div>
        </div>`
     : '';
-  list.innerHTML = m.map(n => {
-    const lk = getLastKg(n);
-    return `<div class="sh-card" onclick="pickLvEx('${n.replace(/'/g, "\\'")}',false)" style="display:flex;justify-content:space-between;align-items:center;"><span>${n}</span>${lk ? `<span style="font-size:.75rem;color:var(--t3);font-family:var(--fm)">${lk}kg</span>` : ''}</div>`;
-  }).join('') + newCard;
+  list.innerHTML = m.map(lvAcRow).join('') + newCard;
 }
 /* Variante que pide confirmación al usuario antes de crear un ejercicio
    que NO está en la base de datos de 873 (sin vídeo demo). */

@@ -9,6 +9,33 @@ function getLastSetsDetail(name) {
   }
   return null;
 }
+/* ── Favoritos y recientes ── */
+function getFavs() { try { return STORE.get('favExs') || []; } catch (e) { return []; } }
+function isFav(name) { return getFavs().indexOf(name) >= 0; }
+function toggleFav(name) {
+  const f = getFavs(); const i = f.indexOf(name);
+  if (i >= 0) f.splice(i, 1); else f.unshift(name);
+  STORE.set('favExs', f);
+}
+/** Ejercicios usados más recientemente (nombres únicos, del historial). */
+function getRecentExs(n) {
+  const seen = new Set(), out = [];
+  for (const w of (typeof workouts !== 'undefined' ? workouts : [])) {
+    for (const e of (w.exercises || [])) {
+      if (e.ex && !seen.has(e.ex)) { seen.add(e.ex); out.push(e.ex); if (out.length >= (n || 8)) return out; }
+    }
+  }
+  return out;
+}
+/** HTML de la estrella de favorito (refreshFn = nombre de la función que re-renderiza la lista). */
+function favStar(name, refreshFn) {
+  const esc = name.replace(/'/g, "\\'");
+  const on = isFav(name);
+  return `<span onclick="event.stopPropagation();toggleFav('${esc}');${refreshFn}();" style="cursor:pointer;font-size:1rem;padding:2px 5px;${on ? 'color:#f5a623' : 'color:var(--t3)'};">${on ? '★' : '☆'}</span>`;
+}
+function quickListHeader(txt) {
+  return `<div style="font-size:.6rem;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;padding:9px 10px 4px;">${txt}</div>`;
+}
 /** Sugiere un nombre de entreno a partir de los músculos trabajados (ej. "Pecho y tríceps"). */
 function suggestWorkoutName(exercises) {
   const cnt = {};
