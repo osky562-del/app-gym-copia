@@ -80,6 +80,11 @@
     const el = document.getElementById('insightsList');
     const sec = document.getElementById('insightsSec');
     if (!el) return;
+    if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('insights')) {
+      if (sec) sec.style.display = '';
+      el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'insights\')" style="position:relative;min-height:64px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Insights “Para ti” — Pro</div></div>';
+      return;
+    }
     const ins = computeInsights().slice(0, 3);
     if (!ins.length) { el.innerHTML = ''; if (sec) sec.style.display = 'none'; return; }
     if (sec) sec.style.display = '';

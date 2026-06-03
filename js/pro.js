@@ -19,8 +19,8 @@ const Pro = (function () {
     free: {
       name: 'Free',
       label: 'Gratuito',
-      maxSessions: 15,       // Max stored sessions
-      maxHistory: 10,        // Visible history items
+      maxSessions: 5,        // Máx. entrenos guardados (plan Free)
+      maxHistory: 5,         // Visible history items
       aiCoachPerWeek: 1,     // AI coach queries per week
       aiRutina: false,       // AI routine generator
       advancedAnalytics: false,
@@ -32,6 +32,12 @@ const Pro = (function () {
       bodyWeight: true,
       prTable: false,
       heatmap: false,
+      // Funciones nuevas limitadas a Pro
+      muscleMap: false,
+      insights: false,
+      strengthLevels: false,
+      prTimeline: false,
+      setTypes: false,
     },
     pro: {
       name: 'Pro',
@@ -50,6 +56,11 @@ const Pro = (function () {
       bodyWeight: true,
       prTable: true,
       heatmap: true,
+      muscleMap: true,
+      insights: true,
+      strengthLevels: true,
+      prTimeline: true,
+      setTypes: true,
     },
     pro_plus: {
       name: 'Pro+',
@@ -68,6 +79,11 @@ const Pro = (function () {
       bodyWeight: true,
       prTable: true,
       heatmap: true,
+      muscleMap: true,
+      insights: true,
+      strengthLevels: true,
+      prTimeline: true,
+      setTypes: true,
       // Pro+ exclusive
       periodization: true,
       socialFeatures: true,
@@ -91,6 +107,11 @@ const Pro = (function () {
     'body_weight':        'bodyWeight',
     'pr_table':           'prTable',
     'heatmap':            'heatmap',
+    'muscle_map':         'muscleMap',
+    'insights':           'insights',
+    'strength_levels':    'strengthLevels',
+    'pr_timeline':        'prTimeline',
+    'set_types':          'setTypes',
     'periodization':      'periodization',
     'social':             'socialFeatures',
     'meal_plans':         'mealPlans',
@@ -368,6 +389,11 @@ const Pro = (function () {
       'weekly_comparison': 'Comparativa semanal',
       'pr_table': 'Tabla de récords',
       'heatmap': 'Mapa de actividad',
+      'muscle_map': 'Mapa muscular',
+      'insights': 'Insights “Para ti”',
+      'strength_levels': 'Fuerza estimada y niveles',
+      'pr_timeline': 'Historial de récords',
+      'set_types': 'Tipos de serie avanzados',
       'periodization': 'Periodización',
       'social': 'Funciones sociales',
       'meal_plans': 'Planes de comida',
@@ -389,28 +415,30 @@ const Pro = (function () {
           <div class="pro-modal-title">Desbloquea ${label}</div>
           <div class="pro-modal-desc">Esta función requiere KO95FIT Pro. Mejora tu plan para acceder a todas las herramientas avanzadas.</div>
 
-          <div class="pro-modal-plans">
-            <div class="pro-plan-option" onclick="Pro.selectPlan('pro')">
-              <div class="pro-plan-name">Pro</div>
-              <div class="pro-plan-price">$4.99<small>/mes</small></div>
-              <ul class="pro-plan-features">
-                <li>Coach IA ilimitado</li>
-                <li>Analíticas avanzadas</li>
-                <li>Rutinas IA</li>
-                <li>Todos los temas</li>
-                <li>Historial ilimitado</li>
-              </ul>
+          <ul class="pro-plan-features" style="margin:0 0 14px;">
+            <li>Entrenos ilimitados (sin tope de 5)</li>
+            <li>Mapa muscular, Insights y Fuerza estimada</li>
+            <li>Historial de récords y tipos de serie</li>
+            <li>Coach y rutinas IA, analíticas, todos los temas</li>
+          </ul>
+
+          <div class="pro-modal-plans" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="pro-plan-option" onclick="Pro.selectPlan('pro','1m')">
+              <div class="pro-plan-name">1 mes</div>
+              <div class="pro-plan-price">4,99 €<small>/mes</small></div>
             </div>
-            <div class="pro-plan-option featured" onclick="Pro.selectPlan('pro_plus')">
-              <div class="pro-plan-popular">Más popular</div>
-              <div class="pro-plan-name">Pro+</div>
-              <div class="pro-plan-price">$9.99<small>/mes</small></div>
-              <ul class="pro-plan-features">
-                <li>Todo de Pro +</li>
-                <li>Periodización</li>
-                <li>Planes de comida IA</li>
-                <li>Soporte prioritario</li>
-              </ul>
+            <div class="pro-plan-option" onclick="Pro.selectPlan('pro','3m')">
+              <div class="pro-plan-name">3 meses</div>
+              <div class="pro-plan-price">12,99 €<small> · 4,33/mes</small></div>
+            </div>
+            <div class="pro-plan-option" onclick="Pro.selectPlan('pro','6m')">
+              <div class="pro-plan-name">6 meses</div>
+              <div class="pro-plan-price">21,99 €<small> · 3,66/mes</small></div>
+            </div>
+            <div class="pro-plan-option featured" onclick="Pro.selectPlan('pro','1y')">
+              <div class="pro-plan-popular">Mejor precio</div>
+              <div class="pro-plan-name">1 año</div>
+              <div class="pro-plan-price">34,99 €<small> · 2,92/mes</small></div>
             </div>
           </div>
 
@@ -426,14 +454,12 @@ const Pro = (function () {
     if (m) m.remove();
   }
 
-  function selectPlan(planId) {
-    // TODO: Integrate with Stripe / RevenueCat / payment provider
-    // For now, this is a placeholder that shows a message
+  function selectPlan(planId, duration) {
+    // TODO: integrar Google Play Billing (Android) / pago real.
+    // De momento el pago no está conectado: el Pro se concede desde el panel admin.
     closeUpgradeModal();
-    toast('Pago pendiente de integrar. Plan: ' + (PLANS[planId]?.label || planId), 'ok');
-
-    // DEVELOPMENT: Uncomment to test pro features
-    // setPlan(planId, new Date(Date.now() + 30*24*60*60*1000));
+    const dl = { '1m': '1 mes', '3m': '3 meses', '6m': '6 meses', '1y': '1 año' }[duration] || '';
+    toast('Pago aún no disponible. Pro ' + dl + ' — ¡pronto! 💪', 'ok');
   }
 
   /** Render PRO badges on UI elements */

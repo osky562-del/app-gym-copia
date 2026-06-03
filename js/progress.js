@@ -5,6 +5,10 @@ function renderProgress() { renderHeatmap(); renderSummaryStats(); if (typeof re
 function renderPRTimeline() {
   const el = document.getElementById('prTimeline');
   if (!el) return;
+  if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('pr_timeline')) {
+    el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'pr_timeline\')" style="position:relative;min-height:64px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Historial de récords — Pro</div></div>';
+    return;
+  }
   const exNames = new Set();
   workouts.forEach(w => (w.exercises || []).forEach(e => exNames.add(e.ex)));
   const events = [];

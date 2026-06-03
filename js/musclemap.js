@@ -80,6 +80,10 @@
   function renderMuscleMap(containerId, muscles) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('muscle_map')) {
+      el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'muscle_map\')" style="position:relative;min-height:120px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Mapa muscular — Pro</div></div>';
+      return;
+    }
     muscles = muscles || {};
     const total = Object.values(muscles).reduce((a, b) => a + (+b || 0), 0);
     if (!total) {

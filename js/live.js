@@ -39,6 +39,12 @@ window.__onLiveActivitySync = function(state) {
 
 function startLiveMode() {
   if (!planExs.length) return;
+  // Límite de entrenos del plan Free: al llegar a 5, hay que borrar uno o pasar a Pro.
+  if (typeof Pro !== 'undefined' && Pro.canAddSession && !Pro.canAddSession()) {
+    if (typeof toast === 'function') toast('Has alcanzado el límite de 5 entrenos del plan Free. Borra uno para añadir otro.', 'err');
+    if (Pro.showUpgradeModal) Pro.showUpgradeModal('unlimited_workouts');
+    return;
+  }
   // Empezar de cero en el gestor nativo (descarta cualquier entreno anterior).
   if (typeof __endWorkoutNative === 'function') __endWorkoutNative();
   // Desbloquear el contexto de audio (iOS exige un gesto de usuario para que sea activo)
@@ -270,6 +276,12 @@ function closeSetType() { const m = document.getElementById('stOv'); if (m) m.st
 function setSetType(type) {
   const ex = liveExs[liveIdx];
   if (!ex || !ex.sets[_setTypeIdx]) { closeSetType(); return; }
+  // Los tipos avanzados son Pro (Normal y Calentamiento siguen gratis).
+  if (['drop', 'restpause', 'amrap', 'failure'].indexOf(type) >= 0 && typeof Pro !== 'undefined' && Pro.can && !Pro.can('set_types')) {
+    closeSetType();
+    if (Pro.showUpgradeModal) Pro.showUpgradeModal('set_types');
+    return;
+  }
   const s = ex.sets[_setTypeIdx];
   if (type === 'warmup') { s.warmup = true; s.type = 'normal'; }
   else { s.warmup = false; s.type = type; }
