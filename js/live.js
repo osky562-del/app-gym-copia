@@ -62,7 +62,7 @@ function startLiveMode() {
     } else {
       sets = Array.from({ length: ex.sets }, () => ({ kg: ex.kg || '', reps: ex.reps, done: false, warmup: false }));
     }
-    return { name: ex.name, restSec: ex.restSec, sets };
+    return { name: ex.name, restSec: ex.restSec, sets, ssLink: !!ex.ssLink };
   });
   liveIdx = 0; liveTotalSec = 0; livePauseSec = 0; liveIsPaused = false; livePauseCnt = 0;
   liveStartWall = Date.now(); livePausedMs = 0; livePauseStartWall = 0;
@@ -125,10 +125,20 @@ function navEx(dir) {
     });
   }
 }
+/* Devuelve [inicio, fin] del grupo de superserie contiguo que contiene a idx.
+   ssLink en un ejercicio significa "encadenado con el anterior". */
+function getLiveGroup(idx) {
+  if (!liveExs || !liveExs[idx]) return [idx, idx];
+  let a = idx, b = idx;
+  while (a > 0 && liveExs[a] && liveExs[a].ssLink) a--;
+  while (b < liveExs.length - 1 && liveExs[b + 1] && liveExs[b + 1].ssLink) b++;
+  return [a, b];
+}
 function renderLiveEx() {
   const ex = liveExs[liveIdx], lk = getLastKg(ex.name), pr = getPR(ex.name);
   $('lvExName').textContent = ex.name;
   $('lvExCtr').textContent = (liveIdx + 1) + ' / ' + liveExs.length;
+  const _g = getLiveGroup(liveIdx), _ss = _g[1] > _g[0];
   let prText = '';
   if (ex.isCardio) {
     prText = '🏃 Cardio';
@@ -139,7 +149,7 @@ function renderLiveEx() {
       if (sug && sug.reason === 'overload') prText += ' · 💡 Sube a ' + sug.kg + 'kg';
     }
   }
-  $('lvExPr').textContent = prText;
+  $('lvExPr').textContent = (_ss ? `🔗 Superserie ${liveIdx - _g[0] + 1}/${_g[1] - _g[0] + 1} · ` : '') + prText;
   // Chip del descanso: muestra el valor actual y permite cambiarlo
   const restPill = $('lvRestPill');
   if (restPill) {
@@ -271,6 +281,27 @@ function toggleSet(si) {
       const kg = +s.kg || 0, pr = getPR(ex.name);
       if (kg > 0 && kg > pr) showPR(ex.name, kg);
     }
+    // ── Superserie: si hay otro ejercicio del grupo con ESTA misma serie pendiente,
+    //    saltar a él SIN descanso (alternar A→B). El descanso solo tras el último del grupo. ──
+    if (!s.warmup) {
+      const g = getLiveGroup(liveIdx);
+      if (g[1] > g[0]) {
+        let nextEx = -1;
+        for (let j = liveIdx + 1; j <= g[1]; j++) {
+          if (liveExs[j].sets[si] && !liveExs[j].sets[si].done) { nextEx = j; break; }
+        }
+        if (nextEx !== -1) {
+          navEx(nextEx - liveIdx);   // renderiza + guarda + sincroniza
+          setTimeout(() => {
+            const el = document.getElementById('lvs' + si);
+            if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); const inp = el.querySelector('.lv-inp'); if (inp) { try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); } } }
+          }, 150);
+          if (typeof toast === 'function') toast('🔗 Sin descanso · siguiente de la superserie', 'good');
+          return;
+        }
+        // Era el último del grupo en esta ronda → descanso normal; autoAdvance volverá al 1º del grupo.
+      }
+    }
     // "Todas done" para el mensaje del descanso: ignora las warmup pendientes (el usuario
     // puede tener warmups sin marcar y aun así estar listo para el siguiente ejercicio).
     const allRealDone = ex.sets.every(x => x.warmup || x.done);
@@ -319,6 +350,31 @@ function autoAdvanceAfterRest() {
   if (typeof liveExs === 'undefined' || !Array.isArray(liveExs) || !liveExs.length) return;
   const ex = liveExs[liveIdx];
   if (!ex) return;
+  // ── Superserie: tras el descanso, volver al PRIMER ejercicio del grupo con una serie
+  //    pendiente (siguiente ronda). Si el grupo está completo, seguir tras el grupo. ──
+  const g = getLiveGroup(liveIdx);
+  if (g[1] > g[0]) {
+    for (let j = g[0]; j <= g[1]; j++) {
+      const k = liveExs[j].sets.findIndex(s => !s.done && !s.warmup);
+      if (k !== -1) {
+        if (j !== liveIdx) navEx(j - liveIdx);
+        setTimeout(() => {
+          const el = document.getElementById('lvs' + k);
+          if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); const inp = el.querySelector('.lv-inp'); if (inp) { try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); } } }
+        }, j !== liveIdx ? 200 : 150);
+        return;
+      }
+    }
+    // Grupo de superserie completo → pasar al ejercicio siguiente tras el grupo.
+    if (g[1] < liveExs.length - 1) {
+      const nextEx = liveExs[g[1] + 1];
+      navEx(g[1] + 1 - liveIdx);
+      if (typeof toast === 'function' && nextEx) toast('▶ ' + nextEx.name, 'good');
+    } else {
+      if (typeof toast === 'function') toast('🎉 ¡Entreno completo! Pulsa Finalizar', 'good');
+    }
+    return;
+  }
   // Una serie cuenta como "pendiente" solo si NO es warmup. Las warmup no completadas
   // no bloquean el avance al siguiente ejercicio (el usuario puede haber decidido saltárselas).
   const nextSetIdx = ex.sets.findIndex(s => !s.done && !s.warmup);
@@ -366,8 +422,15 @@ function __buildWorkoutSyncPayload() {
 }
 function __syncWorkoutToNative(force) {
   try {
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.workoutSyncState
-        && Array.isArray(liveExs) && liveExs.length) {
+    if (!(window.webkit && window.webkit.messageHandlers)) return;
+    // El bucle nativo del reloj cuenta las series secuencialmente; una superserie
+    // (orden intercalado A→B) lo confundiría. En entrenos con superserie desactivamos
+    // el gestor nativo (las superseries funcionan en la app; el "✓ Hecho" del reloj no).
+    if (Array.isArray(liveExs) && liveExs.some(e => e.ssLink)) {
+      if (typeof __endWorkoutNative === 'function') __endWorkoutNative();
+      return;
+    }
+    if (window.webkit.messageHandlers.workoutSyncState && Array.isArray(liveExs) && liveExs.length) {
       const payload = __buildWorkoutSyncPayload();
       payload.force = !!force;  // true = el nativo adopta el conteo aunque sea menor
       window.webkit.messageHandlers.workoutSyncState.postMessage(payload);
