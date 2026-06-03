@@ -23,7 +23,9 @@ function renderPlanList() {
   $('planEmpty').style.display = n === 0 ? 'block' : 'none';
   $('planExList').innerHTML = planExs.map((ex, i) => {
     const lk = getLastKg(ex.name), pr = getPR(ex.name);
-    return `<div class="plan-ex-item">
+    const linked = i > 0 && !!ex.ssLink;
+    return `<div class="plan-ex-item${linked ? ' ss-linked' : ''}">
+  ${linked ? '<div class="ss-tag">🔗 En superserie con el anterior</div>' : ''}
   <div class="plan-ex-head">
     <div style="display:flex;flex-direction:column;gap:2px;margin-right:6px;">
       <button class="plan-ex-del" style="width:28px;height:22px;border-radius:6px;" onclick="moveExUp(${i})" ${i === 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24" style="width:12px;height:12px;"><polyline points="18 15 12 9 6 15"/></svg></button>
@@ -31,6 +33,7 @@ function renderPlanList() {
     </div>
     <div style="flex:1;"><div class="plan-ex-n">${i + 1}. ${ex.name}</div>${lk ? `<div class="plan-ex-hist">Último: ${lk}kg${pr ? ' · PR: ' + pr + 'kg' : ''}</div>` : ''}
     </div>
+    ${i > 0 ? `<button class="plan-ex-del ss-btn${linked ? ' on' : ''}" onclick="toggleSSLink(${i})" title="Superserie con el ejercicio anterior">🔗</button>` : ''}
     <button class="plan-ex-del" onclick="planDel(${i})"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>
   <div class="plan-ex-params">
@@ -43,6 +46,13 @@ function renderPlanList() {
   }).join('');
 }
 function planDel(i) { planExs.splice(i, 1); renderPlanList(); }
+/* Encadena/desencadena el ejercicio i en superserie con el anterior (i-1). */
+function toggleSSLink(i) {
+  if (i <= 0) return;
+  planExs[i].ssLink = !planExs[i].ssLink;
+  renderPlanList();
+  if (typeof vib === 'function') vib([20]);
+}
 function addPlanEx(name) {
   planExs.push({ name, sets: 3, reps: 10, kg: getLastKg(name) || '', restSec: 90 });
   renderPlanList();

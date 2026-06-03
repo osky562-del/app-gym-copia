@@ -242,6 +242,29 @@
   overflow: hidden;
 }
 
+/* ── Superserie ── */
+.plan-ex-item.ss-linked {
+  border-color: rgba(155, 114, 245, .5);
+  border-left: 3px solid #9b72f5;
+}
+.ss-tag {
+  font-size: .62rem;
+  font-weight: 800;
+  color: #9b72f5;
+  background: rgba(155, 114, 245, .1);
+  padding: 4px 13px;
+  letter-spacing: .03em;
+}
+.plan-ex-del.ss-btn {
+  font-size: .9rem;
+  opacity: .5;
+}
+.plan-ex-del.ss-btn.on {
+  opacity: 1;
+  background: rgba(155, 114, 245, .18);
+  border-color: rgba(155, 114, 245, .5);
+}
+
 .plan-ex-head {
   display: flex;
   align-items: center;
