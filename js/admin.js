@@ -16,6 +16,12 @@ const Admin = (function() {
     return fbUser && ADMIN_UIDS.includes(fbUser.uid);
   }
 
+  /* Escapa texto para incrustarlo en innerHTML de forma segura (evita XSS almacenado:
+     un usuario podría poner HTML/JS en su nombre y ejecutarse en la sesión de admin). */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   function isUnlocked() {
     try { return sessionStorage.getItem(UNLOCKED_KEY) === '1'; } catch (e) { return false; }
   }
@@ -233,8 +239,8 @@ const Admin = (function() {
         <div style="background:var(--s2);border:1px solid var(--line2);border-radius:11px;padding:14px;margin-top:8px;">
           <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px;">
             <div>
-              <div style="font-size:.95rem;font-weight:800;">${nombre}</div>
-              <div style="font-size:.7rem;color:var(--t3);font-family:var(--fm);word-break:break-all;">${uid}</div>
+              <div style="font-size:.95rem;font-weight:800;">${esc(nombre)}</div>
+              <div style="font-size:.7rem;color:var(--t3);font-family:var(--fm);word-break:break-all;">${esc(uid)}</div>
             </div>
             <div style="text-align:right;flex-shrink:0;">
               <div style="font-size:.65rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">Plan</div>
@@ -321,7 +327,7 @@ const Admin = (function() {
       listEl.innerHTML = proUsers.map(u => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:var(--s2);border:1px solid var(--line2);border-radius:9px;margin-bottom:5px;">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:.82rem;font-weight:700;">${u.nombre}</div>
+            <div style="font-size:.82rem;font-weight:700;">${esc(u.nombre)}</div>
             <div style="font-size:.65rem;color:var(--t3);">${u.plan === 'pro_plus' ? 'Pro+' : 'Pro'} · ${u.expiry ? 'expira ' + u.expiry.toLocaleDateString('es') : 'infinito'}</div>
           </div>
           <button class="adm-mini" onclick="Admin.setPlan('${u.uid}','free',null)">Quitar</button>
