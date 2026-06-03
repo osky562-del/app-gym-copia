@@ -88,6 +88,12 @@ input:focus, textarea:focus, select:focus,
   box-shadow: 0 0 10px rgba(255, 59, 48, .45);
 }
 
+/* ── Historial agrupado por meses ── */
+.hist-month { display: flex; align-items: center; gap: 10px; margin: 18px 2px 9px; }
+.hist-month > span:first-child { font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--t2); white-space: nowrap; }
+.hist-month-line { flex: 1; height: 1px; background: var(--line2); }
+.hist-month-n { font-size: .66rem; font-weight: 700; color: var(--t3); background: var(--s3); border: 1px solid var(--line2); border-radius: 20px; padding: 2px 9px; }
+
 /* ── Selector de idioma ── */
 .lang-btn { transition: all .18s; }
 .lang-btn.on {
