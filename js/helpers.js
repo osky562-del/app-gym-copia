@@ -36,6 +36,19 @@ function favStar(name, refreshFn) {
 function quickListHeader(txt) {
   return `<div style="font-size:.6rem;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;padding:9px 10px 4px;">${txt}</div>`;
 }
+/** Récord de repeticiones: máximas reps en una serie (no calentamiento) del historial. */
+function getRepPR(name) {
+  let max = 0;
+  for (const w of (typeof workouts !== 'undefined' ? workouts : [])) {
+    for (const e of (w.exercises || [])) {
+      if (e.ex !== name) continue;
+      if (Array.isArray(e.setsDetail)) {
+        e.setsDetail.forEach(s => { if (!s.warmup && +s.reps > max) max = +s.reps; });
+      } else if (+e.reps > max) max = +e.reps;
+    }
+  }
+  return max;
+}
 /** Sugiere un nombre de entreno a partir de los músculos trabajados (ej. "Pecho y tríceps"). */
 function suggestWorkoutName(exercises) {
   const cnt = {};
