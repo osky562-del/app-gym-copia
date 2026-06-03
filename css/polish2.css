@@ -1,0 +1,94 @@
+/* ════════════════════════════════════════════════════════
+   VISUAL POLISH v2 — refresco de diseño (profundidad + premium)
+   Se carga el último: refina componentes compartidos sin tocar la lógica.
+   ════════════════════════════════════════════════════════ */
+
+/* ── Tarjetas: iluminadas desde arriba, profundidad suave ── */
+.card {
+  background: linear-gradient(180deg, var(--s3), var(--s2)) !important;
+  border-radius: 20px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 12px 30px rgba(0, 0, 0, .42) !important;
+}
+.card::before { background: linear-gradient(160deg, rgba(255, 255, 255, .03), transparent 40%) !important; }
+
+/* ── Botón principal del inicio (Nuevo entrenamiento): rojo premium con glow ── */
+.cta {
+  background: linear-gradient(135deg, #ff5a50, #ff3b30 55%, #df271d) !important;
+  border: none !important;
+  border-radius: 18px !important;
+  box-shadow: var(--glow), inset 0 1px 0 rgba(255, 255, 255, .22) !important;
+  transition: transform .15s cubic-bezier(.2, .8, .2, 1), box-shadow .2s !important;
+}
+.cta:active { transform: scale(.98) !important; box-shadow: 0 4px 14px rgba(255, 59, 48, .28) !important; }
+
+/* ── Botones primarios genéricos ── */
+.btn-g, .sum-btn-p, .btn-empezar, #confirmDel, .auth-btn, #btnLogin, #btnRegister {
+  border-radius: 14px !important;
+  transition: transform .15s, filter .2s, box-shadow .2s !important;
+}
+.btn-empezar:not(:disabled), #btnLogin, #btnRegister {
+  background: linear-gradient(135deg, #ff5a50, #ff3b30 60%, #df271d) !important;
+  box-shadow: var(--glow), inset 0 1px 0 rgba(255, 255, 255, .2) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.btn-g:active, .btn-empezar:active, #btnLogin:active, #btnRegister:active { transform: scale(.98) !important; }
+
+/* ── Inputs: profundidad sutil + anillo de foco con el acento ── */
+input, textarea, select {
+  border-radius: 12px !important;
+  transition: border-color .2s, box-shadow .2s, background .2s !important;
+}
+input:focus, textarea:focus, select:focus,
+.auth-input:focus, .pm-i:focus, .plan-search:focus {
+  border-color: rgba(255, 59, 48, .55) !important;
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, .14) !important;
+  outline: none !important;
+}
+
+/* ── Barra de navegación inferior: vidrio + píldora activa ── */
+.tabbar {
+  background: rgba(13, 13, 16, .70) !important;
+  backdrop-filter: blur(28px) saturate(1.6) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.6) !important;
+  border-top: 1px solid rgba(255, 255, 255, .07) !important;
+}
+.tab { position: relative; }
+.tab::before {
+  content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%) scale(.6);
+  width: 52px; height: 34px; border-radius: 12px;
+  background: rgba(255, 59, 48, .14); opacity: 0;
+  transition: opacity .25s, transform .25s cubic-bezier(.2, .8, .2, 1);
+  z-index: -1;
+}
+.tab.on::before { opacity: 1; transform: translateX(-50%) scale(1); }
+
+/* ── Hero del inicio: glow ambiental detrás ── */
+.hero, .p-hero, .ai-hero {
+  position: relative;
+}
+.hero::after, .p-hero::after {
+  content: ''; position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+  width: 280px; height: 200px; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle, rgba(255, 59, 48, .16), transparent 70%);
+  filter: blur(10px);
+}
+
+/* ── Encabezados de sección: un punto más legibles ── */
+.sec { color: var(--t3); }
+
+/* ── KPIs / chips: profundidad sutil ── */
+.kpi, .chip, .pm-chip {
+  background: linear-gradient(180deg, var(--s3), var(--s2)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04) !important;
+}
+
+/* ── Barra de XP / progreso: brillo del acento ── */
+.xp-fill, .lv-vfill, .ml-fill, .hi-vfill, .lv-prog {
+  box-shadow: 0 0 10px rgba(255, 59, 48, .45);
+}
+
+/* ── Scroll más fino y discreto ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .12); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }

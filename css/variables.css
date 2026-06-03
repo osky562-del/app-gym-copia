@@ -1,16 +1,17 @@
 :root {
-  --bg: #000000;
-  --s1: #060606;
-  --s2: #0c0c0c;
-  --s3: #121212;
-  --s4: #1a1a1a;
-  --s5: #222222;
+  /* Superficies oscuras POR CAPAS (no negro puro) → profundidad y sensación premium */
+  --bg: #0a0a0c;
+  --s1: #0f0f12;
+  --s2: #16161b;
+  --s3: #1d1d23;
+  --s4: #26262e;
+  --s5: #30303a;
   --t1: #ffffff;
-  --t2: rgba(255, 255, 255, .82);
-  --t3: rgba(255, 255, 255, .48);
-  --t4: rgba(255, 255, 255, .22);
+  --t2: rgba(255, 255, 255, .80);
+  --t3: rgba(255, 255, 255, .50);
+  --t4: rgba(255, 255, 255, .26);
   --a: #ff3b30; /* Elite Fire Red */
-  --ag: rgba(255, 59, 48, .12);
+  --ag: rgba(255, 59, 48, .14);
   --green: #ff453a;
   --gg: rgba(255, 69, 58, .12);
   --red: #ff3b30;
@@ -20,13 +21,19 @@
   --purple: #e60000;
   --pg: rgba(230, 0, 0, .12);
   --gold: #ffd700;
-  --line: rgba(255, 59, 48, 0.12);
-  --line2: rgba(255, 59, 48, 0.08);
+  /* Bordes NEUTROS sutiles (antes rojos en todas partes) → el rojo se reserva para el acento */
+  --line: rgba(255, 255, 255, 0.09);
+  --line2: rgba(255, 255, 255, 0.055);
   --f: 'Inter', sans-serif;
   --fm: 'JetBrains Mono', monospace;
   --tab: 80px;
   --st: env(safe-area-inset-top, 40px);
   --sb: env(safe-area-inset-bottom, 24px);
-  --r: 12px;
-  --r2: 8px;
+  /* Radios más suaves */
+  --r: 16px;
+  --r2: 11px;
+  /* Sombras de elevación reutilizables */
+  --sh1: 0 2px 8px rgba(0,0,0,.4);
+  --sh2: 0 10px 28px rgba(0,0,0,.45);
+  --glow: 0 8px 24px rgba(255,59,48,.30);
 }
