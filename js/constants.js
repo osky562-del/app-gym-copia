@@ -12,7 +12,7 @@ const TPL = {
     { ex: "Press de banca con barra - Agarre medio", s: 4, r: 10 },
     { ex: "Press de banca inclinado con barra - Agarre medio", s: 3, r: 12 },
     { ex: "Aperturas con mancuernas", s: 3, r: 15 },
-    { ex: "Inmersiones - Versión para el pecho", s: 3, r: 12 },
+    { ex: "Fondos en paralelas (pecho)", s: 3, r: 12 },
     { ex: "Flexión de tríceps", s: 3, r: 12 },
     { ex: "Press de tríceps acostado", s: 3, r: 10 }
   ],
