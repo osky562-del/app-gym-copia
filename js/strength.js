@@ -94,6 +94,10 @@
   function renderStrengthCard() {
     const el = document.getElementById('strengthCard');
     if (!el) return;
+    if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('strength_levels')) {
+      el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'strength_levels\')" style="position:relative;min-height:64px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Fuerza estimada y niveles — Pro</div></div>';
+      return;
+    }
     const bw = getBodyweight();
     const sex = getSex();
 
