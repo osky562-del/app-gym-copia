@@ -295,6 +295,9 @@ function toggleSet(si) {
     }, wait);
   }
   renderLiveEx(); saveLiveSession();
+  // Si se DESMARCÓ una serie (corrección en el móvil), forzar al gestor nativo a
+  // adoptar el conteo menor (anula el max() que protege del relanzamiento en frío).
+  if (!s.done && typeof __syncWorkoutToNative === 'function') __syncWorkoutToNative(true);
 }
 function updateLvStats() {
   // El volumen y el contador de series ignoran las series de calentamiento.
@@ -361,11 +364,13 @@ function __buildWorkoutSyncPayload() {
   liveExs.forEach(ex => ex.sets.forEach(s => { if (s.done) completed++; }));
   return { exercises, completed };
 }
-function __syncWorkoutToNative() {
+function __syncWorkoutToNative(force) {
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.workoutSyncState
         && Array.isArray(liveExs) && liveExs.length) {
-      window.webkit.messageHandlers.workoutSyncState.postMessage(__buildWorkoutSyncPayload());
+      const payload = __buildWorkoutSyncPayload();
+      payload.force = !!force;  // true = el nativo adopta el conteo aunque sea menor
+      window.webkit.messageHandlers.workoutSyncState.postMessage(payload);
     }
   } catch (e) {}
 }
