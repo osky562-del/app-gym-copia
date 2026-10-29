@@ -120,6 +120,20 @@ function stopRest() {
     }
   } catch (e) {}
 }
+/* Ajusta el descanso que está corriendo (+15s, -15s, +1m). Nunca baja de 1 segundo. */
+function bumpRest(delta) {
+  if (!restInt) return;
+  const left = Math.max(1, restLeft + delta);
+  restTotal = Math.max(restTotal + (left - restLeft), left);
+  restStartWall = Date.now() - (restTotal - left) * 1000;
+  restLeft = left;
+  $('lrrN').textContent = restLeft;
+  updRing();
+  // Reprograma el aviso nativo (iOS) con el tiempo nuevo.
+  cancelNativeRestSound();
+  scheduleNativeRestSound(restLeft);
+  if (typeof vib === 'function') vib([20]);
+}
 function skipRest() {
   stopRest();
   // Saltar también dispara el auto-advance (mismo comportamiento que cuando termina solo).

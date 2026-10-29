@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ko95fit-v4';
+const CACHE_NAME = 'ko95fit-v5';
 const ASSETS = [
   '/',
   '/index.html',
@@ -43,6 +43,7 @@ const ASSETS = [
   '/js/data.js',
   '/js/ai-coach.js',
   '/js/ai-rutina.js',
+  '/js/evidence-coach.js',
   '/js/rpe.js',
   '/js/summary.js',
   '/js/effects.js',

@@ -112,12 +112,12 @@ function estimateRecovery(muscle, volume, rpe) {
   return Math.round(hours);
 }
 /* Lista completa de ejercicios disponibles para añadir/buscar.
-   Prioriza la BD de 873 ejercicios (todos con vídeo demo) y mezcla los
+   Prioriza la base revisada (la misma que Android e iOS) y mezcla los
    que el usuario ya haya hecho en su historial (para retro-compatibilidad
    con cuentas antiguas que tengan ejercicios con nombres distintos). */
 function getAllExNames() {
   const s = new Set();
-  // 1) Base de datos de 873 ejercicios (todos con vídeo)
+  // 1) Base de datos revisada de ejercicios (con vídeo/técnica)
   if (typeof window !== 'undefined' && Array.isArray(window.EXERCISES_DB)) {
     window.EXERCISES_DB.forEach(e => { if (e.name) s.add(e.name); });
   }
@@ -126,6 +126,40 @@ function getAllExNames() {
   // 3) Ejercicios que el usuario ya usó (aunque no estén en la BD)
   workouts.forEach(w => (w.exercises || []).forEach(e => s.add(e.ex)));
   return [...s].sort((a, b) => a.localeCompare(b, 'es'));
+}
+/* Texto en minúsculas, sin tildes ni signos: para comparar lo que escribe el usuario. */
+function exFold(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+/* Buscador de ejercicios (igual que en Android e iOS): sin distinguir tildes ni mayúsculas y por
+   palabras sueltas en cualquier orden ("jalon pecho" encuentra "Jalón al pecho"). Busca también en
+   el nombre en inglés y en los alias. Primero los que coinciden por nombre y, dentro de eso, los
+   básicos de referencia (tier). Incluye los ejercicios propios del historial. */
+function searchExNames(query, limit) {
+  const q = exFold(query);
+  if (!q) return [];
+  const words = q.split(' ').filter(Boolean);
+  const db = (typeof window !== 'undefined' && Array.isArray(window.EXERCISES_DB)) ? window.EXERCISES_DB : [];
+  const seen = new Set(), cands = [];
+  db.forEach(e => {
+    seen.add(e.name);
+    cands.push({ name: e.name, tier: e.tier || 2, extra: [e.name_en || ''].concat(e.aliases || []).map(exFold).join(' | ') });
+  });
+  getAllExNames().forEach(n => { if (!seen.has(n)) cands.push({ name: n, tier: 2, extra: '' }); });
+  const hits = [];
+  cands.forEach((c, i) => {
+    const name = exFold(c.name);
+    let rank = -1;
+    if (name.startsWith(q)) rank = 0;
+    else if (name.includes(q)) rank = 1;
+    else if (words.every(w => name.includes(w))) rank = 2;
+    else if (c.extra.includes(q)) rank = 3;
+    else if (words.every(w => name.includes(w) || c.extra.includes(w))) rank = 4;
+    if (rank >= 0) hits.push({ c, rank, i });
+  });
+  hits.sort((a, b) => (a.rank - b.rank) || (a.c.tier - b.c.tier) || (a.c.name.length - b.c.name.length) || (a.i - b.i));
+  return hits.slice(0, limit || 30).map(h => h.c.name);
 }
 function calcStreak() { if (!workouts.length) return 0; const d = [...new Set(workouts.map(w => w.date))].sort().reverse(); let s = 0, cur = new Date(); cur.setHours(0, 0, 0, 0); for (const x of d) { const wd = new Date(x + 'T00:00:00'); if (Math.round((cur - wd) / 86400000) <= 1) { s++; cur = wd; } else break; } return s; }
 function calcMaxStreak() { const d = [...new Set(workouts.map(w => w.date))].sort(); let max = 0, cur = 0; for (let i = 0; i < d.length; i++) { cur = i === 0 ? 1 : Math.round((new Date(d[i] + 'T00:00:00') - new Date(d[i - 1] + 'T00:00:00')) / 86400000) <= 1 ? cur + 1 : 1; if (cur > max) max = cur; } return max; }

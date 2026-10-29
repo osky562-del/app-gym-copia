@@ -56,14 +56,14 @@
         <details class="hlp-sec" open><summary>🚀 Empezar</summary><div class="hlp-sec-c"><ul>
           <li><b>Crea tu cuenta</b> con email y contraseña, o entra si ya la tienes. Tus entrenos se guardan en la nube y se sincronizan en todos tus dispositivos.</li>
           <li>Marca <b>"Recordar mis datos"</b> para no tener que escribirlos cada vez.</li>
-          <li>La primera vez rellena tu <b>perfil</b> (nombre, sexo, peso, objetivo): se usa para la IA y para calcular tu nivel de fuerza.</li>
+          <li>La primera vez rellena tu <b>perfil</b> (nombre, sexo, peso, objetivo): se usa para el Coach y para calcular tu nivel de fuerza.</li>
         </ul></div></details>
 
         <details class="hlp-sec"><summary>📋 Planificar un entreno</summary><div class="hlp-sec-c">
           Pulsa <span class="hlp-k">+ Entreno</span> y elige cómo montarlo:
           <ul>
           <li><b>Plantillas rápidas</b>: rutinas listas (Empuje, Tirón, Pierna, Hombro), todas con vídeo en cada ejercicio.</li>
-          <li><b>Generar con IA</b>: di los días y el enfoque y la IA te crea la rutina.</li>
+          <li><b>Generar rutina</b>: di los días y el enfoque y la app te crea la rutina con tus ejercicios.</li>
           <li><b>Copiar anterior</b> o <span class="hlp-k">🔁 Repetir último entreno</span> (botón del inicio): repite una sesión tal cual.</li>
           <li><b>Ponle nombre</b> al entreno (ej. "Pecho y tríceps"). Si lo dejas vacío, la app le pone uno automático según los músculos.</li>
           <li><b>Buscar y añadir</b>: escribe el nombre; si no está, puedes crearlo igual (sin vídeo demo).</li>

@@ -146,7 +146,7 @@
 @keyframes spStatusTxt {
   0% { content: 'Booting Core...'; }
   30% { content: 'Syncing Bio-Data...'; }
-  60% { content: 'Optimizing IA Coach...'; }
+  60% { content: 'Optimizing Coach...'; }
   90% { content: 'System Ready.'; }
   100% { content: 'Welcome Atleta.'; }
 }

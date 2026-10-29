@@ -1,5 +1,31 @@
 /* ══ PLAN MODE ══ */
+/* Encadenar: con esto activo, las plantillas/rutinas/sesiones copiadas se SUMAN al plan en vez de
+   reemplazarlo (igual que en Android e iOS). Se apaga al abrir un plan nuevo. */
+let planChain = false;
+function togglePlanChain() {
+  planChain = !planChain;
+  if (typeof renderTplList === 'function') renderTplList();
+  if (typeof vib === 'function') vib([20]);
+}
+/* Reemplaza el plan o, si se está encadenando y ya hay ejercicios, los añade al final. */
+function planLoadOrAppend(items, title) {
+  const nameEl = $('planName');
+  if (planChain && planExs.length) {
+    planExs = planExs.concat(items);
+    if (nameEl) {
+      const cur = nameEl.value.trim(), add = (title || '').trim();
+      nameEl.value = !add ? cur : (!cur ? add : cur + ' + ' + add);
+    }
+    renderPlanList();
+    return true;
+  }
+  planExs = items;
+  if (nameEl && title != null) nameEl.value = title;
+  renderPlanList();
+  return false;
+}
 function openPlan() {
+  planChain = false;
   planExs = [];
   $('planDate').value = new Date().toISOString().split('T')[0];
   $('planRpe').value = ''; $('planNotes').value = '';
@@ -79,10 +105,10 @@ function filterAC() {
     return;
   }
   const all = getAllExNames();
-  let m = all.filter(n => n.toLowerCase().includes(val));
-  m.sort((a, b) => (isFav(b) ? 1 : 0) - (isFav(a) ? 1 : 0));   // favoritos primero
-  m = m.slice(0, 7);
-  const exactMatch = all.some(n => n.toLowerCase() === val);
+  // Sin tildes y por palabras sueltas; favoritos primero (orden estable).
+  let m = searchExNames(raw, 40);
+  m = m.filter(isFav).concat(m.filter(n => !isFav(n))).slice(0, 8);
+  const exactMatch = all.some(n => exFold(n) === exFold(raw));
   const newItem = !exactMatch ? `<div class="plan-ac-item plan-ac-new" onclick="addPlanExCustom('${raw.replace(/'/g, "\\'")}')"><div><span style="color:var(--a);font-weight:800;">+</span> Crear "<b>${raw}</b>"</div><div style="font-size:.62rem;color:var(--amber);">⚠️ Sin vídeo demo</div></div>` : '';
   if (!m.length && !newItem) { ac.classList.remove('show'); return; }
   ac.innerHTML = m.map(planAcRow).join('') + newItem;
@@ -90,7 +116,7 @@ function filterAC() {
 }
 document.addEventListener('click', e => { if (!e.target.closest('.plan-search-wrap')) $('planAC').classList.remove('show'); });
 /* Variante que pide confirmación al usuario antes de crear un ejercicio
-   que NO está en la base de datos de 873 (sin vídeo demo). */
+   que NO está en la base de datos de ejercicios (sin vídeo demo). */
 function addPlanExCustom(name) {
   const msg = `Este ejercicio NO está en nuestra base de datos.\n\n` +
               `Se añadirá igualmente pero NO tendrá vídeo demostrativo cuando pulses "▶ Ver técnica" (verás un botón para buscarlo en YouTube).\n\n` +
@@ -99,16 +125,25 @@ function addPlanExCustom(name) {
   addPlanEx(name);
 }
 
+/* Nombre de las plantillas fijas (para el nombre del entreno, como en las apps). */
+const TPL_TITLES = { 1: 'Pecho y tríceps', 2: 'Espalda y bíceps', 3: 'Piernas', 4: 'Hombros y core' };
 function loadTpl(id) {
-  planExs = TPL[id].map(t => ({ name: t.ex, sets: t.s, reps: t.r, kg: getLastKg(t.ex) || '', restSec: 90 }));
-  renderPlanList(); closeSheet('shTpl'); toast('Rutina cargada ✓');
+  const items = TPL[id].map(t => ({ name: t.ex, sets: t.s, reps: t.r, kg: getLastKg(t.ex) || '', restSec: 90 }));
+  const title = TPL_TITLES[id] || (typeof _customTplTitle === 'function' ? _customTplTitle(id) : '');
+  if (planLoadOrAppend(items, title)) { toast('Añadida al entreno ✓', 'good'); return; }   // encadenando: la hoja sigue abierta
+  closeSheet('shTpl'); toast('Rutina cargada ✓');
 }
 function openCopy() {
   if (!workouts.length) return toast('No hay sesiones anteriores', 'err');
   $('copyList').innerHTML = workouts.slice(0, 15).map(w => `<div class="sh-card" onclick="doCopy('${w.id}')"><div class="sh-ct">${w.date}${w.duration ? ' · ⏱ ' + w.duration + 'min' : ''}</div><div class="sh-cd">${(w.exercises || []).map(e => e.ex).join(' · ')}</div></div>`).join('');
   $('shCopy').classList.add('on');
 }
-function doCopy(id) { const w = workouts.find(x => x.id === id); if (!w) return; planExs = (w.exercises || []).map(e => ({ name: e.ex, sets: +e.sets || 3, reps: +e.reps || 10, kg: getLastKg(e.ex) || e.kg || '', restSec: 90 })); if ($('planName')) $('planName').value = w.name || ''; renderPlanList(); closeSheet('shCopy'); toast('Copiado ✓'); }
+function doCopy(id) {
+  const w = workouts.find(x => x.id === id); if (!w) return;
+  const items = (w.exercises || []).map(e => ({ name: e.ex, sets: +e.sets || 3, reps: +e.reps || 10, kg: getLastKg(e.ex) || e.kg || '', restSec: 90 }));
+  const appended = planLoadOrAppend(items, w.name || '');
+  closeSheet('shCopy'); toast(appended ? 'Añadida al entreno ✓' : 'Copiado ✓');
+}
 /* Repetir el último entreno: carga sus ejercicios y nombre en el planificador. */
 function repeatLastWorkout() {
   if (!workouts.length) return toast('Aún no tienes entrenos para repetir', 'err');
@@ -119,6 +154,20 @@ function repeatLastWorkout() {
   renderPlanList();
   toast('Último entreno cargado ✓', 'good');
 }
+/* Valores del selector de descanso, en el mismo orden que las opciones del HTML (#rpOv). */
+const REST_PICK_VALS = [0, 30, 60, 90, 120, 150, 180, 240, 300];
+
+/* Durante el entreno: pone el descanso del ejercicio actual en TODOS los ejercicios de fuerza. */
+function applyRestToAll() {
+  if (typeof liveExs === 'undefined' || !liveExs[liveIdx]) return;
+  const sec = liveExs[liveIdx].restSec || 0;
+  liveExs.forEach(ex => { if (!ex.isCardio) ex.restSec = sec; });
+  if (typeof saveLiveSession === 'function') saveLiveSession();
+  if (typeof renderLiveEx === 'function') renderLiveEx();
+  $('rpOv').classList.remove('on');
+  toast('Descanso ' + fmtRestPill(sec) + ' en todos ✓', 'good');
+}
+
 /* restPickerMode: 'plan' (planificación) o 'live' (entrenando) */
 let restPickerMode = 'plan';
 
@@ -126,7 +175,8 @@ function openRestPicker(idx) {
   restPickerMode = 'plan';
   restSelIdx = idx;
   const cur = planExs[idx].restSec;
-  const vals = [0, 30, 60, 90, 120, 180];
+  const vals = REST_PICK_VALS;
+  if ($('rpAllBtn')) $('rpAllBtn').style.display = 'none';
   document.querySelectorAll('.rp-opt').forEach((el, i) => el.classList.toggle('on', vals[i] === cur));
   const inp = document.getElementById('rpCustomInp');
   if (inp) inp.value = (vals.includes(cur) ? '' : cur);
@@ -138,7 +188,8 @@ function openLiveRestPicker() {
   if (typeof liveExs === 'undefined' || !liveExs[liveIdx]) return;
   restPickerMode = 'live';
   const cur = liveExs[liveIdx].restSec || 0;
-  const vals = [0, 30, 60, 90, 120, 180];
+  const vals = REST_PICK_VALS;
+  if ($('rpAllBtn')) $('rpAllBtn').style.display = '';
   document.querySelectorAll('.rp-opt').forEach((el, i) => el.classList.toggle('on', vals[i] === cur));
   const inp = document.getElementById('rpCustomInp');
   if (inp) inp.value = (vals.includes(cur) ? '' : cur);
@@ -152,7 +203,7 @@ function pickRest(sec, btn) {
     liveExs[liveIdx].restSec = sec;
     if (typeof saveLiveSession === 'function') saveLiveSession();
     if (typeof renderLiveEx === 'function') renderLiveEx();
-    toast('Descanso: ' + (sec === 0 ? 'Sin pausa' : sec + 's') + ' ✓', 'good');
+    toast('Descanso: ' + (sec === 0 ? 'Sin pausa' : fmtRestPill(sec)) + ' ✓', 'good');
   } else if (restSelIdx >= 0) {
     planExs[restSelIdx].restSec = sec;
     renderPlanList();

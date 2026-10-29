@@ -4,14 +4,14 @@ function updateAiUsageBadge() {
   const el = $('aiUsageBadge');
   if (!el) return;
   if (Pro.isPro()) {
-    el.textContent = 'Coach IA ilimitado';
+    el.textContent = 'Coach ilimitado';
     el.className = 'pro-ai-remaining';
     return;
   }
   const remaining = Pro.aiRemaining();
   el.textContent = remaining > 0
-    ? 'Consultas IA: ' + remaining + '/1 esta semana'
-    : 'Sin consultas IA — Mejora a Pro';
+    ? 'Consultas Coach: ' + remaining + '/1 esta semana'
+    : 'Sin consultas — Mejora a Pro';
   el.className = 'pro-ai-remaining' + (remaining === 0 ? ' empty' : remaining <= 1 ? ' warn' : '');
 }
 
@@ -128,7 +128,7 @@ function generarConsejosLocal(p) {
   html += `<div class="consejo-card" id="iaAdviceCard" style="border:1px solid rgba(155,114,245,.2);background:linear-gradient(135deg,var(--s1),rgba(155,114,245,.04));">
 <div class="consejo-header">
   <div class="consejo-icon purple">🤖</div>
-  <div class="consejo-title">Coach IA</div>
+  <div class="consejo-title">Coach</div>
   <span class="consejo-badge tip" id="iaAdviceStatus" style="background:var(--pg);color:var(--purple);">Conectando…</span>
 </div>
 <div class="consejo-body" id="iaAdviceBody">
@@ -166,9 +166,7 @@ function generarConsejosLocal(p) {
 }
 
 /* ── AI-POWERED CONFIG (Unified Backend) ── */
-const AI_BRAIN_WORKER = 'https://consejosapp.osky562.workers.dev/';
-const PROMPT_WORKER = AI_BRAIN_WORKER;
-const CONSEJOS_WORKER = AI_BRAIN_WORKER;
+// El Coach ya no usa IA externa: todo se calcula en js/evidence-coach.js.
 
 /* ── AI-POWERED CONSEJOS (OpenRouter via Worker) ── */
 async function generarConsejosIA(p) {
@@ -239,39 +237,13 @@ async function generarConsejosIA(p) {
   // IMC
   const imc = (p.peso && p.altura) ? +(p.peso / ((p.altura / 100) ** 2)).toFixed(1) : null;
 
-  const _en = (typeof I18N !== 'undefined' && I18N.getLang && I18N.getLang() === 'en');
-  const _respLine = _en ? 'ALWAYS RESPOND IN ENGLISH.' : 'RESPONDE SIEMPRE EN ESPAÑOL.';
-  const _instr = _en
-    ? `ANALYZE thoroughly and RESPOND with: 🎯DIAGNOSIS | 💪TRAINING | 🥗NUTRITION (specific to their ${p.dieta}) | 😴RECOVERY | 🔥MOTIVATION | ⚡CHALLENGE. Max 250 words, professional technical tone.`
-    : `ANALIZA minuciosamente y RESPONDE con: 🎯DIAGNOSTICO | 💪ENTRENAMIENTO | 🥗NUTRICION (específica para su ${p.dieta}) | 😴RECUPERACION | 🔥MOTIVACION | ⚡RETO. Max 250 palabras, tono profesional y técnico.`;
-  const prompt = `${_respLine} Coach IA KO95FIT - Entrenador Personal Pro.
-  PERFIL: ${p.sexo||'?'}, ${p.edad||'?'}a, ${p.peso||'?'}kg, ${p.altura||'?'}cm, ${p.grasa ? 'Grasa:'+p.grasa+'%,' : ''} Dieta: ${p.dieta}, Actividad: ${p.actividad}, IMC ${imc||'?'}, nivel ${p.nivel}, objetivo ${p.objetivo}, ${p.dias||3} d/sem, lesiones: ${p.lesiones}. 
-  HISTORIAL: ${totalSess} ses, racha ${streak}d, vol ${big(volTotal)}kg, RPE ${rpeMedio||'?'}, consistencia ${consistencia||'?'}%. 
-  TOP PRs: ${prsText||'sin datos'}. 
-  MUSCULOS: ${musBalance||'sin datos'}. 
-  SEMANA: vol ${weekComp.volDelta>=0?'+':''}${weekComp.volDelta}%, ${weekComp.curSess} ses. 
-  ULTIMAS: ${last5||'ninguna'}. 
-  ${_instr}`;
-
-  statusEl.textContent = 'Coach IA consultando...';
+  statusEl.textContent = 'Coach analizando...';
   try {
-    const ac = new AbortController();
-    const tid = setTimeout(() => ac.abort(), 45000);
-    const r = await fetch(CONSEJOS_WORKER, {
-      method: 'POST',
-      signal: ac.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.75
-      })
-    });
-    clearTimeout(tid);
-    
-    if (r.ok) {
-      const content = await r.text();
+    // Sin IA: consejo calculado en el navegador con reglas basadas en evidencia (js/evidence-coach.js).
+    const content = EvidenceCoach.advice(workouts, p);
+    {
       if (content && content.length > 50) {
-        statusEl.textContent = 'Coach IA ✓';
+        statusEl.textContent = 'Coach ✓';
         statusEl.style.background = 'var(--gg)';
         statusEl.style.color = 'var(--green)';
         
@@ -282,11 +254,11 @@ async function generarConsejosIA(p) {
         html += `
           <div style="background:linear-gradient(135deg, rgba(80,130,250,0.1), transparent); border:1px solid rgba(80,130,250,0.2); border-radius:12px; padding:12px; display:flex; gap:12px; align-items:center;">
             <div style="width:40px;height:40px;border-radius:50%;background:rgba(80,130,250,0.2);display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(80,130,250,0.3);flex-shrink:0;">
-              <i class="fa-solid fa-robot" style="color:#5082fa;font-size:1.1rem;"></i>
+              <i class="fa-solid fa-dumbbell" style="color:#5082fa;font-size:1.1rem;"></i>
             </div>
             <div>
-              <div style="font-size:.7rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:2px;">Cerebro Central IA</div>
-              <div style="font-size:.85rem;color:var(--t1);font-weight:600;line-height:1.3;">Análisis táctico completado. Tus datos han sido procesados:</div>
+              <div style="font-size:.7rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:2px;">Coach KO95FIT</div>
+              <div style="font-size:.85rem;color:var(--t1);font-weight:600;line-height:1.3;">Análisis de tus entrenos basado en evidencia:</div>
             </div>
           </div>
         `;
@@ -380,7 +352,7 @@ async function generarConsejosIA(p) {
         return;
       }
     }
-    throw new Error(`Error ${r.status}`);
+    throw new Error('Sin datos suficientes');
   } catch (e) {
     statusEl.textContent = 'Error: ' + (e.name === 'AbortError' ? 'Timeout' : e.message);
     statusEl.style.background = 'var(--rg)';
@@ -410,7 +382,7 @@ function generarConsejos(p) {
         s.textContent = 'Límite alcanzado';
         s.style.background = 'var(--rg)';
         s.style.color = 'var(--red)';
-        b.innerHTML = '<div style="text-align:center;padding:16px;"><div style="font-size:1.5rem;margin-bottom:8px;">🔒</div><div style="font-size:.85rem;color:var(--t2);margin-bottom:12px;">Has usado tu consulta IA gratuita esta semana.</div><button onclick="Pro.showUpgradeModal(\'ai_coach\')" style="background:var(--a);color:#000;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;">Desbloquear Coach IA ilimitado</button></div>';
+        b.innerHTML = '<div style="text-align:center;padding:16px;"><div style="font-size:1.5rem;margin-bottom:8px;">🔒</div><div style="font-size:.85rem;color:var(--t2);margin-bottom:12px;">Has usado tu consulta gratuita del Coach esta semana.</div><button onclick="Pro.showUpgradeModal(\'ai_coach\')" style="background:var(--a);color:#000;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;">Desbloquear Coach ilimitado</button></div>';
       }
     }, 100);
   }
