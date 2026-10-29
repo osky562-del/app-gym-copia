@@ -46,104 +46,20 @@ async function generarRutinaIA() {
   const objetivo = perfil.objetivo || enfoque;
   const lesiones = perfil.lesiones && perfil.lesiones !== 'ninguna' ? perfil.lesiones : null;
 
-  const cacheKey = 'rutinaCache_' + _rutinaParamsHash({ perfil, dias, enfoque, equipo, nivel, objetivo, lesiones });
-  const cached = STORE.get(cacheKey);
-  if (cached && cached.ts && (Date.now() - cached.ts) < 30 * 60 * 1000) {
-    rutinaGenerada = cached.rutina;
-    renderRutinaResult();
-    stat.style.display = 'block';
-    stat.textContent = 'Rutina cargada ✓ (caché < 30 min)';
-    stat.style.background = 'var(--gg)';
-    stat.style.color = 'var(--green)';
-    setTimeout(() => stat.style.display = 'none', 2500);
-    return;
-  }
-
-  const exMax = {};
-  const volMus = {};
-  workouts.slice(0, 20).forEach(w => {
-    (w.exercises || []).forEach(e => {
-      const kg = +e.kg || 0;
-      if (!exMax[e.ex] || kg > exMax[e.ex]) exMax[e.ex] = kg;
-      const m = getMuscle(e.ex);
-      volMus[m] = (volMus[m] || 0) + (kg * (+e.sets || 1) * (+e.reps || 1));
-    });
-  });
-  const prs = Object.entries(exMax).sort((a,b) => b[1]-a[1]).slice(0,3).map(([x,k]) => `${x}:${k}kg`).join(',');
-  const musMenos = Object.entries(volMus).sort((a,b)=>a[1]-b[1])[0]?.[0] || '';
-
-  // ── 3 prompts de respaldo (completo → medio → mínimo) para reintentar si timeout ──
-  const ejemploDias = Array.from({ length: dias }, (_, i) =>
-    `{"titulo":"Día ${i + 1} - Grupo muscular","ejercicios":[{"ex":"Ejercicio","sets":4,"reps":10,"nota":"breve"}]}`
-  ).join(',');
-  const ejemploMin = Array.from({ length: dias }, (_, i) =>
-    `{"titulo":"Día ${i + 1}","ejercicios":[{"ex":"Ej","sets":4,"reps":10}]}`
-  ).join(',');
-
-  const promptFull = `Responde EN ESPAÑOL con SOLO JSON puro (sin markdown ni explicaciones). REGLA CRÍTICA: el array "dias" DEBE contener EXACTAMENTE ${dias} días, ni uno menos. Cada día con 5 ejercicios distintos.
-Perfil: ${perfil.sexo||'h'}, ${perfil.edad||25}a, nivel ${nivel}, objetivo ${objetivo}, enfoque ${enfoque}, equipo ${equipo}${lesiones ? ', lesiones: '+lesiones : ''}. ${prs ? 'PRs históricos: '+prs+'.' : ''} ${musMenos ? 'Priorizar músculo débil: '+musMenos+'.' : ''}
-Estructura JSON OBLIGATORIA — devuelve EXACTAMENTE ${dias} elementos en "dias":
-{"nombre":"Plan ${enfoque} ${dias}d","dias":[${ejemploDias}]}`;
-
-  const promptMedium = `JSON puro EN ESPAÑOL. Rutina ${dias} días, 5 ejercicios cada día. ${nivel}, ${enfoque}, ${equipo}. Devuelve EXACTAMENTE ${dias} días en "dias":
-{"nombre":"Plan ${enfoque}","dias":[${ejemploDias}]}`;
-
-  const promptShort = `JSON ${dias} dias rutina ${enfoque} ${equipo}. EXACTO ${dias} elementos:
-{"nombre":"Plan","dias":[${ejemploMin}]}`;
-
-  const intentos = [
-    { prompt: promptFull,   timeout: 45000, maxTokens: 2200, label: null },
-    { prompt: promptMedium, timeout: 30000, maxTokens: 1800, label: 'Reintentando con prompt más corto…' },
-    { prompt: promptShort,  timeout: 20000, maxTokens: 1500, label: 'Último intento con prompt mínimo…' }
-  ];
-
   btn.disabled = true;
   $('rutinaResult').innerHTML = '';
   stat.style.display = 'block';
   stat.style.background = '';
   stat.style.color = '';
-  _showRutinaProgress(stat, dias);
 
+  // Sin IA: rutina calculada en el navegador con reglas basadas en evidencia (js/evidence-coach.js).
+  // Usa solo ejercicios de tu historial (toda la base si aun no hay historial).
   let lastError = null;
   let parsedRutina = null;
-
-  for (let i = 0; i < intentos.length; i++) {
-    const att = intentos[i];
-    if (att.label) {
-      _stopRutinaProgress();
-      stat.textContent = att.label;
-      await new Promise(r => setTimeout(r, 600));
-      _showRutinaProgress(stat, dias);
-    }
-    try {
-      const ac = new AbortController();
-      const tid = setTimeout(() => ac.abort(), att.timeout);
-      const r = await fetch(CONSEJOS_WORKER, {
-        method: 'POST',
-        signal: ac.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: att.prompt }],
-          temperature: 0.5,
-          max_tokens: att.maxTokens
-        })
-      });
-      clearTimeout(tid);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const txt = await r.text();
-      if (txt.includes('{')) {
-        const clean = txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1);
-        const parsed = JSON.parse(clean);
-        if (parsed && parsed.dias && parsed.dias.length > 0) {
-          parsedRutina = parsed;
-          break;
-        }
-      }
-      throw new Error('JSON inválido');
-    } catch (e) {
-      lastError = e;
-      console.warn(`Intento ${i + 1}/${intentos.length} falló:`, e.message);
-    }
+  try {
+    parsedRutina = EvidenceCoach.routine(dias, enfoque, equipo, workouts, perfil);
+  } catch (e) {
+    lastError = e;
   }
 
   try {
@@ -152,9 +68,6 @@ Estructura JSON OBLIGATORIA — devuelve EXACTAMENTE ${dias} elementos en "dias"
     }
     rutinaGenerada = parsedRutina;
     const diasReales = rutinaGenerada.dias.length;
-    if (diasReales === dias) {
-      try { STORE.set(cacheKey, { rutina: rutinaGenerada, ts: Date.now() }); } catch(e) {}
-    }
     _stopRutinaProgress();
     renderRutinaResult();
     stat.textContent = diasReales === dias
@@ -165,7 +78,7 @@ Estructura JSON OBLIGATORIA — devuelve EXACTAMENTE ${dias} elementos en "dias"
     setTimeout(() => stat.style.display = 'none', diasReales === dias ? 3000 : 6000);
   } catch (e) {
     _stopRutinaProgress();
-    stat.textContent = 'IA no disponible ahora — Inténtalo en 1-2 min';
+    stat.textContent = 'No se pudo generar la rutina con tu equipo y molestias';
     stat.style.background = 'var(--rg)';
     stat.style.color = 'var(--red)';
   } finally {
@@ -182,7 +95,7 @@ function renderRutinaResult() {
 
   el.innerHTML = `
 <div style="background:linear-gradient(135deg,#0d1a2e,#0a0a0a);border:1px solid rgba(79,140,255,.25);border-radius:var(--r);padding:16px 16px 10px;margin-bottom:10px;">
-  <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--a);margin-bottom:5px;">Plan generado por IA ✦</div>
+  <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--a);margin-bottom:5px;">Plan generado ✦</div>
   <div style="font-size:1.2rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;">${rutinaGenerada.nombre}</div>
   <div style="font-size:.75rem;color:var(--t3);font-family:var(--fm);">${rutinaGenerada.dias.length} días · ${totalEx} ejercicios</div>
   <button onclick="guardarTodasRutinas()" style="margin-top:12px;width:100%;height:46px;background:var(--green);border:none;border-radius:9px;color:#000;font-size:.88rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;">
@@ -260,11 +173,23 @@ function usarDiaRutina(diaIdx) {
   }, 100);
 }
 
+/* Título de una rutina guardada (para el nombre del entreno al encadenar). */
+function _customTplTitle(key) {
+  const t = (STORE.get('customTpl') || []).find(x => x.key === key);
+  return t ? t.titulo : '';
+}
+
 function renderTplList() {
   const list = $('tplList');
   if (!list) return;
+  // Encadenar: las plantillas/rutinas que toques se SUMAN al plan en vez de reemplazarlo.
+  const chainOn = typeof planChain !== 'undefined' && planChain;
+  let html = `<div style="display:flex;align-items:center;gap:10px;padding:4px 4px 10px;">
+  <button onclick="togglePlanChain()" style="border:none;border-radius:100px;padding:7px 14px;font-weight:800;font-size:.8rem;cursor:pointer;background:${chainOn ? 'var(--a)' : 'var(--c2)'};color:${chainOn ? '#fff' : 'var(--t1)'};">🔗 Encadenar</button>
+  <div style="flex:1;font-size:.68rem;color:var(--t3);line-height:1.35;">${chainOn ? 'Toca varias plantillas o rutinas: se añaden una detrás de otra en el mismo entreno.' : 'Activa para juntar varias rutinas en un mismo entreno.'}</div>
+</div>`;
   // Default templates
-  let html = `
+  html += `
 <div class="sh-card" onclick="loadTpl(1)"><div class="sh-ct">💪 Día 1 — Pecho + Tríceps</div><div class="sh-cd">Banca · Inclinado · Aperturas · Fondos · Extensión · Francés</div></div>
 <div class="sh-card" onclick="loadTpl(2)"><div class="sh-ct">🔗 Día 2 — Espalda + Bíceps</div><div class="sh-cd">Dominadas · Remo · Jalón · Curl barra · Curl alterno · Concentrado</div></div>
 <div class="sh-card" onclick="loadTpl(3)"><div class="sh-ct">🦵 Día 3 — Piernas</div><div class="sh-cd">Sentadilla · Prensa · Rumano · Femoral · Extensión · Gemelos</div></div>
@@ -272,7 +197,7 @@ function renderTplList() {
   // Custom (IA generated)
   const custom = STORE.get('customTpl') || [];
   if (custom.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:.65rem;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.08em;">✦ Generadas por IA</div>`;
+    html += `<div style="padding:8px 12px 4px;font-size:.65rem;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.08em;">✦ Mis rutinas</div>`;
     custom.forEach(t => {
       html += `<div class="sh-card" style="border-color:rgba(79,140,255,.25);" onclick="loadTplCustom(${t.key})">
     <div style="display:flex;align-items:center;justify-content:space-between;">

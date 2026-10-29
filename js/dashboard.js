@@ -102,7 +102,7 @@ function renderDashProCard() {
         <div class="dash-pro-badge">PRO</div>
         <div class="dash-pro-title">Desbloquea todo tu potencial</div>
         <div class="dash-pro-features">
-          <span>Coach IA ilimitado${remaining < Infinity ? ' (' + remaining + ' restante)' : ''}</span>
+          <span>Coach ilimitado${remaining < Infinity ? ' (' + remaining + ' restante)' : ''}</span>
           <span>Analíticas avanzadas</span>
           <span>Sesiones ilimitadas${limit < Infinity ? ' (' + sessCount + '/' + limit + ')' : ''}</span>
         </div>

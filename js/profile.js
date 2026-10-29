@@ -25,7 +25,7 @@ function renderPlanCard() {
         <div class="plan-card-badge">${plan.name}</div>
         <div class="plan-card-status">Plan activo</div>
         <div class="plan-card-perks">
-          <span>Coach IA ilimitado</span><span>Analíticas avanzadas</span><span>Todos los colores</span>
+          <span>Coach ilimitado</span><span>Analíticas avanzadas</span><span>Todos los colores</span>
         </div>
       </div>`;
   } else {
@@ -39,7 +39,7 @@ function renderPlanCard() {
           <button class="plan-card-upgrade">Mejorar plan</button>
         </div>
         <div class="plan-card-limits">
-          <div class="plan-limit"><span>Coach IA</span><span class="${remaining === 0 ? 'limit-warn' : ''}">${remaining}/1 esta semana</span></div>
+          <div class="plan-limit"><span>Coach</span><span class="${remaining === 0 ? 'limit-warn' : ''}">${remaining}/1 esta semana</span></div>
           <div class="plan-limit"><span>Sesiones guardadas</span><span>${workouts.length}/${plan.maxSessions}</span></div>
           <div class="plan-limit"><span>Historial visible</span><span>${plan.maxHistory} sesiones</span></div>
           <div class="plan-limit"><span>Colores</span><span>2 de 6</span></div>

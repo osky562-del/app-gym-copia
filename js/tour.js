@@ -8,7 +8,7 @@
   const SEEN = 'ko95_tourSeen';
   const SLIDES = [
     { ic: '👋', t: '¡Bienvenido a KO95FIT!', d: 'Tu sistema de entrenamiento. Te enseño lo básico en menos de un minuto.' },
-    { ic: '📋', t: 'Crea tu entreno', d: 'Plantilla lista, IA o a tu gusto desde “+ Entreno”. Ponle nombre, marca favoritos ★ y repite tu último entreno (🔁) con un toque.' },
+    { ic: '📋', t: 'Crea tu entreno', d: 'Plantilla lista, rutina generada o a tu gusto desde “+ Entreno”. Ponle nombre, marca favoritos ★ y repite tu último entreno (🔁) con un toque.' },
     { ic: '🏋️', t: 'Entrena en directo', d: 'Marca cada serie con ✓ (el descanso y el avance van solos). Mira la técnica en vídeo ▶, calcula discos con 🏋 y toca el número de la serie para elegir su tipo (calentamiento, drop set, al fallo…).' },
     { ic: '🔗', t: 'Superseries', d: 'Encadena ejercicios con 🔗: harás A y B sin descanso entre medias, descansando solo al final del grupo.' },
     { ic: '📊', t: 'Mira tu progreso', d: 'Mapa muscular que se ilumina, tu fuerza estimada y nivel, récords de peso y de reps, y gráficas, en la pestaña Progreso.' },

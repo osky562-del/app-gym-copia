@@ -3,7 +3,7 @@
    Tier system:
    - 'free'     → Basic features, limited sessions
    - 'pro'      → Full features, unlimited
-   - 'pro_plus' → Everything + AI routines, social, periodization
+   - 'pro_plus' → Everything + routines, social, periodization
 
    Usage in any module:
      if (Pro.can('ai_coach'))    { ... }
@@ -22,7 +22,7 @@ const Pro = (function () {
       maxSessions: 5,        // Máx. entrenos guardados (plan Free)
       maxHistory: 5,         // Visible history items
       aiCoachPerWeek: 1,     // AI coach queries per week
-      aiRutina: false,       // AI routine generator
+      aiRutina: false,       // Routine generator
       advancedAnalytics: false,
       exportImport: true,    // Keep free for user retention
       customThemes: false,   // Only 2 accent colors free
@@ -380,8 +380,8 @@ const Pro = (function () {
   /* ── Upgrade Modal ── */
   function showUpgradeModal(featureName) {
     const featureLabels = {
-      'ai_coach': 'Coach IA ilimitado',
-      'ai_rutina': 'Generador de rutinas IA',
+      'ai_coach': 'Coach ilimitado',
+      'ai_rutina': 'Generador de rutinas',
       'analytics': 'Analíticas avanzadas',
       'advanced_analytics': 'Analíticas avanzadas',
       'custom_themes': 'Todos los colores',
@@ -419,7 +419,7 @@ const Pro = (function () {
             <li>Entrenos ilimitados (sin tope de 5)</li>
             <li>Mapa muscular, Insights y Fuerza estimada</li>
             <li>Historial de récords y tipos de serie</li>
-            <li>Coach y rutinas IA, analíticas, todos los temas</li>
+            <li>Coach y rutinas, analíticas, todos los temas</li>
           </ul>
 
           <div class="pro-modal-plans" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">

@@ -159,7 +159,7 @@ function renderLiveEx() {
   // Chip del descanso: muestra el valor actual y permite cambiarlo
   const restPill = $('lvRestPill');
   if (restPill) {
-    restPill.textContent = '⏱ Descanso: ' + (typeof fmtRestPill === 'function' ? fmtRestPill(ex.restSec || 0) : ((ex.restSec || 0) + 's'));
+    restPill.textContent = '⏱ ' + (typeof fmtRestPill === 'function' ? fmtRestPill(ex.restSec || 0) : ((ex.restSec || 0) + 's'));
   }
   $('lvNavP').disabled = liveIdx === 0; $('lvNavN').disabled = liveIdx === liveExs.length - 1;
   const canRemove = ex.sets.length > 1 && !ex.sets[ex.sets.length - 1].done;
@@ -742,10 +742,10 @@ function filterLvAC() {
     return;
   }
   const all = getAllExNames();
-  let m = all.filter(n => n.toLowerCase().includes(val));
-  m.sort((a, b) => (isFav(b) ? 1 : 0) - (isFav(a) ? 1 : 0));   // favoritos primero
-  m = m.slice(0, 8);
-  const exactMatch = all.some(n => n.toLowerCase() === val);
+  // Sin tildes y por palabras sueltas; favoritos primero (orden estable).
+  let m = searchExNames(raw, 40);
+  m = m.filter(isFav).concat(m.filter(n => !isFav(n))).slice(0, 8);
+  const exactMatch = all.some(n => exFold(n) === exFold(raw));
   // Permitir crear ejercicios fuera de la BD pero con aviso de "sin vídeo demo"
   const newCard = !exactMatch
     ? `<div class="sh-card sh-card-new" onclick="pickLvExCustom('${raw.replace(/'/g, "\\'")}')">
@@ -761,7 +761,7 @@ function filterLvAC() {
   list.innerHTML = m.map(lvAcRow).join('') + newCard;
 }
 /* Variante que pide confirmación al usuario antes de crear un ejercicio
-   que NO está en la base de datos de 873 (sin vídeo demo). */
+   que NO está en la base de datos de ejercicios (sin vídeo demo). */
 function pickLvExCustom(name) {
   const msg = `Este ejercicio NO está en nuestra base de datos.\n\n` +
               `Se añadirá igualmente pero NO tendrá vídeo demostrativo cuando pulses "▶ Ver técnica" (verás un botón para buscarlo en YouTube).\n\n` +
