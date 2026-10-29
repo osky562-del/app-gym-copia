@@ -77,6 +77,17 @@
       <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line2);">
         <span onclick="enterLocalMode()" style="color:var(--t3);font-size:0.78rem;cursor:pointer;font-weight:600;opacity:0.7;">Continuar sin cuenta (modo local)</span>
       </div>
+      <!-- Servidor: Firebase (por defecto) o el NAS de casa (ver js/nas-sync.js) -->
+      <div style="margin-top:14px;font-size:0.72rem;color:var(--t3);">
+        <span id="nasServerInfo">☁️ Servidor: <b>Firebase</b></span>
+        · <span onclick="nasToggleServerBox()" style="color:var(--a);cursor:pointer;font-weight:700;">Cambiar</span>
+        <span id="nasUseFirebase" onclick="nasUseFirebase()" style="display:none;color:var(--t3);cursor:pointer;font-weight:700;"> · Volver a Firebase</span>
+      </div>
+      <div id="nasServerBox" style="display:none;margin-top:10px;text-align:left;">
+        <div style="font-size:0.7rem;color:var(--t3);margin-bottom:6px;line-height:1.35;">Dirección HTTPS de tu NAS (la de Tailscale). Tienes que estar en la wifi de casa o con Tailscale encendido.</div>
+        <input type="url" class="auth-inp" id="nasUrlInp" placeholder="https://tu-nas.xxxx.ts.net" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="auth-btn" id="nasUseBtn" onclick="nasUseNas()" style="margin-top:4px;">Usar mi NAS</button>
+      </div>
     </div>
   </div>
 
@@ -1150,7 +1161,8 @@
   <script src="js/summary.js"></script>
   <script src="js/effects.js"></script>
   <script src="js/onboarding.js"></script>
-  <script src="js/firebase-sync.js?v=4"></script>
+  <script src="js/firebase-sync.js?v=5"></script>
+  <script src="js/nas-sync.js?v=2"></script>
   <script src="js/admin.js"></script>
   <script src="js/exercises-db.js"></script>
   <script src="js/evidence-coach.js"></script>

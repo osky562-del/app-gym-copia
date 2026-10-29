@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ko95fit-v5';
+const CACHE_NAME = 'ko95fit-v6';
 const ASSETS = [
   '/',
   '/index.html',
@@ -49,6 +49,7 @@ const ASSETS = [
   '/js/effects.js',
   '/js/onboarding.js',
   '/js/firebase-sync.js',
+  '/js/nas-sync.js',
   '/js/app.js'
 ];
 

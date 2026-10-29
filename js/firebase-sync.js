@@ -592,8 +592,8 @@ function loadRememberedCreds() {
   } catch(e) {}
 }
 
-// Inicialización inmediata al cargar el script
-initFirebase();
+// Inicialización inmediata al cargar el script (salvo si el usuario usa su NAS: ver nas-sync.js)
+if (localStorage.getItem('ko95_backend') !== 'nas') initFirebase();
 
 // Cargar credenciales recordadas (cuando el DOM esté listo)
 if (document.readyState === 'loading') {
