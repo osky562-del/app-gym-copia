@@ -264,7 +264,8 @@ const Pro = (function () {
   /* ── Admin check ── */
   function checkAdmin(uid) {
     if (!uid) return;
-    isAdmin = ADMIN_UIDS.includes(uid);
+    // El NAS es privado (solo LAN/Tailscale): quien entra ahi es de casa y tiene todo.
+    isAdmin = ADMIN_UIDS.includes(uid) || String(uid).startsWith('nas:');
     if (isAdmin) {
       currentPlan = 'pro_plus';
       planExpiry = null; // never expires for admin

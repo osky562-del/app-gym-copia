@@ -49,6 +49,13 @@ function renderPlanCard() {
 }
 
 function renderProfile() {
+  if ($('npName')) {
+    const n = getUserName();
+    $('npName').textContent = n || 'Atleta';
+    $('npAv').textContent = (n || 'A').charAt(0).toUpperCase();
+    const xp = calcXp();
+    $('npSub').textContent = getLvl(xp).title + ' · ' + xp.toLocaleString() + ' XP · ' + workouts.length + ' sesiones';
+  }
   const ca = STORE.get('accent') || 'red';
   document.querySelectorAll('.acc-sw').forEach(el => {
     const c = el.dataset.accent;

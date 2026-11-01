@@ -1,5 +1,6 @@
 /* ══ DASHBOARD ══ */
 function renderDash() {
+  renderNativeHome();
   updateGreeting();
   setTimeout(updateStreakAnim, 100);
   if (typeof renderInsights === 'function') renderInsights();
@@ -48,6 +49,58 @@ function renderDash() {
   if (!workouts.length) { rl.innerHTML = `<div class="empty"><div class="empty-ic">💪</div><div class="empty-t">Sin sesiones aún</div><div class="empty-d">Registra tu primer entrenamiento y empieza a ver tu progreso aquí.</div><button class="empty-btn" onclick="openPlan()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo entrenamiento</button></div>`; return; }
   const mxv = Math.max(...workouts.map(w => (w.exercises || []).reduce((s, e) => s + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1), 0)), 1);
   rl.innerHTML = workouts.slice(0, 5).map(w => { const wv = (w.exercises || []).reduce((s, e) => s + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1), 0); return `<div class="sc"><div class="sc-h"><div><div class="sc-date">${w.date}</div><div class="sc-meta">${[w.duration ? '⏱ ' + w.duration + 'min' : '', w.rpe ? 'RPE ' + w.rpe : '', big(wv) + ' kg', (w.exercises || []).length + ' ej.'].filter(Boolean).join(' · ')}</div></div><span class="sc-cnt">${(w.exercises || []).length} ej.</span></div><div class="sc-pills">${(w.exercises || []).slice(0, 5).map(e => `<span class="sc-pill"><strong>${e.ex}</strong>${e.kg ? ' ' + e.kg + 'kg' : ''}</span>`).join('')}</div></div>`; }).join('');
+}
+
+/* ══ INICIO (mismo orden y contenido que las apps nativas) ══ */
+function nhVol(w) { return (w.exercises || []).reduce((s, e) => s + (e.isCardio ? 0 : (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1)), 0); }
+function nhBig(v) { return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v)); }
+function renderNativeHome() {
+  if (!$('nhStreak')) return;
+  const xp = calcXp(), lv = getLvl(xp);
+  $('nhName').textContent = getUserName();
+  $('nhLvl').textContent = lv.title + ' · ' + xp.toLocaleString() + ' XP';
+  $('nhStreak').textContent = calcStreak();
+  let ex = 0, vol = 0, sr = 0, rc = 0;
+  workouts.forEach(w => { if (+w.rpe) { sr += +w.rpe; rc++; } ex += (w.exercises || []).length; vol += nhVol(w); });
+  $('nhS').textContent = workouts.length;
+  $('nhV').textContent = nhBig(vol) + ' kg';
+  $('nhE').textContent = ex;
+  $('nhR').textContent = rc ? (sr / rc).toFixed(1) : '—';
+
+  // Esta semana: ultimos 7 dias, variacion frente a los 7 anteriores y barras por dia.
+  const wk = $('nhWeek');
+  wk.style.display = workouts.length ? '' : 'none';
+  if (workouts.length) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = [0, 0, 0, 0, 0, 0, 0];
+    let thisV = 0, lastV = 0, count = 0;
+    workouts.forEach(w => {
+      const d = new Date(w.date + 'T00:00:00');
+      const diff = Math.round((today - d) / 86400000);
+      if (diff >= 0 && diff < 7) { const v = nhVol(w); thisV += v; count++; days[6 - diff] += v; }
+      else if (diff >= 7 && diff < 14) lastV += nhVol(w);
+    });
+    const delta = lastV > 0 ? Math.round((thisV - lastV) / lastV * 100) : 0;
+    const mx = Math.max(...days, 1);
+    const loc = (typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES';
+    const bars = days.map((v, i) => {
+      const d = new Date(today); d.setDate(d.getDate() - (6 - i));
+      const lbl = d.toLocaleDateString(loc, { weekday: 'narrow' }).toUpperCase();
+      return `<div class="nh-bar"><i style="height:${Math.max(3, Math.round(v / mx * 46))}px;opacity:${i === 6 ? 1 : .45}"></i><span>${lbl}</span></div>`;
+    }).join('');
+    wk.innerHTML = `<div class="nh-wh"><div class="nh-ct">Esta semana</div>${delta ? `<div class="nh-delta" style="color:${delta > 0 ? '#2dd98a' : '#ff6b6b'}">${delta > 0 ? '↗' : '↘'} ${Math.abs(delta)}%</div>` : ''}</div>
+      <div class="nh-wv">${count} entrenos · ${nhBig(thisV)} kg</div><div class="nh-bars">${bars}</div>`;
+  }
+
+  // Recientes
+  $('nhRecentTitle').style.display = workouts.length ? '' : 'none';
+  $('nhRecent').innerHTML = workouts.length
+    ? workouts.slice(0, 5).map(w => {
+      const exs = w.exercises || [], sets = exs.reduce((s, e) => s + (+e.sets || 0), 0);
+      return `<div class="nh-rec" onclick="goPage('hist')"><div style="min-width:0;flex:1;"><div class="nh-rt">${w.name || 'Entreno'}</div>
+        <div class="nh-cs">${w.date} · ${exs.length} ej · ${sets} series</div></div><div class="nh-rv">${nhBig(nhVol(w))} kg</div></div>`;
+    }).join('')
+    : '<div class="nh-empty">Aún no hay entrenos. ¡Empieza el primero!</div>';
 }
 
 /* ══ STREAK ANIMATION ══ */

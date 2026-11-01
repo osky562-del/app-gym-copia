@@ -12,7 +12,6 @@
     { ic: '🏋️', t: 'Entrena en directo', d: 'Marca cada serie con ✓ (el descanso y el avance van solos). Mira la técnica en vídeo ▶, calcula discos con 🏋 y toca el número de la serie para elegir su tipo (calentamiento, drop set, al fallo…).' },
     { ic: '🔗', t: 'Superseries', d: 'Encadena ejercicios con 🔗: harás A y B sin descanso entre medias, descansando solo al final del grupo.' },
     { ic: '📊', t: 'Mira tu progreso', d: 'Mapa muscular que se ilumina, tu fuerza estimada y nivel, récords de peso y de reps, y gráficas, en la pestaña Progreso.' },
-    { ic: '💡', t: 'Tendencias “Para ti”', d: 'En el inicio verás tarjetas inteligentes: tu volumen y tu fuerza subiendo, tu racha y tu grupo muscular estrella del mes.' },
     { ic: '⌚', t: 'Entrena sin el móvil', d: 'Con iPhone + Apple Watch, marca tus series desde la muñeca con el móvil en el bolsillo.' },
     { ic: '✅', t: '¡Listo para empezar!', d: 'Crea tu primer entreno y a darle. Tienes esta guía completa en Perfil → “Cómo usar la app”.', final: true }
   ];

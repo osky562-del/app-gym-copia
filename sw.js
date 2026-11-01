@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ko95fit-v6';
+const CACHE_NAME = 'ko95fit-v8';
 const ASSETS = [
   '/',
   '/index.html',
@@ -24,6 +24,7 @@ const ASSETS = [
   '/css/summary.css',
   '/css/polish.css',
   '/css/pro.css',
+  '/css/native.css',
   '/js/store.js',
   '/js/constants.js',
   '/js/state.js',
