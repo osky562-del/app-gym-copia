@@ -1,7 +1,6 @@
-/* ══ SINCRONIZACION CON EL NAS DE CASA (en lugar de Firebase) ══
-   Habla con la API "appstack" del NAS (FastAPI + PostgreSQL), la misma que usa la app de iOS.
-   Solo se activa si el usuario ha elegido "Mi NAS" en la pantalla de entrada y ha puesto su
-   direccion; si no, la web sigue funcionando con Firebase como siempre.
+/* ══ SINCRONIZACION CON EL NAS DE CASA ══
+   Habla con la API "appstack" del NAS (FastAPI + PostgreSQL), la misma que usan las apps.
+   Cuentas, entrenos, planes y anuncios viven alli; sin cuenta, la web funciona en modo local.
 
    Que se guarda en el NAS:
     - Entrenos: endpoints /workouts (cada entreno es el mismo JSON que usa la app).
@@ -15,7 +14,7 @@
     - El movil tiene que estar en la wifi de casa o con Tailscale encendido. */
 const NAS = (() => {
   const K = {
-    mode: 'ko95_backend', url: 'ko95_nasUrl', acc: 'ko95_nasAcc', ref: 'ko95_nasRef',
+    url: 'ko95_nasUrl', acc: 'ko95_nasAcc', ref: 'ko95_nasRef',
     user: 'ko95_nasUser', hashes: 'ko95_nasHashes', dels: 'ko95_nasDeletes', rejected: 'ko95_nasRejected',
     profId: 'ko95_nasProfId', profHash: 'ko95_nasProfHash',
     lastOk: 'ko95_nasLastOk', closed: 'ko95_nasClosed', forgot: 'ko95_nasForgot',
@@ -62,7 +61,7 @@ const NAS = (() => {
   // (Se puede cambiar la direccion desde la pantalla de entrada si algun dia cambia.)
   const DEFAULT_URL = 'https://osky95.tailc34d78.ts.net';
   const url = () => cleanUrl(localStorage.getItem(K.url) || DEFAULT_URL);
-  const enabled = () => localStorage.getItem(K.mode) !== 'firebase' && !!url();
+  const enabled = () => !!url();
   const tokens = () => ({ acc: localStorage.getItem(K.acc), ref: localStorage.getItem(K.ref) });
   const loggedIn = () => !!tokens().ref;
   function saveTokens(t) {
@@ -353,14 +352,28 @@ const NAS = (() => {
   function closedReason() { return localStorage.getItem(K.closed) || ''; }
   function clearClosed() { ls.del(K.closed); if (typeof window.authRenderClosed === 'function') window.authRenderClosed(); }
 
+  /* Lo que se guarda de la cuenta: nunca tokens ni contraseñas. */
+  function cuenta(user) {
+    return { id: user.id, email: user.email, is_admin: !!user.is_admin };
+  }
+  /* El plan y el permiso de admin los decide el NAS: se releen al abrir la web y al volver a ella. */
+  async function refreshAccount() {
+    if (!loggedIn()) return;
+    const me = await api('GET', '/auth/me');
+    ls.set(K.user, cuenta(me));
+    if (typeof Pro !== 'undefined') Pro.applyAccount(me);
+    if (typeof Admin !== 'undefined') Admin.refreshPanelVisibility();
+  }
+
   function enterSession(user) {
     const prev = localStorage.getItem('ko95_uid');
     if (prev && prev !== 'nas:' + user.id) { clearLocalUserData(); clearSyncState(); }
     localStorage.setItem('ko95_uid', 'nas:' + user.id);
-    ls.set(K.user, { id: user.id, email: user.email });
+    ls.set(K.user, cuenta(user));
     localStorage.setItem('ko95_sess', '1');
     ls.del(K.closed);
-    if (typeof Pro !== 'undefined') Pro.checkAdmin('nas:' + user.id);
+    if (typeof Pro !== 'undefined') Pro.applyAccount(user);
+    if (typeof Admin !== 'undefined') Admin.checkAndShowBroadcast();
     const ov = document.getElementById('authOverlay');
     if (ov) ov.classList.remove('show');
     updateSyncStatus('on', 'NAS: ' + user.email);
@@ -368,7 +381,7 @@ const NAS = (() => {
     sync();
   }
 
-  // ── Acciones de la pantalla de entrada (sustituyen a las de Firebase en modo NAS) ──
+  // ── Acciones de la pantalla de entrada ──
   /* Entrar/crear cuenta con "Dejar de esperar": una sola señal corta todo el proceso (AuthRepository.kt conTopeDeEntrada). */
   function newAuthCtl() { if (authCtl) { try { authCtl.abort(); } catch (e) {} } authCtl = new AbortController(); return authCtl.signal; }
   function cancelAuth() { if (authCtl) { try { authCtl.abort(); } catch (e) {} authCtl = null; } }
@@ -394,6 +407,7 @@ const NAS = (() => {
   function logout() {
     clearInterval(pollTimer);
     clearSession(); clearSyncState();
+    if (typeof Pro !== 'undefined') Pro.applyAccount({ plan: 'free' });
     ls.del(K.closed);
     localStorage.removeItem('ko95_sess'); localStorage.removeItem('ko95_uid');
     location.href = location.pathname;
@@ -409,6 +423,7 @@ const NAS = (() => {
     await api('DELETE', '/auth/me');
     clearInterval(pollTimer);
     clearSession(); clearSyncState();
+    if (typeof Pro !== 'undefined') Pro.applyAccount({ plan: 'free' });
     ls.del(K.closed);
     localStorage.removeItem('ko95_uid');
     localStorage.setItem('ko95_sess', 'local');
@@ -433,12 +448,9 @@ const NAS = (() => {
 
   return {
     enabled, url, cleanUrl, loggedIn, login, register, logout, removeWorkout, sync, check, friendly, status,
-    logoutAll, deleteAccount, cancelAuth, forgetRejected, closedReason, clearClosed,
+    logoutAll, deleteAccount, cancelAuth, forgetRejected, closedReason, clearClosed, api, refreshAccount,
     get remoteApply() { return remoteApply; },
-    setMode(mode, u) {
-      if (mode === 'nas') { localStorage.setItem(K.url, cleanUrl(u)); localStorage.setItem(K.mode, 'nas'); }
-      else localStorage.setItem(K.mode, 'firebase');
-    },
+    setUrl(u) { localStorage.setItem(K.url, cleanUrl(u)); },
     user() { return ls.get(K.user, null); },
     start() {
       if (!enabled()) return;
@@ -447,10 +459,11 @@ const NAS = (() => {
         const ov = document.getElementById('authOverlay');
         if (ov) ov.classList.remove('show');
         const u = ls.get(K.user, null);
-        if (u && typeof Pro !== 'undefined') Pro.checkAdmin('nas:' + u.id);
         updateSyncStatus('syncing', '');
         startPolling();
         sync().then(() => { if (u) updateSyncStatus('on', 'NAS: ' + u.email); });
+        refreshAccount().catch(() => { /* sin conexion: vale el plan guardado */ });
+        if (typeof Admin !== 'undefined') Admin.checkAndShowBroadcast();
       } else if (localStorage.getItem('ko95_sess') !== 'local') {
         localStorage.removeItem('ko95_sess');
         updateSyncStatus('off', '🔒 Identifícate');
@@ -463,14 +476,8 @@ const NAS = (() => {
   };
 })();
 
-/* ── Enganche con el resto de la web ──
-   En modo NAS, las funciones de la pantalla de entrada y de borrado usan el NAS en vez de Firebase. */
+/* ── Enganche con el resto de la web: pantalla de entrada, borrado y guardado ── */
 (function () {
-  const fb = {
-    login: window.authEmailLogin, register: window.authRegister, reset: window.authResetPass,
-    logout: window.logoutCloud, remove: window.removeFromFirebase, push: window.forceSyncCloud,
-  };
-
   // ── Pantalla de entrada (paridad con AuthScreen.kt): una tarjeta, pestañas Entrar | Crear cuenta,
   //    errores en rojo e info en verde debajo de los campos, spinner + "Dejar de esperar". ──
   let authTab = 0; // 0 entrar · 1 crear cuenta
@@ -517,7 +524,6 @@ const NAS = (() => {
   window.authDismissClosed = function () { NAS.clearClosed(); };
 
   window.authEmailLogin = async function () {
-    if (!NAS.enabled()) return fb.login();
     const email = $('authLogEmail').value.trim();
     const pass = $('authLogPass').value;
     if (!email || !pass) { authMsg('err', tr('Rellena todos los campos')); return; }
@@ -535,7 +541,6 @@ const NAS = (() => {
   };
 
   window.authRegister = async function () {
-    if (!NAS.enabled()) return fb.register();
     const name = $('authNewName').value.trim();
     const email = $('authLogEmail').value.trim();
     const pass = $('authLogPass').value;
@@ -560,7 +565,6 @@ const NAS = (() => {
   /* Mensaje de AuthRepository.kt (resetPassword): no hay recuperación ni cambio desde la app, y NO se
      sugiere crear otra cuenta. */
   window.authResetPass = function () {
-    if (!NAS.enabled()) return fb.reset();
     authMsg('err', tr('El NAS de casa no manda correos, así que no hay recuperación automática, y la app no puede cambiar la contraseña por su cuenta.') + '\n\n' +
       tr('Mientras tanto, entra sin cuenta (modo local) y sigue entrenando: tus entrenos se guardan en el móvil y no se pierde nada.') + '\n\n' +
       tr('Para recuperar el acceso hay que cambiar la contraseña en el propio NAS desde el ordenador: está explicado paso a paso en el dosier, en docs/06-operacion-diaria.md, apartado 7.3. La contraseña nueva tiene que tener 12 caracteres o más.') + '\n\n' +
@@ -568,17 +572,13 @@ const NAS = (() => {
   };
 
   window.logoutCloud = function () {
-    if (!NAS.enabled()) return fb.logout();
     toast('Cerrando sesión...', 'ok');
     NAS.logout();
   };
 
-  window.removeFromFirebase = function (id) {
-    if (!NAS.enabled()) return fb.remove(id);
-    NAS.removeWorkout(id);
-  };
+  window.removeWorkoutCloud = function (id) { NAS.removeWorkout(id); };
 
-  window.forceSyncCloud = function () { return NAS.enabled() ? NAS.sync() : (fb.push ? fb.push() : undefined); };
+  window.forceSyncCloud = function () { return NAS.sync(); };
 
   // Guardado: en modo NAS, cada cambio local se sube (con un pequeño retraso para agrupar).
   const _prevSave = saveWorkouts;
@@ -592,7 +592,10 @@ const NAS = (() => {
 
   window.addEventListener('online', () => { if (NAS.enabled()) NAS.sync(); });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && NAS.enabled()) NAS.sync();
+    if (document.visibilityState === 'visible' && NAS.enabled()) {
+      NAS.sync();
+      NAS.refreshAccount().catch(() => { });
+    }
   });
 
   // ── Selector de servidor en la pantalla de entrada ──
@@ -604,11 +607,7 @@ const NAS = (() => {
     const info = document.getElementById('nasServerInfo');
     const inp = document.getElementById('nasUrlInp');
     if (inp && !inp.value) inp.value = NAS.url() || '';
-    if (info) info.innerHTML = NAS.enabled()
-      ? '🏠 <b>Tu NAS</b> · <span style="opacity:.7">' + NAS.url().replace(/^https?:\/\//, '') + '</span>'
-      : '☁️ Servidor: <b>Firebase</b>';
-    const back = document.getElementById('nasUseFirebase');
-    if (back) back.style.display = NAS.enabled() ? 'inline' : 'none';
+    if (info) info.innerHTML = '🏠 <b>Tu NAS</b> · <span style="opacity:.7">' + NAS.url().replace(/^https?:\/\//, '') + '</span>';
   };
   window.nasUseNas = async function () {
     const inp = document.getElementById('nasUrlInp');
@@ -623,7 +622,7 @@ const NAS = (() => {
     try {
       const h = await NAS.check(u);
       if (!h || h.status !== 'ok') throw new Error('El NAS responde pero su base de datos no está lista');
-      NAS.setMode('nas', u);
+      NAS.setUrl(u);
       nasRenderServerInfo();
       toast('NAS conectado ✓', 'good');
       const box = document.getElementById('nasServerBox');
@@ -634,13 +633,9 @@ const NAS = (() => {
       if (btn) { btn.disabled = false; btn.textContent = 'Guardar dirección'; }
     }
   };
-  window.nasUseFirebase = function () {
-    NAS.setMode('firebase');
-    location.href = location.pathname;
-  };
-
   function boot() {
-    if (!localStorage.getItem('ko95_backend')) localStorage.setItem('ko95_backend', 'nas');
+    // Restos de versiones anteriores de la web.
+    ['ko95_backend', 'ko95_failedDeletes'].forEach(k => localStorage.removeItem(k));
     nasRenderServerInfo();
     if (typeof window.authToggle === 'function') window.authToggle(false);
     if (typeof window.authRenderClosed === 'function') window.authRenderClosed();

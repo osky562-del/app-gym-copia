@@ -122,7 +122,7 @@ $('confirmDel').addEventListener('click', () => {
   if (delId) {
     workouts = workouts.filter(w => w.id !== delId);
     saveWorkouts();
-    if (typeof removeFromFirebase === 'function') removeFromFirebase(delId);
+    if (typeof removeWorkoutCloud === 'function') removeWorkoutCloud(delId);
     renderHist();
     renderDash();
     toast(histT('Entreno borrado'));

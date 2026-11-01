@@ -1,10 +1,9 @@
-const CACHE_NAME = 'ko95fit-v13';
+const CACHE_NAME = 'ko95fit-v14';
 const ASSETS = [
   '/',
   '/index.html',
   '/logo.png',
   '/manifest.json',
-  '/firebase-config.js',
   '/css/variables.css',
   '/css/base.css',
   '/css/splash.css',
@@ -49,7 +48,7 @@ const ASSETS = [
   '/js/summary.js',
   '/js/effects.js',
   '/js/onboarding.js',
-  '/js/firebase-sync.js',
+  '/js/session.js',
   '/js/nas-sync.js',
   '/js/app.js'
 ];
@@ -71,7 +70,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Skip non-GET and Firebase/external requests
+  // Skip non-GET and external requests
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;

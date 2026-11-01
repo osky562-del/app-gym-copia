@@ -155,11 +155,6 @@ const Pro = (function () {
     'priority_support':   'prioritySupport',
   };
 
-  /* ── Admin / Owner UIDs (auto Pro+) ── */
-  const ADMIN_UIDS = [
-    'sQCUoNHTPmWo2Nf42xICmE3FZAT2',
-  ];
-
   /* ── State ── */
   let currentPlan = 'free';
   let planExpiry = null;
@@ -218,107 +213,22 @@ const Pro = (function () {
     return new Date(d.getFullYear(), d.getMonth(), diff).toISOString().split('T')[0];
   }
 
-  /* ── Firestore Sync (source of truth) ── */
-
-  /** Load plan from Firestore — this is the REAL validation */
-  async function loadFromFirestore() {
-    if (!fbDb || !fbUser) return;
-    try {
-      const doc = await fbDb.collection('users').doc(fbUser.uid)
-        .collection('subscription').doc('plan').get();
-
-      if (doc.exists) {
-        const data = doc.data();
-        const serverPlan = data.plan || 'free';
-        const serverExpiry = data.expiry ? data.expiry.toDate() : null;
-
-        // Check server-side expiry
-        if (serverExpiry && new Date() > serverExpiry) {
-          currentPlan = 'free';
-          planExpiry = null;
-        } else {
-          currentPlan = PLANS[serverPlan] ? serverPlan : 'free';
-          planExpiry = serverExpiry;
-        }
-        save(); // Cache locally
-        renderProBadges();
-      } else if (!isAdmin) {
-        // No subscription doc exists → free plan
-        // (Unless admin, which writes it below)
-        currentPlan = 'free';
-        planExpiry = null;
-        save();
-        renderProBadges();
-      }
-    } catch (e) {
-      console.warn('Pro: Firestore read failed, using local cache:', e.message);
-      // Fallback: keep whatever was loaded from localStorage
-      // This ensures offline mode still works
-    }
-  }
-
-  /** Write plan to Firestore (admin only — rules enforce this) */
-  async function saveToFirestore() {
-    if (!fbDb || !fbUser) return;
-    try {
-      await fbDb.collection('users').doc(fbUser.uid)
-        .collection('subscription').doc('plan').set({
-          plan: currentPlan,
-          expiry: planExpiry || null,
-          grantedBy: isAdmin ? 'admin' : 'payment',
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          email: fbUser.email,
-        });
-    } catch (e) {
-      console.warn('Pro: Firestore write failed:', e.message);
-      // If not admin, this WILL fail — that's the security working
-    }
-  }
-
-  /** Listen for real-time subscription changes (e.g., payment webhook) */
-  let subUnsub = null;
-  function listenSubscription() {
-    if (!fbDb || !fbUser || subUnsub) return;
-    subUnsub = fbDb.collection('users').doc(fbUser.uid)
-      .collection('subscription').doc('plan')
-      .onSnapshot(snap => {
-        if (!snap.exists) return;
-        const data = snap.data();
-        if (snap.metadata.hasPendingWrites) return; // Skip local echoes
-        const serverPlan = data.plan || 'free';
-        const serverExpiry = data.expiry ? data.expiry.toDate() : null;
-
-        if (serverExpiry && new Date() > serverExpiry) {
-          currentPlan = 'free';
-          planExpiry = null;
-        } else {
-          currentPlan = PLANS[serverPlan] ? serverPlan : 'free';
-          planExpiry = serverExpiry;
-        }
-        save();
-        renderProBadges();
-      }, err => {
-        console.warn('Pro: Subscription listener error:', err.message);
-      });
-  }
-
-  /* ── Admin check ── */
-  function checkAdmin(uid) {
-    if (!uid) return;
-    // El NAS es privado (solo LAN/Tailscale): quien entra ahi es de casa y tiene todo.
-    isAdmin = ADMIN_UIDS.includes(uid) || String(uid).startsWith('nas:');
-    if (isAdmin) {
-      currentPlan = 'pro_plus';
-      planExpiry = null; // never expires for admin
-      save();
-      saveToFirestore(); // Admin writes to Firestore (rules allow it)
-      renderProBadges();
-    } else {
-      // Non-admin: load plan from Firestore (source of truth)
-      loadFromFirestore();
-    }
-    // All users: listen for real-time changes
-    listenSubscription();
+  /* ── Plan de la cuenta del NAS ──
+     El NAS decide el plan y el panel de administración lo cambia. Se guarda en local para
+     que la web funcione sin conexión. Una API antigua no manda `plan`: esas cuentas siguen
+     con el Pro+ que tenían. */
+  function applyAccount(user) {
+    if (!user) return;
+    isAdmin = !!user.is_admin;
+    const plan = PLANS[user.plan] ? user.plan : 'pro_plus';
+    // Una prueba gratis en curso no la corta un plan Free del servidor.
+    if (plan === 'free' && isOnTrial()) return;
+    if (plan === currentPlan && (planExpiry ? planExpiry.toISOString() : null) === (user.plan_expires_at ? new Date(user.plan_expires_at).toISOString() : null)) return;
+    currentPlan = plan;
+    planExpiry = user.plan_expires_at ? new Date(user.plan_expires_at) : null;
+    trialEnd = 0;
+    save();
+    renderProBadges();
   }
 
   /* ── Public API ── */
@@ -401,15 +311,12 @@ const Pro = (function () {
     return getPlan().maxHistory;
   }
 
-  /** Set plan (for payment integration or admin grant)
-   *  NOTE: For non-admin users, Firestore rules will REJECT the write.
-   *  Real payments should use Cloud Functions to write the subscription. */
+  /** Activa un plan en este dispositivo (compra simulada, como en Android). */
   function setPlan(planId, expiryDate) {
     if (!PLANS[planId]) return;
     currentPlan = planId;
     planExpiry = expiryDate ? new Date(expiryDate) : null;
     save();
-    saveToFirestore(); // Will only succeed if admin or Cloud Function
     renderProBadges();
     toast('¡Plan ' + PLANS[planId].label + ' activado! 🎉', 'good');
   }
@@ -514,11 +421,11 @@ const Pro = (function () {
     currentPlan = planId; planExpiry = null;
     const d = trialDays(planId);
     trialEnd = d > 0 ? Date.now() + d * 86400000 : 0;
-    save(); saveToFirestore(); renderProBadges();
+    save(); renderProBadges();
   }
   function cancelPlan() {
     currentPlan = 'free'; planExpiry = null; trialEnd = 0;
-    save(); saveToFirestore(); renderProBadges();
+    save(); renderProBadges();
   }
   function fmtTrialEnd(ms) { const d = new Date(ms); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); }
 
@@ -584,14 +491,6 @@ const Pro = (function () {
     }
   }
 
-  /* ── Anti-tamper: validate local cache against Firestore on visibility ── */
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && fbDb && fbUser && !isAdmin) {
-      // Re-validate from server when tab becomes visible
-      loadFromFirestore();
-    }
-  });
-
   /* ── Initialize ── */
   load();
 
@@ -620,10 +519,7 @@ const Pro = (function () {
     isOnTrial,
     trialDays,
     renderProBadges,
-    checkAdmin,
-    loadFromFirestore,
-    saveToFirestore,
-    listenSubscription,
+    applyAccount,
     PLANS,
   };
 
