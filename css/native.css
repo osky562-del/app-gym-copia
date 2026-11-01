@@ -167,6 +167,32 @@ body { background: var(--bg); }
 .plan-head-s { font-family: var(--f); }
 .btn-empezar { text-transform: none; letter-spacing: 0; }
 
+/* ── Mapa muscular: mismas imagenes que las apps ── */
+.mm-body { position: relative; width: 100%; aspect-ratio: 638 / 542; cursor: pointer; }
+.mm-body img { display: block; width: 100%; height: 100%; }
+.mm-layer {
+  position: absolute; inset: 0; transition: opacity .2s;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+.mm-sides { display: flex; margin-top: 8px; font-size: .68rem; font-weight: 700; color: var(--t3); }
+.mm-sides span { flex: 1; text-align: center; }
+.mm-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.mm-chip {
+  display: inline-flex; align-items: center; gap: 5px; border: none; border-radius: 100px; padding: 5px 8px;
+  background: var(--s2); color: var(--t1); font-size: .7rem; cursor: pointer;
+}
+.mm-chip.on { font-weight: 700; color: #fff; }
+.mm-chip i, .mm-dh i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mm-detail { margin-top: 8px; padding: 10px; border-radius: 10px; }
+.mm-dh { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.mm-dh strong { flex: 1; font-size: .9rem; color: var(--t1); }
+.mm-dh span { font-size: .75rem; font-weight: 600; }
+.mm-ex { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: .7rem; color: var(--t1); }
+.mm-ex span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mm-ex b { font-weight: 400; color: var(--t3); flex-shrink: 0; }
+.mm-none { font-size: .7rem; color: var(--t3); }
+
 /* ── Coach ── */
 .ai-hero { background: var(--s1); border: none; box-shadow: none; border-radius: 16px; }
 .ai-hero::before, .ai-hero::after { display: none; }
