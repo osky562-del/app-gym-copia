@@ -76,6 +76,7 @@ function renderPlanList() {
     </div>
     <div style="flex:1;"><div class="plan-ex-n">${i + 1}. ${ex.name}</div>${lk ? `<div class="plan-ex-hist">Último: ${lk}kg${pr ? ' · PR: ' + pr + 'kg' : ''}</div>` : ''}
     </div>
+    <button class="plan-ex-del plan-ex-tech" onclick="openExerciseVideo(planExs[${i}].name)" title="Ver técnica">📖</button>
     ${i > 0 ? `<button class="plan-ex-del ss-btn${linked ? ' on' : ''}" onclick="toggleSSLink(${i})" title="Superserie con el ejercicio anterior">🔗</button>` : ''}
     <button class="plan-ex-del" onclick="planDel(${i})"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>
@@ -105,7 +106,7 @@ function addPlanEx(name) {
 }
 function planAcRow(n) {
   const lk = getLastKg(n); const esc = n.replace(/'/g, "\\'");
-  return `<div class="plan-ac-item" onclick="addPlanEx('${esc}')"><span>${n}</span><span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">${favStar(n, 'filterAC')}${lk ? `<span class="plan-ac-last">${lk}kg</span>` : ''}</span></div>`;
+  return `<div class="plan-ac-item" onclick="addPlanEx('${esc}')"><span>${n}</span><span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="plan-ac-tech" onclick="event.stopPropagation();openExerciseVideo('${esc}')" title="Ver técnica">📖</span>${favStar(n, 'filterAC')}${lk ? `<span class="plan-ac-last">${lk}kg</span>` : ''}</span></div>`;
 }
 function filterAC() {
   const raw = $('planSearch').value.trim();
