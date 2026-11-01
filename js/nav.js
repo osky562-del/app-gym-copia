@@ -17,8 +17,8 @@ function goPage(p) {
   document.querySelectorAll('.tab').forEach(e => e.classList.remove('on'));
   const map = { dash: 'pageDash', awards: 'pageAwards', prog: 'pageProg', hist: 'pageHist', profile: 'pageProf', ai: 'pageAI' };
   if (map[p]) { const el = $(map[p]); if (el) el.classList.add('on'); }
-  // Coach cuelga de Inicio y Logros de Progreso, como en las apps.
-  const t = $('t-' + ({ ai: 'dash', awards: 'prog' }[p] || p)); if (t) t.classList.add('on');
+  // Coach y Logros cuelgan de Inicio, como en las apps.
+  const t = $('t-' + ({ ai: 'dash', awards: 'dash' }[p] || p)); if (t) t.classList.add('on');
   $('mainScroll').scrollTop = 0;
   if (p === 'prog') renderProgress();
   if (p === 'hist') renderHist();

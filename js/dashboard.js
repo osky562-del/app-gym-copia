@@ -56,10 +56,33 @@ function nhVol(w) { return (w.exercises || []).reduce((s, e) => s + (e.isCardio 
 function nhBig(v) { return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v)); }
 function renderNativeHome() {
   if (!$('nhStreak')) return;
-  const xp = calcXp(), lv = getLvl(xp);
-  $('nhName').textContent = getUserName();
-  $('nhLvl').textContent = lv.title + ' · ' + xp.toLocaleString() + ' XP';
-  $('nhStreak').textContent = calcStreak();
+  const xp = calcXp(), lv = getLvl(xp), streak = calcStreak();
+  const loc0 = (typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES';
+  $('nhName').textContent = getUserName() || 'Atleta';
+  const now = new Date();
+  let wd = now.toLocaleDateString(loc0, { weekday: 'long' }); wd = wd.charAt(0).toUpperCase() + wd.slice(1);
+  $('nhDate').textContent = wd + ', ' + now.toLocaleDateString(loc0, { day: 'numeric', month: 'long' });
+  // Tarjeta de XP (nivel, titulo, barra) como en Android
+  $('nhLvBadge').textContent = 'Nivel ' + lv.lvl;
+  $('nhLvl').textContent = lv.title;
+  $('nhXp').textContent = xp.toLocaleString() + ' XP';
+  const pct = lv.max === Infinity ? 100 : Math.round((xp - lv.min) / (lv.max - lv.min) * 100);
+  $('nhXpFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+  $('nhXpPts').textContent = xp.toLocaleString() + ' / ' + (lv.max === Infinity ? 'MAX' : lv.max.toLocaleString()) + ' XP';
+  // Racha + semana
+  $('nhStreak').textContent = streak;
+  $('nhStreak').parentNode.classList.toggle('hot', streak >= 3);
+  $('nhStreakN').textContent = streak;
+  $('nhFire').style.opacity = streak >= 3 ? 1 : .45;
+  $('nhStreakMax').textContent = calcMaxStreak();
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  $('nhWeekStrip').innerHTML = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(t0); d.setDate(d.getDate() - (6 - i));
+    const ds = d.toISOString().split('T')[0], hit = workouts.some(w => w.date === ds), isT = i === 6;
+    let lbl = d.toLocaleDateString(loc0, { weekday: 'short' }).replace('.', ''); lbl = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+    return `<div class="nh-wd"><div class="nh-wdbar${hit ? ' hit' : ''}${isT ? ' today' : ''}"></div><span${isT ? ' class="today"' : ''}>${lbl}</span></div>`;
+  }).join('');
+  $('nhRepeat').style.display = workouts.length ? '' : 'none';
   let ex = 0, vol = 0, sr = 0, rc = 0;
   workouts.forEach(w => { if (+w.rpe) { sr += +w.rpe; rc++; } ex += (w.exercises || []).length; vol += nhVol(w); });
   $('nhS').textContent = workouts.length;
