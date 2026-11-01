@@ -52,8 +52,11 @@ const NAS = (() => {
   }
 
   // ── Configuracion y sesion ──
-  const url = () => cleanUrl(localStorage.getItem(K.url) || '');
-  const enabled = () => localStorage.getItem(K.mode) === 'nas' && !!url();
+  // El NAS de casa es el servidor fijo: se entra directamente con la cuenta del NAS.
+  // (Se puede cambiar la direccion desde la pantalla de entrada si algun dia cambia.)
+  const DEFAULT_URL = 'https://osky95.tailc34d78.ts.net';
+  const url = () => cleanUrl(localStorage.getItem(K.url) || DEFAULT_URL);
+  const enabled = () => localStorage.getItem(K.mode) !== 'firebase' && !!url();
   const tokens = () => ({ acc: localStorage.getItem(K.acc), ref: localStorage.getItem(K.ref) });
   const loggedIn = () => !!tokens().ref;
   function saveTokens(t) {
@@ -374,7 +377,7 @@ const NAS = (() => {
     get remoteApply() { return remoteApply; },
     setMode(mode, u) {
       if (mode === 'nas') { localStorage.setItem(K.url, cleanUrl(u)); localStorage.setItem(K.mode, 'nas'); }
-      else localStorage.removeItem(K.mode);
+      else localStorage.setItem(K.mode, 'firebase');
     },
     user() { return ls.get(K.user, null); },
     start() {
@@ -490,7 +493,7 @@ const NAS = (() => {
     const inp = document.getElementById('nasUrlInp');
     if (inp && !inp.value) inp.value = NAS.url() || '';
     if (info) info.innerHTML = NAS.enabled()
-      ? '🏠 Servidor: <b>tu NAS</b> · <span style="opacity:.7">' + NAS.url().replace(/^https?:\/\//, '') + '</span>'
+      ? '🏠 <b>Tu NAS</b> · <span style="opacity:.7">' + NAS.url().replace(/^https?:\/\//, '') + '</span>'
       : '☁️ Servidor: <b>Firebase</b>';
     const back = document.getElementById('nasUseFirebase');
     if (back) back.style.display = NAS.enabled() ? 'inline' : 'none';
@@ -510,13 +513,13 @@ const NAS = (() => {
       if (!h || h.status !== 'ok') throw new Error('El NAS responde pero su base de datos no está lista');
       NAS.setMode('nas', u);
       nasRenderServerInfo();
-      toast('NAS conectado ✓ Ahora entra con tu cuenta del NAS', 'good');
+      toast('NAS conectado ✓', 'good');
       const box = document.getElementById('nasServerBox');
       if (box) box.style.display = 'none';
     } catch (e) {
       toast(e instanceof Error && !e.kind ? e.message : NAS.friendly(e), 'err');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = 'Usar mi NAS'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Guardar dirección'; }
     }
   };
   window.nasUseFirebase = function () {
@@ -525,6 +528,7 @@ const NAS = (() => {
   };
 
   function boot() {
+    if (!localStorage.getItem('ko95_backend')) localStorage.setItem('ko95_backend', 'nas');
     nasRenderServerInfo();
     NAS.start();
   }
