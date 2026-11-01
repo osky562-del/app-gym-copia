@@ -1,19 +1,22 @@
 /* ══════════════════════════════════════════════
-   ADMIN — Panel de control (solo visible para UID admin)
+   ADMIN — Panel de control contra la API del NAS
+   Quién es admin lo decide el NAS (users.is_admin) y lo comprueba en cada petición a /admin.
+   El PIN es una comodidad de este dispositivo, no la seguridad del panel.
    ══════════════════════════════════════════════ */
 
 const Admin = (function() {
 
-  const ADMIN_UIDS = ['sQCUoNHTPmWo2Nf42xICmE3FZAT2'];
   const BROADCAST_LAST_SEEN_KEY = 'ko95_lastBroadcastId';
-  /* PIN del panel: SHA-256 del PIN guardado en localStorage. Por defecto = sha256('0000'). */
+  /* PIN del panel: SHA-256 del PIN guardado en localStorage. La primera vez hay que elegirlo. */
   const PIN_HASH_KEY = 'ko95_admin_pin_hash';
   /* Flag de "desbloqueado" en sessionStorage → al cerrar la app vuelve a bloquearse. */
   const UNLOCKED_KEY = 'ko95_admin_unlocked';
-  const DEFAULT_PIN = '0000';
+  const PINES_OBVIOS = ['0000', '1234'];
 
   function isAdminUser() {
-    return fbUser && ADMIN_UIDS.includes(fbUser.uid);
+    if (typeof NAS === 'undefined' || !NAS.loggedIn()) return false;
+    const u = NAS.user();
+    return !!(u && u.is_admin);
   }
 
   /* Escapa texto para incrustarlo en innerHTML de forma segura (evita XSS almacenado:
@@ -35,32 +38,27 @@ const Admin = (function() {
       .join('');
   }
 
-  /* Devuelve el hash del PIN actual. Si nunca se cambió, devuelve el hash del PIN por defecto. */
-  async function getStoredHash() {
-    let h = localStorage.getItem(PIN_HASH_KEY);
-    if (!h) {
-      h = await sha256Hex(DEFAULT_PIN);
-      try { localStorage.setItem(PIN_HASH_KEY, h); } catch (e) {}
-    }
-    return h;
-  }
+  function hasPin() { return !!localStorage.getItem(PIN_HASH_KEY); }
 
-  /* Verifica el PIN introducido. Si OK → marca sessionStorage y refresca panel. */
+  /* Verifica el PIN introducido; si aún no hay ninguno, lo crea. Si OK → desbloquea. */
   async function tryUnlock(pin) {
     if (!pin) return false;
-    const stored = await getStoredHash();
-    const tested = await sha256Hex(pin);
-    if (stored === tested) {
-      try { sessionStorage.setItem(UNLOCKED_KEY, '1'); } catch (e) {}
-      refreshPanelVisibility();
-      if (isAdminUser()) {
-        loadStats();
-        listProUsers();
-      }
-      return true;
+    if (!hasPin()) {
+      if (!pinValido(pin)) return false;
+      localStorage.setItem(PIN_HASH_KEY, await sha256Hex(pin));
+    } else if (localStorage.getItem(PIN_HASH_KEY) !== await sha256Hex(pin)) {
+      return false;
     }
-    return false;
+    try { sessionStorage.setItem(UNLOCKED_KEY, '1'); } catch (e) {}
+    refreshPanelVisibility();
+    if (isAdminUser()) {
+      loadStats();
+      listProUsers();
+    }
+    return true;
   }
+
+  function pinValido(pin) { return /^\d{4,8}$/.test(pin || '') && !PINES_OBVIOS.includes(pin); }
 
   /* Bloquea el panel hasta el siguiente PIN correcto. */
   function lockPanel() {
@@ -75,8 +73,8 @@ const Admin = (function() {
       if (typeof toast === 'function') toast('Panel bloqueado', 'err');
       return false;
     }
-    if (!/^\d{4,8}$/.test(newPin || '')) {
-      if (typeof toast === 'function') toast('PIN: 4-8 dígitos numéricos', 'err');
+    if (!pinValido(newPin)) {
+      if (typeof toast === 'function') toast('PIN: 4-8 dígitos, y ni 0000 ni 1234', 'err');
       return false;
     }
     const h = await sha256Hex(newPin);
@@ -105,7 +103,7 @@ const Admin = (function() {
     m.innerHTML = `
       <div style="background:var(--s1,#131316);border:1.5px solid var(--line2,#2a2a32);border-radius:18px;padding:24px;width:100%;max-width:340px;">
         <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px;text-align:center;">🔒 Panel Admin</div>
-        <div style="font-size:.78rem;color:var(--t3,#7a7a86);text-align:center;margin-bottom:18px;">Introduce el PIN para desbloquear</div>
+        <div id="admPinTxt" style="font-size:.78rem;color:var(--t3,#7a7a86);text-align:center;margin-bottom:18px;">Introduce el PIN para desbloquear</div>
         <input id="admPinInp" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="••••" style="width:100%;background:var(--s3,#222);border:1.5px solid var(--line2,#2a2a32);border-radius:10px;padding:14px;color:var(--t1,#fff);font-size:1.2rem;text-align:center;letter-spacing:.45em;outline:none;box-sizing:border-box;margin-bottom:14px;">
         <div style="display:flex;gap:8px;">
           <button id="admPinCancel" style="flex:1;padding:11px;border-radius:9px;background:var(--s3,#222);border:1px solid var(--line2,#2a2a32);color:var(--t2,#c8c8d0);font-weight:700;cursor:pointer;">Cancelar</button>
@@ -127,6 +125,9 @@ const Admin = (function() {
   function _openPinPrompt() {
     ensurePinModal();
     document.getElementById('admPinErr').textContent = '';
+    document.getElementById('admPinTxt').textContent = hasPin()
+      ? 'Introduce el PIN para desbloquear'
+      : 'Elige un PIN de 4 a 8 dígitos para este dispositivo';
     document.getElementById('admPinInp').value = '';
     document.getElementById('admPinModal').style.display = 'flex';
     setTimeout(() => { document.getElementById('admPinInp')?.focus(); }, 60);
@@ -145,7 +146,7 @@ const Admin = (function() {
       _closePin();
       if (typeof toast === 'function') toast('Panel admin desbloqueado ✓', 'good');
     } else {
-      err.textContent = 'PIN incorrecto';
+      err.textContent = hasPin() ? 'PIN incorrecto' : 'De 4 a 8 dígitos, y ni 0000 ni 1234';
       inp.value = '';
       inp.focus();
       if (typeof vib === 'function') vib([50, 30, 50]);
@@ -161,18 +162,15 @@ const Admin = (function() {
     av._admPinAttached = true;
     av.style.cursor = 'pointer';
     av.addEventListener('click', () => {
-      // El trigger solo se activa para el UID admin, y solo si está bloqueado.
-      // Con cuenta del NAS no hay panel de usuarios: se avisa en vez de no hacer nada.
-      const nasUser = typeof NAS !== 'undefined' && NAS.user && NAS.user();
-      if ((!isAdminUser() && !nasUser) || isUnlocked()) { _tapCount = 0; return; }
+      // Solo para cuentas admin del NAS, y solo si el panel está bloqueado.
+      if (!isAdminUser() || isUnlocked()) { _tapCount = 0; return; }
       _tapCount++;
       if (_tapTimer) clearTimeout(_tapTimer);
       _tapTimer = setTimeout(() => { _tapCount = 0; }, 2000);
       if (_tapCount >= 5) {
         _tapCount = 0;
         clearTimeout(_tapTimer);
-        if (isAdminUser()) _openPinPrompt();
-        else if (typeof toast === 'function') toast('El panel admin solo funciona con tu cuenta de Firebase. Las cuentas del NAS ya tienen Pro.', 'ok');
+        _openPinPrompt();
       }
     });
   }
@@ -184,161 +182,99 @@ const Admin = (function() {
     panel.style.display = (isAdminUser() && isUnlocked()) ? 'block' : 'none';
   }
 
-  /* ── Buscar usuario por email O nombre ── */
+  const PLAN_LABEL = { free: 'Free', pro: 'Pro', pro_plus: 'Pro+', elite: 'Élite' };
+  const fmtFecha = iso => new Date(iso).toLocaleDateString('es');
+  const msgError = e => (typeof NAS !== 'undefined' && e && e.kind) ? NAS.friendly(e) : (e && e.message) || 'Error';
+
+  function tarjetaUsuario(u) {
+    const id = esc(u.id);
+    return `
+      <div style="background:var(--s2);border:1px solid var(--line2);border-radius:11px;padding:14px;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px;">
+          <div style="min-width:0;">
+            <div style="font-size:.9rem;font-weight:800;word-break:break-all;">${esc(u.email)}${u.is_admin ? ' · admin' : ''}</div>
+            <div style="font-size:.7rem;color:var(--t3);">${esc(u.workouts)} entrenos · desde ${esc(fmtFecha(u.created_at))}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:.65rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">Plan</div>
+            <div style="font-size:.95rem;font-weight:800;color:${u.plan === 'free' ? 'var(--t2)' : 'var(--green)'};">${esc(PLAN_LABEL[u.plan] || u.plan)}</div>
+            ${u.plan_expires_at ? `<div style="font-size:.6rem;color:var(--t3);">hasta ${esc(fmtFecha(u.plan_expires_at))}</div>` : ''}
+          </div>
+        </div>
+        ${u.is_admin ? '' : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+          <button class="adm-act" onclick="Admin.setPlan('${id}','pro',1)">Pro 1 mes</button>
+          <button class="adm-act" onclick="Admin.setPlan('${id}','pro',12)">Pro 1 año</button>
+          <button class="adm-act" onclick="Admin.setPlan('${id}','pro_plus',12)">Pro+ 1 año</button>
+          <button class="adm-act" onclick="Admin.setPlan('${id}','pro_plus',null)">Pro+ infinito</button>
+          <button class="adm-act" onclick="Admin.setPlan('${id}','elite',12)">Élite 1 año</button>
+          <button class="adm-act" onclick="Admin.setPlan('${id}','elite',null)">Élite infinito</button>
+          <button class="adm-act adm-danger" style="grid-column:1 / -1;" onclick="Admin.setPlan('${id}','free',null)">Quitar a Free</button>
+        </div>`}
+      </div>`;
+  }
+
+  /* ── Buscar usuarios por parte del email ── */
   async function searchUser() {
     if (!isAdminUser()) return;
     const q = document.getElementById('admSearchInp').value.trim();
     const resEl = document.getElementById('admSearchRes');
     if (!q) {
-      resEl.innerHTML = '<div style="color:var(--t3);padding:12px;text-align:center;font-size:.82rem;">Escribe un email o nombre.</div>';
+      resEl.innerHTML = '<div style="color:var(--t3);padding:12px;text-align:center;font-size:.82rem;">Escribe parte de un email.</div>';
       return;
     }
     resEl.innerHTML = '<div style="color:var(--t3);padding:12px;text-align:center;font-size:.82rem;">Buscando…</div>';
     try {
-      let uid = null;
-      let userName = null;
-
-      // 1) Si parece email → buscar entre usuarios por perfil.email
-      // 2) Si no, buscar por username en /usernames
-      if (q.includes('@')) {
-        // Buscar por email — recorremos usernames y comparamos perfil.email (lento pero ok para admin)
-        const usersSnap = await fbDb.collection('users').get();
-        for (const doc of usersSnap.docs) {
-          const data = doc.data() || {};
-          const perfilEmail = data.perfil?.email || data.email;
-          if (perfilEmail && perfilEmail.toLowerCase() === q.toLowerCase()) {
-            uid = doc.id;
-            userName = data.perfil?.nombre || '';
-            break;
-          }
-        }
-      } else {
-        const userKey = q.toLowerCase().replace(/\s/g, '');
-        const nameDoc = await fbDb.collection('usernames').doc(userKey).get();
-        if (nameDoc.exists) {
-          uid = nameDoc.data().uid;
-          userName = nameDoc.data().name;
-        }
-      }
-
-      if (!uid) {
-        resEl.innerHTML = '<div style="color:var(--red);padding:12px;text-align:center;font-size:.82rem;">No encontrado.</div>';
-        return;
-      }
-
-      // Cargar el plan actual del usuario
-      const subDoc = await fbDb.collection('users').doc(uid).collection('subscription').doc('plan').get();
-      const sub = subDoc.exists ? subDoc.data() : null;
-      const plan = sub?.plan || 'free';
-      const expiry = sub?.expiry ? sub.expiry.toDate() : null;
-      const expiryTxt = expiry ? expiry.toLocaleDateString('es') : 'infinito';
-
-      // Cargar perfil del usuario
-      const userDoc = await fbDb.collection('users').doc(uid).get();
-      const perfil = userDoc.exists ? (userDoc.data().perfil || {}) : {};
-      const nombre = userName || perfil.nombre || '—';
-
-      resEl.innerHTML = `
-        <div style="background:var(--s2);border:1px solid var(--line2);border-radius:11px;padding:14px;margin-top:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px;">
-            <div>
-              <div style="font-size:.95rem;font-weight:800;">${esc(nombre)}</div>
-              <div style="font-size:.7rem;color:var(--t3);font-family:var(--fm);word-break:break-all;">${esc(uid)}</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0;">
-              <div style="font-size:.65rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">Plan</div>
-              <div style="font-size:.95rem;font-weight:800;color:${plan==='free'?'var(--t2)':'var(--green)'};">${plan.toUpperCase()}</div>
-              ${expiry ? `<div style="font-size:.6rem;color:var(--t3);">hasta ${expiryTxt}</div>` : ''}
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
-            <button class="adm-act" onclick="Admin.setPlan('${uid}','pro',1)">Pro 1 mes</button>
-            <button class="adm-act" onclick="Admin.setPlan('${uid}','pro',12)">Pro 1 año</button>
-            <button class="adm-act" onclick="Admin.setPlan('${uid}','pro_plus',12)">Pro+ 1 año</button>
-            <button class="adm-act" onclick="Admin.setPlan('${uid}','pro_plus',null)">Pro+ infinito</button>
-            <button class="adm-act adm-danger" style="grid-column:1 / -1;" onclick="Admin.setPlan('${uid}','free',null)">Quitar a Free</button>
-          </div>
-        </div>
-      `;
+      const filas = await NAS.api('GET', '/admin/users?limit=20&q=' + encodeURIComponent(q));
+      resEl.innerHTML = filas.length
+        ? filas.map(tarjetaUsuario).join('')
+        : '<div style="color:var(--red);padding:12px;text-align:center;font-size:.82rem;">No encontrado.</div>';
     } catch (e) {
       console.error('Admin search error:', e);
-      resEl.innerHTML = '<div style="color:var(--red);padding:12px;font-size:.78rem;">Error: ' + e.message + '</div>';
+      resEl.innerHTML = '<div style="color:var(--red);padding:12px;font-size:.78rem;">Error: ' + esc(msgError(e)) + '</div>';
     }
   }
 
   /* ── Cambiar plan de un usuario ── */
-  async function setPlan(uid, plan, expiryMonths) {
+  async function setPlan(id, plan, expiryMonths) {
     if (!isAdminUser()) return;
-    const planLabel = plan === 'free' ? 'Free' : plan === 'pro' ? 'Pro' : 'Pro+';
     const expiryTxt = expiryMonths === null ? 'infinito' : `${expiryMonths} mes(es)`;
-    if (!confirm(`¿Cambiar plan de este usuario a ${planLabel} (${expiryTxt})?`)) return;
-
+    if (!confirm(`¿Cambiar plan de este usuario a ${PLAN_LABEL[plan]} (${plan === 'free' ? 'sin plan' : expiryTxt})?`)) return;
     try {
-      const expiry = expiryMonths === null
-        ? null
-        : new Date(Date.now() + expiryMonths * 30 * 24 * 60 * 60 * 1000);
-
-      await fbDb.collection('users').doc(uid)
-        .collection('subscription').doc('plan')
-        .set({
-          plan,
-          expiry: expiry,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          grantedBy: 'admin'
-        });
-      toast(`Plan actualizado a ${planLabel} ✓`, 'good');
-      searchUser(); // refrescar
+      await NAS.api('PUT', '/admin/users/' + encodeURIComponent(id) + '/plan', { plan, months: expiryMonths });
+      toast(`Plan actualizado a ${PLAN_LABEL[plan]} ✓`, 'good');
+      if (document.getElementById('admSearchInp').value.trim()) searchUser();
       listProUsers();
+      loadStats();
     } catch (e) {
       console.error('Admin setPlan error:', e);
-      toast('Error: ' + e.message, 'err');
+      toast('Error: ' + msgError(e), 'err');
     }
   }
 
-  /* ── Lista de usuarios Pro activos ── */
+  /* ── Lista de usuarios con plan de pago activo ── */
   async function listProUsers() {
     if (!isAdminUser()) return;
     const listEl = document.getElementById('admProList');
     if (!listEl) return;
     listEl.innerHTML = '<div style="color:var(--t3);padding:10px;text-align:center;font-size:.78rem;">Cargando…</div>';
     try {
-      // Recorremos /users → para cada uno leemos su subscription
-      const usersSnap = await fbDb.collection('users').get();
-      const proUsers = [];
-      for (const userDoc of usersSnap.docs) {
-        const subSnap = await fbDb.collection('users').doc(userDoc.id)
-          .collection('subscription').doc('plan').get();
-        if (!subSnap.exists) continue;
-        const sub = subSnap.data();
-        if (sub.plan === 'pro' || sub.plan === 'pro_plus') {
-          const expiry = sub.expiry ? sub.expiry.toDate() : null;
-          // Si ya expiró, no lo mostramos como Pro
-          if (expiry && new Date() > expiry) continue;
-          const perfil = userDoc.data().perfil || {};
-          proUsers.push({
-            uid: userDoc.id,
-            nombre: perfil.nombre || '—',
-            plan: sub.plan,
-            expiry
-          });
-        }
-      }
-      if (!proUsers.length) {
+      const filas = (await NAS.api('GET', '/admin/users?pro=true&limit=200')).filter(u => !u.is_admin);
+      if (!filas.length) {
         listEl.innerHTML = '<div style="color:var(--t3);padding:10px;text-align:center;font-size:.78rem;">No hay usuarios Pro activos.</div>';
         return;
       }
-      listEl.innerHTML = proUsers.map(u => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:var(--s2);border:1px solid var(--line2);border-radius:9px;margin-bottom:5px;">
+      listEl.innerHTML = filas.map(u => `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;background:var(--s2);border:1px solid var(--line2);border-radius:9px;margin-bottom:5px;">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:.82rem;font-weight:700;">${esc(u.nombre)}</div>
-            <div style="font-size:.65rem;color:var(--t3);">${u.plan === 'pro_plus' ? 'Pro+' : 'Pro'} · ${u.expiry ? 'expira ' + u.expiry.toLocaleDateString('es') : 'infinito'}</div>
+            <div style="font-size:.82rem;font-weight:700;word-break:break-all;">${esc(u.email)}</div>
+            <div style="font-size:.65rem;color:var(--t3);">${esc(PLAN_LABEL[u.plan] || u.plan)} · ${u.plan_expires_at ? 'expira ' + esc(fmtFecha(u.plan_expires_at)) : 'infinito'}</div>
           </div>
-          <button class="adm-mini" onclick="Admin.setPlan('${u.uid}','free',null)">Quitar</button>
+          <button class="adm-mini" onclick="Admin.setPlan('${esc(u.id)}','free',null)">Quitar</button>
         </div>
       `).join('');
     } catch (e) {
       console.error('Admin listProUsers error:', e);
-      listEl.innerHTML = '<div style="color:var(--red);padding:10px;font-size:.78rem;">Error: ' + e.message + '</div>';
+      listEl.innerHTML = '<div style="color:var(--red);padding:10px;font-size:.78rem;">Error: ' + esc(msgError(e)) + '</div>';
     }
   }
 
@@ -348,42 +284,17 @@ const Admin = (function() {
     const el = document.getElementById('admStats');
     if (!el) return;
     el.innerHTML = '<div style="color:var(--t3);padding:10px;text-align:center;font-size:.78rem;">Calculando…</div>';
+    const caja = (n, txt, color) => `
+          <div style="background:var(--s2);border:1px solid var(--line2);border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:800;color:${color};">${esc(n)}</div>
+            <div style="font-size:.6rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">${txt}</div>
+          </div>`;
     try {
-      const usersSnap = await fbDb.collection('users').get();
-      let totalSess = 0, totalUsers = usersSnap.size;
-      let proCount = 0;
-      // Contar Pro y sesiones
-      for (const userDoc of usersSnap.docs) {
-        const wkSnap = await fbDb.collection('users').doc(userDoc.id).collection('workouts').get();
-        totalSess += wkSnap.size;
-        const subSnap = await fbDb.collection('users').doc(userDoc.id).collection('subscription').doc('plan').get();
-        if (subSnap.exists) {
-          const sub = subSnap.data();
-          const expiry = sub.expiry ? sub.expiry.toDate() : null;
-          if ((sub.plan === 'pro' || sub.plan === 'pro_plus') && (!expiry || new Date() <= expiry)) {
-            proCount++;
-          }
-        }
-      }
-      el.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-          <div style="background:var(--s2);border:1px solid var(--line2);border-radius:10px;padding:12px;text-align:center;">
-            <div style="font-size:1.4rem;font-weight:800;color:var(--a);">${totalUsers}</div>
-            <div style="font-size:.6rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">Usuarios</div>
-          </div>
-          <div style="background:var(--s2);border:1px solid var(--line2);border-radius:10px;padding:12px;text-align:center;">
-            <div style="font-size:1.4rem;font-weight:800;color:var(--green);">${proCount}</div>
-            <div style="font-size:.6rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">Pro Activos</div>
-          </div>
-          <div style="background:var(--s2);border:1px solid var(--line2);border-radius:10px;padding:12px;text-align:center;">
-            <div style="font-size:1.4rem;font-weight:800;color:var(--amber);">${totalSess}</div>
-            <div style="font-size:.6rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">Sesiones</div>
-          </div>
-        </div>
-      `;
+      const st = await NAS.api('GET', '/admin/stats');
+      el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${caja(st.users, 'Usuarios', 'var(--a)')}${caja(st.pro_users, 'Pro Activos', 'var(--green)')}${caja(st.workouts, 'Sesiones', 'var(--amber)')}</div>`;
     } catch (e) {
       console.error('Admin loadStats error:', e);
-      el.innerHTML = '<div style="color:var(--red);padding:10px;font-size:.78rem;">Error: ' + e.message + '</div>';
+      el.innerHTML = '<div style="color:var(--red);padding:10px;font-size:.78rem;">Error: ' + esc(msgError(e)) + '</div>';
     }
   }
 
@@ -394,17 +305,12 @@ const Admin = (function() {
     const msg = inp.value.trim();
     if (!msg) return toast('Escribe un mensaje', 'err');
     try {
-      await fbDb.collection('admin').doc('broadcast').set({
-        msg,
-        id: Date.now(),
-        createdBy: fbUser.uid,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      await NAS.api('PUT', '/admin/broadcast', { message: msg });
       toast('Mensaje enviado a todos ✓', 'good');
       inp.value = '';
     } catch (e) {
       console.error('Admin broadcast error:', e);
-      toast('Error: ' + e.message, 'err');
+      toast('Error: ' + msgError(e), 'err');
     }
   }
 
@@ -412,29 +318,25 @@ const Admin = (function() {
     if (!isAdminUser()) return;
     if (!confirm('¿Borrar el mensaje broadcast actual?')) return;
     try {
-      await fbDb.collection('admin').doc('broadcast').delete();
+      await NAS.api('DELETE', '/admin/broadcast');
       toast('Mensaje borrado ✓', 'good');
     } catch (e) {
-      toast('Error: ' + e.message, 'err');
+      toast('Error: ' + msgError(e), 'err');
     }
   }
 
-  /* ── Para usuarios normales: mostrar broadcast al iniciar sesión ── */
+  /* ── Para todos los usuarios: mostrar el anuncio una vez al entrar ── */
   async function checkAndShowBroadcast() {
-    if (!fbDb || !fbUser) return;
+    if (typeof NAS === 'undefined' || !NAS.loggedIn()) return;
     try {
-      const snap = await fbDb.collection('admin').doc('broadcast').get();
-      if (!snap.exists) return;
-      const data = snap.data();
+      const data = await NAS.api('GET', '/broadcast');
+      if (!data) return;
       const lastSeen = localStorage.getItem(BROADCAST_LAST_SEEN_KEY);
       if (lastSeen && +lastSeen === +data.id) return; // Ya visto
-      // Mostrar como toast con duración larga
-      if (typeof toast === 'function') {
-        setTimeout(() => toast('📢 ' + data.msg, 'ok'), 1500);
-      }
+      if (typeof toast === 'function') setTimeout(() => toast('📢 ' + data.message, 'ok'), 1500);
       localStorage.setItem(BROADCAST_LAST_SEEN_KEY, String(data.id));
     } catch (e) {
-      // Silencio: si fallan permisos, el broadcast simplemente no se muestra
+      // Silencio: sin conexión, o API sin actualizar, el anuncio simplemente no se muestra
     }
   }
 
@@ -470,8 +372,3 @@ const Admin = (function() {
     _submitPin
   };
 })();
-
-// Comprobar broadcast cuando termine de iniciar Firebase
-setTimeout(() => {
-  if (typeof Admin !== 'undefined' && fbUser) Admin.checkAndShowBroadcast();
-}, 2500);

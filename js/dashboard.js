@@ -66,7 +66,6 @@ function nhGreetingName() {
       if (u && u.email) return u.email;
     }
   } catch (e) { }
-  try { if (typeof fbUser !== 'undefined' && fbUser && fbUser.email) return fbUser.email; } catch (e) { }
   return '';
 }
 /* Pro.showAds de Android: Free y Pro ven el hueco de anuncio; Pro+ y Élite no. */

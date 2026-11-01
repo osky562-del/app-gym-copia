@@ -26,12 +26,11 @@ function applyPureBlack() {
 }
 applyPureBlack();
 
-/* Email de la cuenta (NAS o Firebase) o null en modo local. */
+/* Email de la cuenta del NAS o null en modo local. */
 function profileEmail() {
   try {
     if (typeof NAS !== 'undefined' && NAS.enabled() && NAS.loggedIn()) { const u = NAS.user(); if (u && u.email) return u.email; }
   } catch (e) { }
-  try { if (typeof fbUser !== 'undefined' && fbUser && fbUser.email) return fbUser.email; } catch (e) { }
   return null;
 }
 function isLocalSession() { return localStorage.getItem('ko95_sess') === 'local' || !profileEmail(); }
