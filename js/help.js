@@ -116,10 +116,6 @@
           <li><b>Evolución</b>: gráfica de un ejercicio por máximo, 1RM o volumen.</li>
         </ul></div></details>
 
-        <details class="hlp-sec"><summary>💡 Para ti (inicio)</summary><div class="hlp-sec-c"><ul>
-          <li>En el <b>inicio</b> aparecen tarjetas inteligentes con tus <b>tendencias</b>: si tu volumen sube respecto al mes pasado, cómo evoluciona tu fuerza (kg/mes), tu grupo muscular estrella del mes, tu racha y tus entrenos del mes.</li>
-        </ul></div></details>
-
         <details class="hlp-sec"><summary>👤 Perfil y peso</summary><div class="hlp-sec-c"><ul>
           <li>Cambia tu <b>nombre</b> y el <b>color</b> de la app.</li>
           <li>Registra tu <b>peso corporal</b> para ver su evolución y calcular tu nivel de fuerza.</li>

@@ -322,6 +322,7 @@ const NAS = (() => {
     localStorage.setItem('ko95_uid', 'nas:' + user.id);
     ls.set(K.user, { id: user.id, email: user.email });
     localStorage.setItem('ko95_sess', '1');
+    if (typeof Pro !== 'undefined') Pro.checkAdmin('nas:' + user.id);
     const ov = document.getElementById('authOverlay');
     if (ov) ov.classList.remove('show');
     updateSyncStatus('on', 'NAS: ' + user.email);
@@ -383,6 +384,7 @@ const NAS = (() => {
         const ov = document.getElementById('authOverlay');
         if (ov) ov.classList.remove('show');
         const u = ls.get(K.user, null);
+        if (u && typeof Pro !== 'undefined') Pro.checkAdmin('nas:' + u.id);
         updateSyncStatus('syncing', '');
         startPolling();
         sync().then(() => { if (u) updateSyncStatus('on', 'NAS: ' + u.email); });

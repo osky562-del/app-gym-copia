@@ -5,6 +5,7 @@ let planChain = false;
 function togglePlanChain() {
   planChain = !planChain;
   if (typeof renderTplList === 'function') renderTplList();
+  renderPlanTplInline();
   if (typeof vib === 'function') vib([20]);
 }
 /* Reemplaza el plan o, si se está encadenando y ya hay ejercicios, los añade al final. */
@@ -43,10 +44,25 @@ function closePlan() {
   if (planExs.length > 0 && !confirm('¿Salir sin empezar?')) return;
   $('planMode').classList.remove('show');
 }
+/* Plantillas y "Mis rutinas" a la vista en Entreno, con Encadenar, igual que en las apps. */
+function renderPlanTplInline() {
+  const el = $('planTplInline');
+  if (!el) return;
+  const fixed = Object.keys(TPL_TITLES).map(k => `<button class="ntpl" onclick="loadTpl(${k})">${TPL_TITLES[k]}</button>`).join('');
+  const custom = (STORE.get('customTpl') || []).map(t =>
+    `<button class="ntpl mine" onclick="loadTplCustom(${t.key})">${t.titulo}<i onclick="event.stopPropagation();deleteCustomTpl(${t.key});renderPlanTplInline()">✕</i></button>`).join('');
+  el.innerHTML = `<div class="ntpl-h"><span>Plantillas rápidas</span>
+      <button class="ntpl-chain${planChain ? ' on' : ''}" onclick="togglePlanChain()">🔗 Encadenar</button></div>
+    ${planChain ? '<div class="ntpl-hint">Toca varias plantillas o rutinas: se añaden una detrás de otra en el mismo entreno.</div>' : ''}
+    <div class="ntpl-row">${fixed}</div>
+    ${custom ? `<div class="ntpl-h"><span>⭐ Mis rutinas</span></div><div class="ntpl-row">${custom}</div>` : ''}`;
+}
 function renderPlanList() {
   const n = planExs.length;
   $('planSub').textContent = n === 0 ? '0 ejercicios' : n + ' ejercicio' + (n > 1 ? 's' : '') + ' · Listo';
   $('btnEmpezar').disabled = n === 0;
+  $('btnEmpezar').textContent = n === 0 ? 'Añade ejercicios' : 'Empezar (' + n + ')';
+  renderPlanTplInline();
   $('planEmpty').style.display = n === 0 ? 'block' : 'none';
   $('planExList').innerHTML = planExs.map((ex, i) => {
     const lk = getLastKg(ex.name), pr = getPR(ex.name);
