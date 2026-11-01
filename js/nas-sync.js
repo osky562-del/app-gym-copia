@@ -18,6 +18,7 @@ const NAS = (() => {
     mode: 'ko95_backend', url: 'ko95_nasUrl', acc: 'ko95_nasAcc', ref: 'ko95_nasRef',
     user: 'ko95_nasUser', hashes: 'ko95_nasHashes', dels: 'ko95_nasDeletes', rejected: 'ko95_nasRejected',
     profId: 'ko95_nasProfId', profHash: 'ko95_nasProfHash',
+    lastOk: 'ko95_nasLastOk', closed: 'ko95_nasClosed', forgot: 'ko95_nasForgot',
   };
   const ITEM_TITLE = 'KO95FIT web: perfil';
   const ID_RE = /^[A-Za-z0-9_.-]{1,64}$/;
@@ -27,6 +28,11 @@ const NAS = (() => {
   const POLL_MS = 60000;
 
   let busy = false, again = false, pollTimer = null, remoteApply = false;
+  // Estado para la tarjeta "Copia en el NAS" del Perfil (EstadoSync en Android).
+  let authCtl = null;
+  function emitState() { try { window.dispatchEvent(new CustomEvent('nas-sync')); } catch (e) {} }
+  // Estado de la copia para la fila de Historial y el Perfil (espejo de EstadoSync/resumenNas de Android).
+  let stSyncing = false, stError = null, stOkMs = +(localStorage.getItem(K.lastOk) || 0);
 
   // ── Utilidades ──
   const ls = {
@@ -76,11 +82,13 @@ const NAS = (() => {
     if (Array.isArray(data.detail)) return data.detail.map(d => d.msg || '').filter(Boolean).join('. ');
     return '';
   }
-  async function raw(method, path, body, accessToken) {
+  async function raw(method, path, body, accessToken, extSignal) {
     const base = url();
     if (!base) throw new NasError(0, 'Falta la dirección del NAS', 'config');
     const ctl = new AbortController();
     const to = setTimeout(() => ctl.abort(), 20000);
+    // "Dejar de esperar" en la pantalla de entrada: una señal externa corta la petición.
+    if (extSignal) { if (extSignal.aborted) ctl.abort(); else extSignal.addEventListener('abort', () => ctl.abort(), { once: true }); }
     const headers = {};
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
@@ -88,6 +96,7 @@ const NAS = (() => {
     try {
       res = await fetch(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: ctl.signal, cache: 'no-store' });
     } catch (e) {
+      if (extSignal && extSignal.aborted) throw new NasError(0, 'Cancelado', 'cancel');
       throw new NasError(0, e && e.name === 'AbortError' ? 'El NAS no responde (tiempo agotado)' : 'No se puede conectar con el NAS', 'network');
     } finally { clearTimeout(to); }
     let data = null;
@@ -108,13 +117,13 @@ const NAS = (() => {
     }
     return refreshing;
   }
-  async function api(method, path, body) {
+  async function api(method, path, body, signal) {
     try {
-      return await raw(method, path, body, tokens().acc);
+      return await raw(method, path, body, tokens().acc, signal);
     } catch (e) {
       if (e.status !== 401) throw e;
-      try { await refreshTokens(); } catch (e2) { sessionExpired(); throw new NasError(401, 'Sesión caducada', 'auth'); }
-      return await raw(method, path, body, tokens().acc);
+      try { await refreshTokens(); } catch (e2) { sessionExpired('el NAS ya no acepta esta sesión (' + (e2 && e2.message || 'sesión caducada') + ')'); throw new NasError(401, 'Sesión caducada', 'auth'); }
+      return await raw(method, path, body, tokens().acc, signal);
     }
   }
 
@@ -286,38 +295,63 @@ const NAS = (() => {
     if (!enabled() || !loggedIn()) return;
     if (busy) { again = true; return; }
     busy = true;
+    stSyncing = true;
+    emitState();
     try {
       updateSyncStatus('syncing');
       await flushDeletes();
       await flushPushes();
       await pullAll();
       await syncProfile();
+      stError = null; stOkMs = Date.now();
+      try { localStorage.setItem(K.lastOk, String(stOkMs)); } catch (e) {}
       const rej = loadSet(K.rejected).size;
       if (rej) updateSyncStatus('err', rej + ' entreno(s) no se pueden subir');
       else updateSyncStatus('on');
     } catch (e) {
       console.warn('NAS sync:', e);
+      stError = e.kind === 'network' ? 'NAS sin conexión' : (e.message || 'Error NAS');
       if (e.status === 401) return;
       updateSyncStatus('err', e.kind === 'network' ? 'NAS sin conexión' : 'Error NAS');
     } finally {
       busy = false;
+      stSyncing = false;
+      emitState();
+      try { if (typeof renderHistNas === 'function') renderHistNas(); } catch (e) {}
       if (again) { again = false; setTimeout(sync, 300); }
     }
   }
+  /* Resumen del estado de la copia: { syncing, lastError, lastOkMs, pending, rejected }.
+     pending = entrenos sin subir (hash distinto al guardado) + borrados pendientes. */
+  function status() {
+    const hashes = ls.get(K.hashes, {});
+    let dirty = 0;
+    try { (typeof workouts !== 'undefined' ? workouts : []).forEach(w => { if (!w.id || hashes[w.id] !== hash(w)) dirty++; }); } catch (e) {}
+    const forgot = loadSet(K.forgot);
+    const rejectedIds = [...loadSet(K.rejected)].filter(id => !forgot.has(id));
+    return { syncing: stSyncing, lastError: stError, lastOkMs: stOkMs, pending: dirty + loadSet(K.dels).size, rejected: loadSet(K.rejected).size, rejectedIds };
+  }
+  /* "Entendido, quitar el aviso": el entreno rechazado deja de listarse en el Perfil (sigue en el móvil). */
+  function forgetRejected(id) { const f = loadSet(K.forgot); f.add(id); saveSet(K.forgot, f); emitState(); }
   function startPolling() {
     clearInterval(pollTimer);
     pollTimer = setInterval(() => { if (document.visibilityState === 'visible') sync(); }, POLL_MS);
   }
 
-  function sessionExpired() {
+  /* Cierre forzoso (sesión caducada, cerrada en todos los dispositivos o cuenta borrada): la pantalla de
+     entrada muestra un aviso ámbar persistente con el motivo (AuthScreen.kt "auth_closed"). */
+  function sessionExpired(motivo) {
     clearSession();
     clearInterval(pollTimer);
     localStorage.removeItem('ko95_sess');
+    try { localStorage.setItem(K.closed, motivo || 'el NAS ya no acepta esta sesión'); } catch (e) {}
     updateSyncStatus('off', '🔒 Identifícate');
     const ov = document.getElementById('authOverlay');
     if (ov) ov.classList.add('show');
-    if (typeof toast === 'function') toast('Tu sesión del NAS ha caducado. Vuelve a entrar.', 'err');
+    if (typeof window.authRenderClosed === 'function') window.authRenderClosed();
   }
+  function closedReason() { return localStorage.getItem(K.closed) || ''; }
+  function clearClosed() { ls.del(K.closed); if (typeof window.authRenderClosed === 'function') window.authRenderClosed(); }
 
   function enterSession(user) {
     const prev = localStorage.getItem('ko95_uid');
@@ -325,6 +359,7 @@ const NAS = (() => {
     localStorage.setItem('ko95_uid', 'nas:' + user.id);
     ls.set(K.user, { id: user.id, email: user.email });
     localStorage.setItem('ko95_sess', '1');
+    ls.del(K.closed);
     if (typeof Pro !== 'undefined') Pro.checkAdmin('nas:' + user.id);
     const ov = document.getElementById('authOverlay');
     if (ov) ov.classList.remove('show');
@@ -334,27 +369,51 @@ const NAS = (() => {
   }
 
   // ── Acciones de la pantalla de entrada (sustituyen a las de Firebase en modo NAS) ──
-  async function login(email, pass) {
-    const t = await raw('POST', '/auth/login', { email, password: pass });
+  /* Entrar/crear cuenta con "Dejar de esperar": una sola señal corta todo el proceso (AuthRepository.kt conTopeDeEntrada). */
+  function newAuthCtl() { if (authCtl) { try { authCtl.abort(); } catch (e) {} } authCtl = new AbortController(); return authCtl.signal; }
+  function cancelAuth() { if (authCtl) { try { authCtl.abort(); } catch (e) {} authCtl = null; } }
+  async function login(email, pass, signal) {
+    signal = signal || newAuthCtl();
+    const t = await raw('POST', '/auth/login', { email, password: pass }, undefined, signal);
     saveTokens(t);
-    const me = await api('GET', '/auth/me');
+    const me = await api('GET', '/auth/me', undefined, signal);
     enterSession(me);
   }
   async function register(name, email, pass) {
-    await raw('POST', '/auth/register', { email, password: pass });
+    const signal = newAuthCtl();
+    await raw('POST', '/auth/register', { email, password: pass }, undefined, signal);
     clearLocalUserData();
     clearSyncState();
-    await login(email, pass);
+    await login(email, pass, signal);
     STORE.set('perfil', { ...(STORE.get('perfil') || {}), nombre: name });
     STORE.set('name', name);
     sync();
   }
+  /* Cierra la sesión SOLO en este dispositivo. Los entrenos se quedan en el móvil (ProfileScreen.kt:
+     "Tus entrenos siguen guardados aquí"); si después entra otra cuenta, enterSession limpia los datos. */
   function logout() {
     clearInterval(pollTimer);
-    // Solo cierra la sesion de ESTE dispositivo (POST /auth/logout cerraria todas).
-    clearSession(); clearSyncState(); clearLocalUserData();
+    clearSession(); clearSyncState();
+    ls.del(K.closed);
     localStorage.removeItem('ko95_sess'); localStorage.removeItem('ko95_uid');
     location.href = location.pathname;
+  }
+  /* Cierra la sesión en TODOS los dispositivos (POST /auth/logout anula los tokens en el NAS). */
+  async function logoutAll() {
+    await api('POST', '/auth/logout');
+    logout();
+  }
+  /* Borra la cuenta y todos sus datos del NAS (DELETE /auth/me). Los entrenos del móvil se quedan y la
+     web sigue en modo local, como hace Android. */
+  async function deleteAccount() {
+    await api('DELETE', '/auth/me');
+    clearInterval(pollTimer);
+    clearSession(); clearSyncState();
+    ls.del(K.closed);
+    localStorage.removeItem('ko95_uid');
+    localStorage.setItem('ko95_sess', 'local');
+    updateSyncStatus('off', 'Modo Local');
+    emitState();
   }
   function removeWorkout(id) {
     const dels = loadSet(K.dels);
@@ -373,7 +432,8 @@ const NAS = (() => {
   }
 
   return {
-    enabled, url, cleanUrl, loggedIn, login, register, logout, removeWorkout, sync, check, friendly,
+    enabled, url, cleanUrl, loggedIn, login, register, logout, removeWorkout, sync, check, friendly, status,
+    logoutAll, deleteAccount, cancelAuth, forgetRejected, closedReason, clearClosed,
     get remoteApply() { return remoteApply; },
     setMode(mode, u) {
       if (mode === 'nas') { localStorage.setItem(K.url, cleanUrl(u)); localStorage.setItem(K.mode, 'nas'); }
@@ -411,48 +471,100 @@ const NAS = (() => {
     logout: window.logoutCloud, remove: window.removeFromFirebase, push: window.forceSyncCloud,
   };
 
+  // ── Pantalla de entrada (paridad con AuthScreen.kt): una tarjeta, pestañas Entrar | Crear cuenta,
+  //    errores en rojo e info en verde debajo de los campos, spinner + "Dejar de esperar". ──
+  let authTab = 0; // 0 entrar · 1 crear cuenta
+  const tr = s => (typeof I18N !== 'undefined' ? I18N.t(s) : s);
+  function authMsg(kind, text) {
+    const er = $('authError'), inf = $('authInfo');
+    if (er) { er.style.display = kind === 'err' && text ? '' : 'none'; if (kind === 'err') er.textContent = text || ''; }
+    if (inf) { inf.style.display = kind === 'info' && text ? '' : 'none'; if (kind === 'info') inf.textContent = text || ''; }
+    if (!kind) { if (er) er.style.display = 'none'; if (inf) inf.style.display = 'none'; }
+  }
+  function authBusy(on) {
+    const btn = $('btnAuthMain'), w = $('authWaiting'), fg = $('authForgot'), lc = $('authLocalBtn');
+    if (btn) { btn.disabled = on; btn.innerHTML = on ? '<span class="auth-spin"></span>' : tr(authTab ? 'Registrarme' : 'Entrar'); }
+    if (w) w.style.display = on ? '' : 'none';
+    if (fg) fg.disabled = on;
+    if (lc) lc.disabled = on;
+  }
+  window.authToggle = function (isSignup) {
+    authTab = isSignup ? 1 : 0;
+    const a = $('authTabLogin'), b = $('authTabSignup');
+    if (a) a.classList.toggle('on', !authTab);
+    if (b) b.classList.toggle('on', !!authTab);
+    const nm = $('authNewName'); if (nm) nm.style.display = authTab ? '' : 'none';
+    const hint = $('authPassHint'); if (hint) hint.style.display = authTab ? '' : 'none';
+    const fg = $('authForgot'); if (fg) fg.style.display = authTab ? 'none' : '';
+    const pw = $('authLogPass'); if (pw) pw.setAttribute('autocomplete', authTab ? 'new-password' : 'current-password');
+    authMsg(null);
+    authBusy(false);
+  };
+  window.authTogglePass = function () {
+    const pw = $('authLogPass'), eye = $('authEye'); if (!pw) return;
+    const show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    if (eye) eye.textContent = show ? '🙈' : '👁';
+  };
+  window.authSubmit = function () { return authTab ? window.authRegister() : window.authEmailLogin(); };
+  window.authCancelWait = function () { NAS.cancelAuth(); authBusy(false); authMsg(null); };
+  window.authRenderClosed = function () {
+    const box = $('authClosed'), txt = $('authClosedTxt'); if (!box) return;
+    const why = NAS.closedReason();
+    box.style.display = why ? '' : 'none';
+    if (txt) txt.textContent = why ? tr('Se ha cerrado la sesión porque') + ' ' + why + '. ' + tr('Vuelve a entrar con tu email y tu contraseña.') : '';
+  };
+  window.authDismissClosed = function () { NAS.clearClosed(); };
+
   window.authEmailLogin = async function () {
     if (!NAS.enabled()) return fb.login();
     const email = $('authLogEmail').value.trim();
     const pass = $('authLogPass').value;
-    const btn = $('btnLogin');
-    if (!email || !pass) { toast('Rellena todos los campos', 'err'); return; }
-    btn.disabled = true; btn.textContent = 'Conectando con el NAS...';
+    if (!email || !pass) { authMsg('err', tr('Rellena todos los campos')); return; }
+    authMsg(null); authBusy(true);
     try {
       await NAS.login(email, pass);
       const remEl = document.getElementById('authRemember');
       if (remEl && remEl.checked) saveCreds(email, pass); else clearCreds();
-      toast('¡Bienvenido de nuevo! 💪', 'good');
+      authMsg(null);
     } catch (e) {
-      toast(NAS.friendly(e), 'err');
+      if (e && e.kind !== 'cancel') authMsg('err', NAS.friendly(e));
     } finally {
-      btn.disabled = false; btn.textContent = 'Entrar';
+      authBusy(false);
     }
   };
 
   window.authRegister = async function () {
     if (!NAS.enabled()) return fb.register();
     const name = $('authNewName').value.trim();
-    const email = $('authNewEmail').value.trim();
-    const pass = $('authNewPass').value;
-    if (!name || !email || !pass) { toast('Rellena todos los campos', 'err'); return; }
-    if (new TextEncoder().encode(pass).length < 12) { toast('Contraseña corta (mín. 12 caracteres)', 'err'); return; }
-    const btn = $('btnRegister');
-    btn.disabled = true; btn.textContent = 'Procesando...';
+    const email = $('authLogEmail').value.trim();
+    const pass = $('authLogPass').value;
+    if (!name || !email || !pass) { authMsg('err', tr('Rellena todos los campos')); return; }
+    if (name.length < 3) { authMsg('err', tr('El nombre es muy corto (mínimo 3 letras)')); return; }
+    const bytes = new TextEncoder().encode(pass).length;
+    if (bytes < 12 || bytes > 72) { authMsg('err', tr('La contraseña tiene que tener 12 caracteres o más (lo pide la base de datos de casa).')); return; }
+    authMsg(null); authBusy(true);
     try {
       await NAS.register(name, email, pass);
-      toast('¡Cuenta creada en tu NAS!', 'good');
+      const remEl = document.getElementById('authRemember');
+      if (remEl && remEl.checked) saveCreds(email, pass); else clearCreds();
+      authMsg(null);
     } catch (e) {
-      toast(NAS.friendly(e), 'err');
-      if (e.status === 409) authToggle(false);
+      if (e && e.kind !== 'cancel') authMsg('err', NAS.friendly(e));
+      if (e && e.status === 409) authToggle(false);
     } finally {
-      btn.disabled = false; btn.textContent = 'Registrarme';
+      authBusy(false);
     }
   };
 
+  /* Mensaje de AuthRepository.kt (resetPassword): no hay recuperación ni cambio desde la app, y NO se
+     sugiere crear otra cuenta. */
   window.authResetPass = function () {
     if (!NAS.enabled()) return fb.reset();
-    toast('Con tu NAS no hay correo de recuperación. Cambia la contraseña en el NAS (Adminer) o crea otra cuenta.', 'err');
+    authMsg('err', tr('El NAS de casa no manda correos, así que no hay recuperación automática, y la app no puede cambiar la contraseña por su cuenta.') + '\n\n' +
+      tr('Mientras tanto, entra sin cuenta (modo local) y sigue entrenando: tus entrenos se guardan en el móvil y no se pierde nada.') + '\n\n' +
+      tr('Para recuperar el acceso hay que cambiar la contraseña en el propio NAS desde el ordenador: está explicado paso a paso en el dosier, en docs/06-operacion-diaria.md, apartado 7.3. La contraseña nueva tiene que tener 12 caracteres o más.') + '\n\n' +
+      tr('No crees otra cuenta para esto: los entrenos que ya están en el NAS son de la cuenta de siempre y no aparecerían en una cuenta nueva.'));
   };
 
   window.logoutCloud = function () {
@@ -530,6 +642,8 @@ const NAS = (() => {
   function boot() {
     if (!localStorage.getItem('ko95_backend')) localStorage.setItem('ko95_backend', 'nas');
     nasRenderServerInfo();
+    if (typeof window.authToggle === 'function') window.authToggle(false);
+    if (typeof window.authRenderClosed === 'function') window.authRenderClosed();
     NAS.start();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

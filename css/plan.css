@@ -1,4 +1,4 @@
-/* ─── PLAN SCREEN ─── */
+/* ─── PLAN SCREEN (paridad con PlanScreen.kt) ─── */
 #planMode {
   display: none;
   position: fixed;
@@ -26,31 +26,6 @@
   flex-shrink: 0;
 }
 
-.plan-back {
-  width: 42px;
-  height: 42px;
-  background: var(--s3);
-  border: 1px solid var(--line2);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.plan-back svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: var(--t1);
-  stroke-width: 2;
-}
-
-.plan-back:active {
-  background: var(--s5);
-}
-
 .plan-head {
   flex: 1;
   min-width: 0;
@@ -59,13 +34,6 @@
 .plan-head-t {
   font-size: .92rem;
   font-weight: 700;
-}
-
-.plan-head-s {
-  font-size: .7rem;
-  color: var(--t3);
-  font-family: var(--fm);
-  margin-top: 1px;
 }
 
 .btn-empezar {
@@ -90,36 +58,6 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.plan-meta {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.pm-chip {
-  flex: 1;
-  background: var(--s2);
-  border: 1px solid var(--line);
-  border-radius: var(--r2);
-  padding: 8px 9px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  transition: border-color .2s;
-}
-
-.pm-chip:focus-within {
-  border-color: var(--a);
-}
-
-.pm-l {
-  font-size: .55rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--t3);
-}
-
 .pm-i {
   background: none;
   border: none;
@@ -133,18 +71,9 @@
   min-height: 28px;
 }
 
-.pm-i::-webkit-inner-spin-button,
-.pm-i::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-}
-
 .pm-i::placeholder {
   color: var(--t4);
   font-weight: 400;
-}
-
-.pm-i[type=date] {
-  font-size: .75rem;
 }
 
 .plan-search-wrap {
@@ -183,20 +112,13 @@
   pointer-events: none;
 }
 
+/* Lista de sugerencias EN LÍNEA: empuja el contenido (no flota) */
 .plan-ac {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  background: var(--s3);
-  border: 1px solid var(--line2);
-  border-top: none;
-  border-radius: 0 0 var(--r) var(--r);
-  max-height: 220px;
-  overflow-y: auto;
   display: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  background: var(--s2);
+  border-radius: 12px;
+  padding: 4px 0;
+  margin: -2px 0 12px;
 }
 
 .plan-ac.show {
@@ -204,94 +126,238 @@
 }
 
 .plan-ac-item {
-  padding: 10px 13px;
-  font-size: .86rem;
+  padding: 4px 4px 4px 14px;
+  min-height: 48px;
   cursor: pointer;
-  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   transition: background .15s;
 }
 
-.plan-ac-item:last-child {
-  border-bottom: none;
+.plan-ac-item:active {
+  background: var(--s3);
 }
 
-.plan-ac-item:active {
-  background: var(--s4);
+.plan-ac-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #fff;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.plan-ac-txt {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+}
+
+.plan-ac-n {
+  font-size: .9rem;
+  color: var(--t1);
+}
+
+.plan-ac-m {
+  font-size: .7rem;
+  color: var(--t3);
+  margin-top: 1px;
 }
 
 .plan-ac-last {
-  font-family: var(--fm);
-  font-size: .68rem;
-  color: var(--amber);
+  font-size: .7rem;
+  color: var(--t3);
+  flex-shrink: 0;
+}
+
+.plan-ac-add {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--a);
+  font-size: 1.3rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.plan-ac-plus {
+  color: var(--a);
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+/* Botones anchos: Copiar sesión anterior / ✦ Generar rutina */
+.plan-wide {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--s2);
+  border: none;
+  border-radius: 12px;
+  padding: 13px 14px;
+  margin-bottom: 10px;
+  color: var(--t1);
+  font-size: .84rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.plan-wide svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: var(--a);
+  stroke-width: 2;
+}
+
+.plan-wide.ai {
+  background: #1C1530;
+  color: var(--a);
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.plan-ai-lock {
+  font-size: .78rem;
+}
+
+.plan-wide:active {
+  opacity: .8;
+}
+
+/* Tarjetas Pro: cambia tu rutina / descarga */
+.plan-pro-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.plan-pro-card.change {
+  background: #2A1012;
+  border: 1px solid color-mix(in srgb, var(--a) 40%, transparent);
+  cursor: pointer;
+}
+
+.plan-pro-card.deload {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  background: #12202A;
+  border: 1px solid rgba(77, 212, 232, .4);
+}
+
+.plan-pro-ic {
+  font-size: 1.4rem;
+}
+
+.plan-pro-t {
+  color: var(--a);
+  font-weight: 700;
+  font-size: .9rem;
+}
+
+.plan-pro-t.cyan {
+  color: #4DD4E8;
+}
+
+.plan-pro-d {
+  color: var(--t3);
+  font-size: .72rem;
+  line-height: 1.35;
+}
+
+.plan-pro-arrow {
+  color: var(--t3);
+  font-size: 1.4rem;
+}
+
+.plan-deload-btn {
+  width: 100%;
+  margin-top: 10px;
+  background: #4DD4E8;
+  color: #06222B;
+  border: none;
+  border-radius: 10px;
+  padding: 11px;
+  font-weight: 700;
+  font-size: .84rem;
+  cursor: pointer;
+}
+
+.plan-deload-btn.done {
+  background: var(--s2);
+  color: #4DD4E8;
+}
+
+/* Cabecera "N ejercicios" y vacío */
+.plan-list-h {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--t1);
+  margin: 6px 0 10px;
+}
+
+.plan-empty {
+  background: var(--s2);
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+  color: var(--t3);
+  font-size: .84rem;
+  margin-bottom: 12px;
 }
 
 .plan-ex-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
 .plan-ex-item {
-  background: var(--s1);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  overflow: hidden;
+  background: var(--s2);
+  border-radius: 14px;
+  padding: 12px;
 }
 
 /* ── Superserie ── */
-.plan-ex-item.ss-linked {
-  border-color: rgba(155, 114, 245, .5);
-  border-left: 3px solid #9b72f5;
-}
 .ss-tag {
-  font-size: .62rem;
-  font-weight: 800;
-  color: #9b72f5;
-  background: rgba(155, 114, 245, .1);
-  padding: 4px 13px;
-  letter-spacing: .03em;
-}
-.plan-ex-del.ss-btn {
-  font-size: .9rem;
-  opacity: .5;
-}
-.plan-ex-del.ss-btn.on {
-  opacity: 1;
-  background: rgba(155, 114, 245, .18);
-  border-color: rgba(155, 114, 245, .5);
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--a);
+  margin-bottom: 4px;
 }
 
 .plan-ex-head {
   display: flex;
   align-items: center;
-  padding: 10px 13px;
-  gap: 9px;
-  border-bottom: 1px solid var(--line);
+  gap: 4px;
 }
 
 .plan-ex-n {
-  font-size: .88rem;
-  font-weight: 700;
+  font-size: .95rem;
+  font-weight: 600;
   flex: 1;
-}
-
-.plan-ex-hist {
-  font-size: .66rem;
-  color: var(--amber);
-  font-family: var(--fm);
+  min-width: 0;
 }
 
 .plan-ex-del {
-  width: 38px;
-  height: 38px;
-  background: var(--s3);
-  border: 1px solid var(--line2);
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: none;
   border-radius: 9px;
-  color: var(--t2);
+  color: var(--t3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -300,57 +366,88 @@
 }
 
 .plan-ex-del svg {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
 }
 
 .plan-ex-del:active {
-  background: var(--rg);
-  color: var(--red);
+  background: var(--s3);
 }
 
 .plan-ex-params {
   display: flex;
-  gap: 7px;
+  gap: 8px;
   align-items: center;
-  padding: 10px 13px;
-  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.plan-ex-move {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.plan-ex-mv {
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  color: var(--t1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.plan-ex-mv svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.plan-ex-mv:disabled {
+  color: var(--t4);
+  cursor: default;
 }
 
 .plan-param {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  background: var(--s2);
-  border: 1px solid var(--line2);
-  border-radius: 9px;
-  padding: 9px 12px;
-  min-width: 60px;
 }
 
 .plan-param-l {
-  font-size: .54rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
+  font-size: .64rem;
+  font-weight: 600;
   color: var(--t3);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .plan-param-i {
-  background: none;
-  border: none;
+  width: 100%;
+  background: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: 10px;
   outline: none;
   color: var(--t1);
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 11px 8px;
   text-align: center;
-  width: 52px;
+  box-sizing: border-box;
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+.plan-param-i:focus {
+  border-color: var(--a);
 }
 
 .plan-param-i::-webkit-inner-spin-button,
@@ -358,33 +455,152 @@
   -webkit-appearance: none;
 }
 
-.plan-rest-pill {
+.plan-ex-pills {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.plan-rest-pill,
+.plan-pill {
   display: flex;
   align-items: center;
-  gap: 5px;
-  background: var(--ag);
-  border: 1px solid rgba(79, 140, 255, .3);
+  justify-content: center;
+  gap: 6px;
+  background: var(--s3);
+  border: none;
   border-radius: 100px;
-  padding: 8px 14px;
+  padding: 7px 12px;
   cursor: pointer;
-  margin-left: auto;
+  color: var(--t1);
+  font-size: .76rem;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .plan-rest-pill svg {
-  width: 11px;
-  height: 11px;
+  width: 15px;
+  height: 15px;
   fill: none;
-  stroke: var(--a);
+  stroke: var(--t3);
   stroke-width: 2;
 }
 
-.plan-rest-pill span {
-  font-size: .7rem;
-  font-weight: 700;
+.plan-pill {
+  color: var(--t3);
+  font-weight: 600;
+}
+
+.plan-pill.on {
+  background: color-mix(in srgb, var(--a) 22%, transparent);
   color: var(--a);
 }
 
-/* Rest picker */
+.plan-pill.wide {
+  width: 100%;
+}
+
+/* RPE (Auto | Manual) + notas */
+.plan-rpe-block {
+  display: none;
+  margin: 18px 0 4px;
+}
+
+.plan-rpe-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--t3);
+  margin-bottom: 6px;
+}
+
+.plan-seg {
+  display: flex;
+  background: var(--s2);
+  border-radius: 100px;
+  padding: 3px;
+}
+
+.plan-seg-b {
+  background: none;
+  border: none;
+  border-radius: 100px;
+  padding: 6px 12px;
+  color: var(--t3);
+  font-size: .72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plan-seg-b.on {
+  background: var(--a);
+  color: #fff;
+}
+
+.plan-rpe-auto {
+  background: var(--s2);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: .78rem;
+  color: var(--t3);
+}
+
+.plan-rpe-hint {
+  font-size: .66rem;
+  color: var(--t3);
+  margin-bottom: 6px;
+}
+
+.plan-rpe-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.plan-rpe-row::-webkit-scrollbar {
+  display: none;
+}
+
+.plan-rpe-c {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--s2);
+  color: var(--t3);
+  font-weight: 700;
+  font-size: .84rem;
+  cursor: pointer;
+}
+
+.plan-rpe-c.on {
+  background: var(--a);
+  color: #fff;
+}
+
+.plan-notes {
+  box-sizing: border-box;
+  background: var(--s2) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 12px 14px;
+  margin-top: 12px;
+  font-size: .95rem;
+  font-weight: 600;
+}
+
+.plan-copy-empty {
+  padding: 14px 16px 10px;
+  font-size: .84rem;
+  color: var(--t3);
+}
+
+/* Hoja de menú (descanso en Live / ⋯) */
 .rp-ov {
   display: none;
   position: fixed;
@@ -408,6 +624,8 @@
   max-width: 420px;
   padding: 5px 0 12px;
   animation: shUp .25s cubic-bezier(.32, .72, 0, 1);
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 @keyframes shUp {
@@ -428,110 +646,255 @@
   margin: 10px auto 12px;
 }
 
-.rp-title {
-  font-size: .88rem;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 12px;
+.rp-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 8px;
 }
 
-.rp-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding: 0 14px 6px;
-}
-
-.rp-opt {
-  background: var(--s3);
-  border: 1.5px solid var(--line2);
-  border-radius: 10px;
-  padding: 13px 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: all .18s;
-}
-
-.rp-opt.on {
-  background: var(--ag);
-  border-color: rgba(79, 140, 255, .5);
-}
-
-.rp-opt:active {
-  transform: scale(.94);
-}
-
-.rp-val {
-  font-family: var(--fm);
-  font-size: 1.1rem;
-  font-weight: 700;
+.rp-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 13px 14px;
   color: var(--t1);
-  line-height: 1;
+  font-size: .92rem;
+  cursor: pointer;
+  border-radius: 10px;
 }
 
-.rp-opt.on .rp-val {
+.rp-item:active {
+  background: var(--s3);
+}
+
+.rp-item.on,
+.rp-item.accent {
   color: var(--a);
+  font-weight: 600;
 }
 
-.rp-lbl {
-  font-size: .58rem;
+.rp-item.danger {
+  color: #FF6B6B;
+}
+
+/* Generador de rutina (hoja sobre Entreno) */
+.rg-ov {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.rg-sheet {
+  background: var(--bg);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 520px;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  animation: shUp .25s cubic-bezier(.32, .72, 0, 1);
+}
+
+.rg-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 10px 8px 16px;
+}
+
+.rg-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.rg-sub {
+  font-size: .76rem;
   color: var(--t3);
-  margin-top: 3px;
-  text-transform: uppercase;
-  letter-spacing: .06em;
 }
 
-.rp-custom {
-  padding: 14px 14px 18px;
-  border-top: 1px solid var(--line2);
+.rg-close {
+  width: 42px;
+  height: 42px;
+  background: none;
+  border: none;
+  color: var(--t3);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.rg-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px calc(var(--sb) + 24px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.rg-lbl {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--t3);
+  margin: 14px 0 8px;
+}
+
+.rg-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.rg-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.rg-chip {
+  flex-shrink: 0;
+  background: var(--s2);
+  border: 1px solid transparent;
+  border-radius: 100px;
+  padding: 9px 14px;
+  color: var(--t3);
+  font-size: .84rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rg-chip.on {
+  color: var(--a);
+  border-color: var(--a);
+  background: color-mix(in srgb, var(--a) 14%, transparent);
+}
+
+.rg-gen {
+  width: 100%;
+  margin-top: 18px;
+  background: var(--a);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  height: 52px;
+  font-weight: 700;
+  font-size: .95rem;
+  cursor: pointer;
+}
+
+.rg-gen:disabled {
+  opacity: .6;
+}
+
+.rg-status {
+  color: #FF6B6B;
+  font-size: .82rem;
   margin-top: 10px;
 }
 
-.rp-cust-lbl {
-  font-size: .65rem;
-  color: var(--t3);
+.rg-status:empty {
+  display: none;
+}
+
+.rg-done {
+  margin-top: 16px;
+  font-size: .78rem;
+  color: var(--green);
+  font-weight: 600;
+}
+
+.rg-rname {
+  font-size: 1.15rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
+  margin-top: 4px;
+}
+
+.rg-rmeta {
+  font-size: .76rem;
+  color: var(--t3);
+}
+
+.rg-saveall {
+  width: 100%;
+  margin: 12px 0 6px;
+  background: var(--s2);
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--t1);
+  font-weight: 600;
+  font-size: .86rem;
+  cursor: pointer;
+}
+
+.rg-saveall.done {
+  color: var(--green);
+}
+
+.rg-day {
+  background: var(--s2);
+  border-radius: 14px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.rg-day-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
-.rp-cust-row {
-  display: flex;
-  gap: 8px;
-}
-
-.rp-cust-inp {
-  flex: 1;
-  background: var(--s3);
-  border: 1.5px solid var(--line2);
-  border-radius: 10px;
-  padding: 11px 14px;
-  color: var(--t1);
-  font-size: .9rem;
+.rg-day-t {
+  font-size: .95rem;
   font-weight: 700;
-  outline: none;
-  -moz-appearance: textfield;
 }
 
-.rp-cust-inp:focus {
-  border-color: var(--a);
+.rg-day-m {
+  font-size: .7rem;
+  color: var(--t3);
 }
 
-.rp-cust-btn {
+.rg-day-save {
+  width: 36px;
+  height: 34px;
+  background: var(--s3);
+  border: none;
+  border-radius: 10px;
+  color: var(--t1);
+  font-size: .84rem;
+  cursor: pointer;
+}
+
+.rg-day-use {
   background: var(--a);
   border: none;
   border-radius: 10px;
-  padding: 0 18px;
+  padding: 0 12px;
+  height: 34px;
   color: #fff;
-  font-size: .82rem;
-  font-weight: 800;
+  font-weight: 700;
+  font-size: .76rem;
   cursor: pointer;
-  transition: transform .15s, opacity .15s;
 }
 
-.rp-cust-btn:active {
-  transform: scale(.96);
-  opacity: .85;
+.rg-ex {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: .82rem;
+  color: var(--t1);
 }
 
+.rg-ex-n {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--s3);
+  color: var(--t3);
+  font-size: .64rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

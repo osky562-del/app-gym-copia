@@ -3,8 +3,9 @@
    ══════════════════════════════════════════════
    - estimate1RM(nombre): mejor 1RM estimado (Epley) del historial
    - getBodyweight(): peso corporal (weightLogs más reciente o perfil.peso)
-   - renderStrengthCard(): tarjeta en Progreso con los levantamientos
-     principales, su 1RM, ratio ×peso y nivel (Novato→Élite)
+   - renderStrengthCard(): panel "Niveles de fuerza" de Progreso con los 5
+     levantamientos principales, su 1RM, ratio ×peso y nivel (Novato→Élite).
+     Espejo de domain/Strength.kt + ProgressScreen.kt (Android).
    Estándares = 1RM / peso corporal. Son aproximados y orientativos.
    ══════════════════════════════════════════════ */
 (function () {
@@ -26,19 +27,25 @@
     }
   };
   const LIFT_LABEL = { bench: 'Press banca', squat: 'Sentadilla', deadlift: 'Peso muerto', ohp: 'Press hombro', row: 'Remo con barra' };
+  const LIFT_LABEL_EN = { bench: 'Bench press', squat: 'Squat', deadlift: 'Deadlift', ohp: 'Overhead press', row: 'Barbell row' };
   const LEVEL_COLOR = { 'Novato': '#888', 'Principiante': '#4f8cff', 'Intermedio': '#2dd98a', 'Avanzado': '#f5a623', 'Élite': '#a57aff' };
+  const LEVEL_EN = { 'Novato': 'Novice', 'Principiante': 'Beginner', 'Intermedio': 'Intermediate', 'Avanzado': 'Advanced', 'Élite': 'Elite' };
   const ASC = ['Principiante', 'Intermedio', 'Avanzado', 'Élite'];
+
+  const isEn = () => typeof I18N !== 'undefined' && I18N.getLang && I18N.getLang() === 'en';
+  const T = s => (typeof I18N !== 'undefined' && I18N.t) ? I18N.t(s) : s;
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   function norm(s) {
     return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
-  /* Mapea el nombre de un ejercicio a uno de los levantamientos con estándar (o null). */
+  /* Mapea el nombre de un ejercicio a uno de los levantamientos con estándar (o null). Igual que Strength.kt. */
   function matchLift(name) {
     const n = norm(name);
-    if (n.includes('press de banca') && !n.includes('mancuerna')) return 'bench';
-    if (n.includes('sentadilla') && (n.includes('barra') || n.includes('frontal'))) return 'squat';
-    if (n.includes('peso muerto') && !n.includes('rumano') && !n.includes('piernas rigidas')) return 'deadlift';
-    if ((n.includes('press de hombros') || n.includes('press militar')) && !n.includes('mancuerna')) return 'ohp';
+    if (n.includes('banca') && !n.includes('mancuerna')) return 'bench';
+    if (n.includes('sentadilla') && !n.includes('mancuerna') && !n.includes('bulgara')) return 'squat';
+    if (n.includes('peso muerto') && !n.includes('rumano') && !n.includes('rigidas')) return 'deadlift';
+    if ((n.includes('press de hombro') || n.includes('press hombro') || n.includes('press militar')) && !n.includes('mancuerna')) return 'ohp';
     if (n.includes('remo') && n.includes('barra') && !n.includes('mancuerna')) return 'row';
     return null;
   }
@@ -91,13 +98,11 @@
     return { level, ratio: Math.round(ratio * 100) / 100, next, toNext };
   }
 
+  /* Panel "Niveles de fuerza" (ProgressScreen.kt:163-199). Se oculta si no hay ningún levantamiento principal. */
   function renderStrengthCard() {
     const el = document.getElementById('strengthCard');
     if (!el) return;
-    if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('strength_levels')) {
-      el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'strength_levels\')" style="position:relative;min-height:64px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Fuerza estimada y niveles — Pro</div></div>';
-      return;
-    }
+    const sec = document.getElementById('levelsSec');
     const bw = getBodyweight();
     const sex = getSex();
 
@@ -113,44 +118,56 @@
       if (!byLift[key] || e1 > byLift[key].e1rm) byLift[key] = { name: nm, e1rm: e1 };
     });
 
-    const keys = Object.keys(byLift);
-    if (!keys.length) {
-      el.innerHTML = `<div style="color:var(--t3);font-size:.85rem;line-height:1.5;text-align:center;padding:8px 4px;">
-        Registra press de banca, sentadilla, peso muerto, press de hombros o remo con barra para ver tu 1RM estimado y tu nivel de fuerza.</div>`;
-      return;
-    }
+    const order = ['bench', 'squat', 'deadlift', 'ohp', 'row'].filter(k => byLift[k]);
+    if (sec) sec.style.display = order.length ? '' : 'none';
+    if (!order.length) { el.innerHTML = ''; return; }
 
-    const order = ['bench', 'squat', 'deadlift', 'ohp', 'row'];
-    let rows = order.filter(k => byLift[k]).map(key => {
+    const lvlName = l => isEn() ? (LEVEL_EN[l] || l) : l;
+    const rows = order.map(key => {
       const d = byLift[key];
       const lvl = levelFor(key, d.e1rm, bw, sex);
-      const ratioTxt = bw ? `${(d.e1rm / bw).toFixed(2)}× peso` : '';
-      let badge = '', next = '';
-      if (lvl) {
-        const c = LEVEL_COLOR[lvl.level] || '#888';
-        badge = `<span style="background:${c}22;color:${c};border:1px solid ${c}55;padding:3px 9px;border-radius:7px;font-size:.7rem;font-weight:800;white-space:nowrap;">${lvl.level}</span>`;
+      const level = lvl ? lvl.level : 'Novato';
+      const c = LEVEL_COLOR[level] || '#888';
+      const ratioTxt = bw ? ` · ${(d.e1rm / bw).toFixed(2)}× ${isEn() ? 'BW' : 'peso'}` : '';
+      const badge = `<span class="sl-badge" style="background:${c}2e;color:${c};">${lvlName(level)}</span>`;
+      let next = '';
+      if (bw && lvl) {
         next = lvl.next
-          ? `<div style="font-size:.64rem;color:var(--t3);margin-top:3px;">Faltan ${lvl.toNext} kg para ${lvl.next}</div>`
-          : `<div style="font-size:.64rem;color:#a57aff;margin-top:3px;">¡Nivel máximo! 🔥</div>`;
-      } else if (!bw) {
-        badge = `<span style="color:var(--t3);font-size:.66rem;">añade tu peso</span>`;
+          ? `<div class="sl-next">${T('Faltan')} ${big(lvl.toNext)} kg → ${lvlName(lvl.next)}</div>`
+          : `<div class="sl-next" style="color:${c}">${T('¡Nivel máximo! 🔥')}</div>`;
       }
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:.88rem;font-weight:700;">${LIFT_LABEL[key]}</div>
-          <div style="font-size:.7rem;color:var(--t3);font-family:var(--fm);">1RM ≈ ${d.e1rm} kg${ratioTxt ? ' · ' + ratioTxt : ''}</div>
+      return `<div class="sl-row">
+        <div class="sl-info">
+          <div class="sl-n">${esc(isEn() ? LIFT_LABEL_EN[key] : LIFT_LABEL[key])}</div>
+          <div class="sl-m">1RM ≈ ${big(d.e1rm)} kg${ratioTxt}</div>
         </div>
-        <div style="text-align:right;flex-shrink:0;">${badge}${next}</div>
+        <div class="sl-r">${badge}${next}</div>
       </div>`;
     }).join('');
 
     const head = bw
-      ? `<div style="font-size:.66rem;color:var(--t3);margin-bottom:8px;">Según tu peso (${bw} kg, ${sex}). 1RM estimado con tu mejor serie.</div>`
-      : `<div style="font-size:.7rem;color:var(--amber);margin-bottom:8px;line-height:1.4;">⚠️ Añade tu peso corporal en Perfil para calcular tu nivel.</div>`;
+      ? `<div class="sec-sub">${T('Según tu peso corporal')} (${big(bw)} kg)</div>`
+      : `<div class="sec-sub" style="color:var(--a);">${T('⚠️ Añade tu peso en Perfil para ver tu nivel')}</div>`;
     el.innerHTML = head + rows;
   }
 
+  /* Niveles por levantamiento (para el nivel global del Coach: CoachLevel.overallFrom). */
+  function computeLiftLevels() {
+    const bw = getBodyweight(), sex = getSex();
+    if (!bw) return [];
+    const names = new Set();
+    (typeof workouts !== 'undefined' ? workouts : []).forEach(w => (w.exercises || []).forEach(e => names.add(e.ex)));
+    const byLift = {};
+    names.forEach(nm => {
+      const key = matchLift(nm); if (!key) return;
+      const e1 = estimate1RM(nm); if (e1 <= 0) return;
+      if (!byLift[key] || e1 > byLift[key].e1rm) byLift[key] = { name: nm, e1rm: e1 };
+    });
+    return Object.keys(byLift).map(key => { const lvl = levelFor(key, byLift[key].e1rm, bw, sex); return lvl ? { lift: key, level: lvl.level, ratio: lvl.ratio } : null; }).filter(Boolean);
+  }
+
   // API global
+  window.computeLiftLevels = computeLiftLevels;
   window.estimate1RM = estimate1RM;
   window.getBodyweight = getBodyweight;
   window.renderStrengthCard = renderStrengthCard;

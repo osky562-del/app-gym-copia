@@ -9,10 +9,8 @@ Chart.defaults.plugins.tooltip.bodyFont = { family: "'JetBrains Mono',monospace"
 Chart.defaults.animation.duration = 550;
 Chart.defaults.animation.easing = 'easeOutQuart';
 
-/* ══ AUTO RPE ══ */
-// Based on % of estimated 1RM → RPE lookup table (Helms / RTS method)
+/* ══ AUTO RPE (réplica de LiveViewModel.kt: % de 1RM → RPE) ══ */
 // 1RM estimated with Epley: 1RM = kg * (1 + reps/30)
-// % of 1RM → RPE (simplified Brzycki inverse)
 const PCT_TO_RPE = [
   { pct: 100, rpe: 10 }, { pct: 97, rpe: 9.5 }, { pct: 94, rpe: 9 }, { pct: 92, rpe: 8.5 },
   { pct: 89, rpe: 8 }, { pct: 86, rpe: 7.5 }, { pct: 83, rpe: 7 }, { pct: 81, rpe: 6.5 },
@@ -26,82 +24,68 @@ function pctToRpe(pct) {
   return 4;
 }
 
+/* RPE medio de la sesión a partir de las series completadas (no calentamiento) vs el 1RM
+   histórico. Devuelve un ENTERO 1-10 (como Android) o null si no hay datos. */
 function estimateRpe() {
-  // Collect all completed sets across all exercises
   let totalRpe = 0, count = 0;
   liveExs.forEach(ex => {
-    const pr1RM = calcEx1RM(ex.name); // best historical 1RM for this exercise
+    const pr1RM = calcEx1RM(ex.name);
     if (!pr1RM) return;
     ex.sets.forEach(s => {
-      if (!s.done || !s.kg || !s.reps) return;
+      if (!s.done || s.warmup || !(+s.kg > 0) || !(+s.reps > 0)) return;
       const set1RM = (+s.kg) * (1 + (+s.reps) / 30);
-      const pct = Math.round(set1RM / pr1RM * 100);
-      // Higher reps at same % = lower RPE (more reps in reserve)
-      // Adjust: more reps → slightly lower RPE
-      let rpe = pctToRpe(Math.min(pct, 100));
-      // Rep adjustment: for every rep above 5, subtract 0.5 from RPE
+      const pct = Math.min(100, Math.floor(set1RM / pr1RM * 100));
+      let rpe = pctToRpe(pct);
       if (+s.reps > 5) rpe = Math.max(4, rpe - (+s.reps - 5) * 0.3);
       totalRpe += rpe;
       count++;
     });
   });
   if (!count) return null;
-  return Math.round(totalRpe / count * 2) / 2; // round to nearest 0.5
+  return Math.min(10, Math.max(1, Math.round(totalRpe / count)));
 }
 
 function calcEx1RM(name) {
   let best = 0;
   workouts.forEach(w => {
     (w.exercises || []).filter(e => e.ex === name).forEach(e => {
-      const est = (+e.kg || 0) * (1 + (+e.reps || 1) / 30);
+      if (!(+e.kg > 0)) return;
+      const est = (+e.kg) * (1 + ((+e.reps || 1)) / 30);
       if (est > best) best = est;
     });
   });
   return best > 0 ? best : null;
 }
 
-// RPE mode: 'auto' or 'manual'
-let rpeMode = 'auto';
+/* ── Selector RPE del plan: Auto | Manual (PlanScreen.kt:436-480) ── */
+let rpeAuto = true;     // por defecto automático
+let planRpeVal = 0;     // 0 = sin RPE (manual)
 
-function toggleRpeMode() {
-  rpeMode = rpeMode === 'auto' ? 'manual' : 'auto';
-  const lbl = $('rpeModeLabel');
-  const inp = $('planRpe');
-  const disp = $('rpeAutoDisplay');
-  if (rpeMode === 'manual') {
-    lbl.textContent = 'MANUAL';
-    lbl.style.color = 'var(--amber)';
-    disp.style.display = 'none';
-    inp.style.display = '';
-    inp.focus();
-    toast('RPE manual — escríbelo tú', 'ok');
+function resetRpe() { rpeAuto = true; planRpeVal = 0; renderPlanRpe(); }
+function setRpeMode(auto) { rpeAuto = !!auto; renderPlanRpe(); }
+/* Pulsar el mismo número lo desmarca (setRpe de Android). */
+function setRpeManual(n) { planRpeVal = planRpeVal === n ? 0 : n; renderPlanRpe(); }
+
+function renderPlanRpe() {
+  const body = $('rpeBody');
+  if (!body) return;
+  const a = $('rpeSegAuto'), m = $('rpeSegMan');
+  if (a) a.classList.toggle('on', rpeAuto);
+  if (m) m.classList.toggle('on', !rpeAuto);
+  if (rpeAuto) {
+    body.innerHTML = `<div class="plan-rpe-auto">🤖 ${typeof _t === 'function' ? _t('Se calcula solo según el % de tu 1RM en cada serie') : 'Se calcula solo según el % de tu 1RM en cada serie'}</div>`;
   } else {
-    lbl.textContent = 'AUTO';
-    lbl.style.color = 'var(--a)';
-    disp.style.display = '';
-    inp.style.display = 'none';
-    inp.value = '';
-    updateAutoRpe();
-    toast('RPE automático activado', 'good');
+    const circles = Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
+      `<button class="plan-rpe-c${planRpeVal === n ? ' on' : ''}" onclick="setRpeManual(${n})">${n}</button>`).join('');
+    body.innerHTML = `<div class="plan-rpe-hint">Opcional · qué tan duro fue</div><div class="plan-rpe-row">${circles}</div>`;
   }
 }
 
-function updateAutoRpe() {
-  if (rpeMode !== 'auto') return;
-  const est = estimateRpe();
-  const disp = $('rpeAutoDisplay');
-  if (disp) {
-    disp.textContent = est ? est.toFixed(1) : '—';
-    disp.style.color = !est ? 'var(--t3)' :
-      est >= 9 ? 'var(--red)' :
-        est >= 7 ? 'var(--amber)' : 'var(--green)';
-  }
-}
+/* Compatibilidad: antes refrescaba un indicador en el plan; en Android no se muestra nada en vivo. */
+function updateAutoRpe() {}
 
 function getRpeValue() {
-  if (rpeMode === 'manual') {
-    return $('planRpe').value || '';
-  }
+  if (!rpeAuto) return planRpeVal > 0 ? String(planRpeVal) : '';
   const est = estimateRpe();
-  return est ? est.toFixed(1) : '';
+  return est ? String(est) : '';
 }

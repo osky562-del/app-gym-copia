@@ -1,159 +1,171 @@
-/* ══ PROGRESS ══ */
+/* ══ PROGRESS ══
+   Espejo de la pestaña Progreso de la app Android (ui/progress/ProgressScreen.kt + ProgressViewModel.kt).
+   Orden: Volumen · Músculos · [Free: banner Pro] · Fuerza estimada · Niveles · Mapa · Balance · Actividad · Récords.
+   Free solo ve Volumen y Músculos; el resto se oculta y un único banner abre el modal Pro (advanced_analytics). */
 function getMuscle(ex) { const lc = ex.toLowerCase(); const k = Object.keys(MM).find(k => lc.includes(k)); return k ? MM[k] : 'Otros'; }
-function renderProgress() { renderHeatmap(); renderSummaryStats(); if (typeof renderMuscleMap === 'function') renderMuscleMap('muscleMap', recentMuscles(30)); renderMuscleChart(); renderMuscleRadar(); renderVolChart(); renderRpeChart(); if (typeof renderStrengthCard === 'function') renderStrengthCard(); renderPRTable(); renderPRTimeline(); fillProgSel(); drawExChart(); }
-/* Línea de tiempo de récords: cada vez que el peso máximo de un ejercicio sube, es un PR. */
+
+const progT = s => (typeof I18N !== 'undefined' && I18N.t) ? I18N.t(s) : s;
+const progEn = () => typeof I18N !== 'undefined' && I18N.getLang && I18N.getLang() === 'en';
+const progEsc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+/* Fecha local YYYY-MM-DD (sin desfases de zona horaria). */
+function progISO(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+/* Lunes de la semana actual a medianoche (java LocalDate.now().with(MONDAY)). */
+function progThisMonday() { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
+function progShow(id, on) { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; }
+function progVol(e) { return typeof exerciseVolume === 'function' ? exerciseVolume(e) : ((e.cardio ? 0 : (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1))); }
+
+function renderProgress() {
+  const empty = !workouts.length;
+  progShow('progEmpty', empty);
+  progShow('progBody', !empty);
+  if (empty) return;
+
+  renderVolChart();
+  renderMuscleChart();
+
+  const isPro = typeof Pro !== 'undefined' && Pro.isPro && Pro.isPro();
+  progShow('progPro', isPro);
+  if (!isPro) {
+    // Igual que Android: banner solo si hay algo que desbloquear (fuerza, actividad o récords).
+    const hasAdvanced = workouts.some(w => (w.exercises || []).some(e => +e.kg > 0)) || progHeatmapCounts().some(c => c > 0);
+    const lock = document.getElementById('progLock');
+    if (lock) {
+      lock.style.display = hasAdvanced ? '' : 'none';
+      lock.innerHTML = hasAdvanced ? `<div class="pro-lock-banner" onclick="Pro.showUpgradeModal('advanced_analytics')">
+        <span class="pro-lock-ic">🔒</span>
+        <div class="pro-lock-tx"><div class="pro-lock-t">Analíticas avanzadas</div><div class="pro-lock-d">toca para desbloquear</div></div>
+        <span class="pro-sec-badge">PRO</span></div>` : '';
+    }
+    return;
+  }
+  progShow('progLock', false);
+  renderStrengthEstimate();
+  if (typeof renderStrengthCard === 'function') renderStrengthCard();
+  const mm = (typeof recentMuscles === 'function') ? recentMuscles(30) : {};
+  delete mm.Otros;
+  const hasMap = Object.values(mm).some(v => v > 0);
+  progShow('mapSec', hasMap);
+  progShow('radarSec', hasMap);
+  if (hasMap) {
+    if (typeof renderMuscleMap === 'function') renderMuscleMap('muscleMap', mm);
+    renderMuscleRadar(mm);
+  }
+  renderHeatmap();
+  renderPRTimeline();
+}
+
+/* ── Volumen · 8 semanas (lunes a lunes), barras CSS como en Android ── */
+function renderVolChart() {
+  const el = document.getElementById('volChart');
+  if (!el) return;
+  const mon = progThisMonday();
+  const weeks = [];
+  for (let w = 7; w >= 0; w--) {
+    const start = new Date(mon); start.setDate(mon.getDate() - w * 7);
+    const end = new Date(start); end.setDate(start.getDate() + 7);
+    const s = progISO(start), e = progISO(end);
+    let v = 0;
+    workouts.forEach(x => { if (x.date >= s && x.date < e) v += (x.exercises || []).reduce((a, ex) => a + progVol(ex), 0); });
+    weeks.push({ w, v });
+  }
+  const maxV = Math.max(1, ...weeks.map(x => x.v));
+  const total = workouts.reduce((a, x) => a + (x.exercises || []).reduce((b, ex) => b + progVol(ex), 0), 0);
+  const sub = document.getElementById('volSub');
+  if (sub) sub.textContent = `${progT('Total')} ${big(total)} kg · ${workouts.length} ${progT('entrenos')}`;
+  el.innerHTML = weeks.map(x => {
+    const isThis = x.w === 0;
+    const label = isThis ? progT('Esta') : x.w + (progEn() ? 'w' : 's');
+    const h = x.v > 0 ? Math.max(4, Math.round(x.v / maxV * 100)) : 0;
+    return `<div class="vol8-col"><div class="vol8-track"><div class="vol8-bar${isThis ? ' on' : ''}" style="height:${h}%"></div></div><div class="vol8-l${isThis ? ' on' : ''}">${label}</div></div>`;
+  }).join('');
+}
+
+/* ── Músculos trabajados: todos los grupos (incl. Otros), barra relativa al máximo y ×N ── */
+function renderMuscleChart() {
+  const counts = {}; workouts.forEach(w => (w.exercises || []).forEach(e => { const m = getMuscle(e.ex); counts[m] = (counts[m] || 0) + 1; }));
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  progShow('musclesSec', sorted.length > 0);
+  const list = document.getElementById('mlList');
+  if (!list || !sorted.length) return;
+  const maxC = Math.max(1, sorted[0][1]);
+  list.innerHTML = sorted.map(([m, n]) => {
+    const c = MC[m] || MC.Otros;
+    return `<div class="ml-row2"><div class="ml-dot" style="background:${c}"></div><span class="ml-nm">${progEsc(progT(m))}</span><div class="ml-bg"><div class="ml-fill" style="width:${Math.round(n / maxC * 100)}%;background:${c}"></div></div><span class="ml-cnt">×${n}</span></div>`;
+  }).join('');
+}
+
+/* ── Fuerza estimada (1RM Epley): top 8 ejercicios por 1RM = kg·(1+reps/30) ── */
+function renderStrengthEstimate() {
+  const el = document.getElementById('strengthEst');
+  if (!el) return;
+  const est = {}, maxKg = {};
+  workouts.forEach(w => (w.exercises || []).forEach(e => {
+    const k = +e.kg || 0; if (k <= 0) return;
+    const r = Math.max(1, +e.reps || 0);
+    const e1 = k * (1 + r / 30);
+    if (e1 > (est[e.ex] || 0)) est[e.ex] = e1;
+    if (k > (maxKg[e.ex] || 0)) maxKg[e.ex] = k;
+  }));
+  const top = Object.entries(est).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  progShow('strengthSec', top.length > 0);
+  if (!top.length) return;
+  el.innerHTML = top.map(([name, e1]) => `<div class="se-row"><div class="se-n">${progEsc(name)}</div><div class="se-r"><div class="se-v">~${Math.round(e1)} kg</div><div class="se-m">${progT('máx')} ${big(maxKg[name] || 0)} kg</div></div></div>`).join('');
+}
+
+/* ── Actividad · 13 semanas: 91 días desde el lunes de hace 12 semanas (lunes→domingo por columna) ── */
+function progHeatmapCounts() {
+  const dc = {}; workouts.forEach(w => { dc[w.date] = (dc[w.date] || 0) + 1; });
+  const mon = progThisMonday(); const start = new Date(mon); start.setDate(mon.getDate() - 12 * 7);
+  const out = [];
+  for (let i = 0; i < 91; i++) { const d = new Date(start); d.setDate(start.getDate() + i); out.push(dc[progISO(d)] || 0); }
+  return out;
+}
+function renderHeatmap() {
+  const container = document.getElementById('hmGrid');
+  if (!container) return;
+  const counts = progHeatmapCounts();
+  // La rejilla CSS rellena por filas (13 columnas): fila = día de la semana (L→D), columna = semana.
+  let cells = '';
+  for (let row = 0; row < 7; row++) for (let col = 0; col < 13; col++) {
+    const c = counts[col * 7 + row] || 0;
+    const lv = c <= 0 ? '' : c === 1 ? ' l1' : c === 2 ? ' l2' : ' l3';
+    cells += `<div class="hm-c${lv}"></div>`;
+  }
+  container.innerHTML = cells;
+}
+
+/* ── Récords recientes: cada vez que un ejercicio supera su máximo (cronológico), últimos 25, más reciente arriba ── */
 function renderPRTimeline() {
   const el = document.getElementById('prTimeline');
   if (!el) return;
-  if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('pr_timeline')) {
-    el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'pr_timeline\')" style="position:relative;min-height:64px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Historial de récords — Pro</div></div>';
-    return;
-  }
-  const exNames = new Set();
-  workouts.forEach(w => (w.exercises || []).forEach(e => exNames.add(e.ex)));
-  const events = [];
-  exNames.forEach(ex => {
-    const ss = workouts.filter(w => (w.exercises || []).some(e => e.ex === ex)).sort((a, b) => a.date.localeCompare(b.date));
-    let best = 0;
-    ss.forEach(w => {
-      let dayMax = 0;
-      (w.exercises || []).filter(e => e.ex === ex).forEach(e => { const k = +e.kg || 0; if (k > dayMax) dayMax = k; });
-      if (dayMax > best) { best = dayMax; events.push({ date: w.date, ex, kg: dayMax }); }
+  const maxSoFar = {}; const prs = [];
+  [...workouts].sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(w => {
+    (w.exercises || []).forEach(e => {
+      const k = +e.kg || 0;
+      if (k > 0 && k > (maxSoFar[e.ex] || 0)) { prs.push({ date: w.date, ex: e.ex, kg: k }); maxSoFar[e.ex] = k; }
     });
   });
-  if (!events.length) {
-    el.innerHTML = `<div style="color:var(--t3);font-size:.85rem;text-align:center;padding:8px;">Aún no hay récords. ¡A por ellos! 💪</div>`;
-    return;
-  }
-  events.sort((a, b) => b.date.localeCompare(a.date));
-  const M = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  const fd = d => { const p = (d || '').split('-'); return p.length === 3 ? `${+p[2]} ${M[+p[1] - 1] || ''} ${p[0]}` : d; };
-  const shown = events.slice(0, 25);
-  el.innerHTML = shown.map(ev => `
-    <div style="display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line);">
-      <div style="width:34px;height:34px;border-radius:9px;background:rgba(245,166,35,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;">🏆</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:.86rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ev.ex}</div>
-        <div style="font-size:.66rem;color:var(--t3);">${fd(ev.date)}</div>
-      </div>
-      <div style="font-weight:800;color:var(--amber);font-family:var(--fm);flex-shrink:0;">${ev.kg} kg</div>
-    </div>`).join('') + (events.length > 25 ? `<div style="text-align:center;color:var(--t3);font-size:.7rem;padding-top:8px;">+${events.length - 25} récords anteriores</div>` : '');
-}
-function renderHeatmap() {
-  const container = $('hmGrid');
-  if (!Pro.can('heatmap')) {
-    container.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'heatmap\')"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Mapa de actividad Pro</div></div>';
-    $('hmHdr').innerHTML = '';
-    return;
-  }
-  const today = new Date(), start = new Date(today); start.setDate(today.getDate() - 90);
-  const dc = {}; workouts.forEach(w => { dc[w.date] = (dc[w.date] || 0) + 1; });
-  let cells = ''; for (let row = 0; row < 7; row++)for (let col = 0; col < 13; col++) { const d = new Date(start); d.setDate(start.getDate() + col * 7 + row); const ds = d.toISOString().split('T')[0]; if (d > today) { cells += '<div class="hm-c"></div>'; continue; } const c = dc[ds] || 0; const lv = c === 0 ? '' : c === 1 ? 'l1' : c === 2 ? 'l2' : c === 3 ? 'l3' : 'l4'; cells += `<div class="hm-c${lv ? ' ' + lv : ''}" title="${ds}"></div>`; }
-  container.innerHTML = cells;
-  const seen = new Set(); let mh = ''; for (let col = 0; col < 13; col++) { const d = new Date(start); d.setDate(start.getDate() + col * 7); const m = d.toLocaleDateString((typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES', { month: 'short' }); mh += `<span class="hm-ml">${!seen.has(m) ? m : ''}</span>`; seen.add(m); } $('hmHdr').innerHTML = mh;
-}
-function renderSummaryStats() {
-  $('pTS').textContent = workouts.length;
-  const oldest = workouts.length ? workouts[workouts.length - 1].date : null;
-  const wks = oldest ? Math.max(1, Math.ceil((new Date() - new Date(oldest + 'T00:00:00')) / 604800000)) : 1;
-  $('pAW').textContent = (workouts.length / wks).toFixed(1);
-  let tv = 0; workouts.forEach(w => (w.exercises || []).forEach(e => tv += (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1)));
-  $('pTV').textContent = big(tv); $('pBS').textContent = calcMaxStreak();
-}
-function renderMuscleChart() {
-  const counts = {}; workouts.forEach(w => (w.exercises || []).forEach(e => { const m = getMuscle(e.ex); counts[m] = (counts[m] || 0) + 1; }));
-  const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7);
-  const labels = sorted.map(x => x[0]), data = sorted.map(x => x[1]), colors = labels.map(l => MC[l] || MC.Otros);
-  mkChart('muscleChart', { type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] }, options: { cutout: '74%', plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false } });
-  $('mlList').innerHTML = sorted.map((x, i) => `<div class="ml-row"><div class="ml-dot" style="background:${colors[i]}"></div><span class="ml-nm">${x[0]}</span><span class="ml-pct">${Math.round(x[1] / total * 100)}%</span></div><div class="ml-bg"><div class="ml-fill" style="width:${Math.round(x[1] / sorted[0][1] * 100)}%;background:${colors[i]}"></div></div>`).join('');
-}
-function renderVolChart() {
-  const weeks = []; for (let w = 11; w >= 0; w--) { const sun = new Date(); sun.setDate(sun.getDate() - sun.getDay() - w * 7); let v = 0; for (let d = 0; d < 7; d++) { const dd = new Date(sun); dd.setDate(sun.getDate() + d); workouts.filter(x => x.date === dd.toISOString().split('T')[0]).forEach(x => (x.exercises || []).forEach(e => v += (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1))); } const lbl = new Date(sun); lbl.setDate(lbl.getDate() + 3); weeks.push({ l: lbl.toLocaleDateString((typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES', { day: 'numeric', month: 'short' }), v }); }
-  mkChart('volChart', { type: 'bar', data: { labels: weeks.map(w => w.l), datasets: [{ data: weeks.map(w => w.v), backgroundColor: weeks.map((_, i) => i === 11 ? 'rgba(79,140,255,.85)' : 'rgba(79,140,255,.22)'), borderRadius: 4, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: 'rgba(244,244,246,.28)', maxRotation: 0 } }, y: { grid: { color: 'rgba(255,255,255,.04)' }, border: { display: false }, ticks: { color: 'rgba(244,244,246,.28)', callback: v => big(v) } } } } });
-}
-function renderRpeChart() {
-  const recent = workouts.filter(w => w.rpe).slice(0, 20).reverse();
-  mkChart('rpeChart', { type: 'line', data: { labels: recent.map(w => w.date.substring(5)), datasets: [{ data: recent.map(w => +w.rpe), borderColor: 'rgba(155,114,245,.9)', borderWidth: 2, backgroundColor: 'rgba(155,114,245,.1)', fill: true, pointBackgroundColor: 'rgba(155,114,245,.9)', pointBorderColor: '#111114', pointBorderWidth: 1.5, pointRadius: 3, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: 'rgba(244,244,246,.28)' } }, y: { grid: { color: 'rgba(255,255,255,.04)' }, border: { display: false }, min: 0, max: 11, ticks: { color: 'rgba(244,244,246,.28)', stepSize: 2 } } } } });
-}
-function renderPRTable() {
-  if (!Pro.can('pr_table')) {
-    $('prBody').innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;"><div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'pr_table\')" style="position:relative;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Tabla de récords Pro</div></div></td></tr>';
-    return;
-  }
-  const exNames = new Set(); workouts.forEach(w => (w.exercises || []).forEach(e => exNames.add(e.ex)));
-  const prs = [];
-  exNames.forEach(ex => {
-    const ss = workouts.filter(w => (w.exercises || []).some(e => e.ex === ex)).sort((a, b) => a.date.localeCompare(b.date));
-    let maxKg = 0, max1RM = 0; ss.forEach(w => (w.exercises || []).filter(e => e.ex === ex).forEach(e => { const k = +e.kg || 0, r = +e.reps || 1; if (k > maxKg) maxKg = k; const rm = k * (1 + r / 30); if (rm > max1RM) max1RM = rm; }));
-    let trend = 'eq'; if (ss.length >= 2) { const l2 = ss.slice(-2); const v1 = Math.max(...l2[0].exercises.filter(e => e.ex === ex).map(e => +e.kg || 0)); const v2 = Math.max(...l2[1].exercises.filter(e => e.ex === ex).map(e => +e.kg || 0)); trend = v2 > v1 ? 'up' : v2 < v1 ? 'dn' : 'eq'; }
-    if (maxKg > 0) prs.push({ ex, maxKg, max1RM: parseFloat(max1RM.toFixed(1)), trend });
-  });
-  prs.sort((a, b) => b.maxKg - a.maxKg);
-  $('prBody').innerHTML = prs.slice(0, 15).map(p => `<tr><td style="font-weight:600">${p.ex}</td><td><span class="pr-tag">${p.maxKg} kg</span></td><td style="font-family:var(--fm);font-size:.78rem;">${p.max1RM} kg</td><td><span class="trend t${p.trend}">${p.trend === 'up' ? '↑' : p.trend === 'dn' ? '↓' : '→'}</span></td></tr>`).join('');
-}
-function fillProgSel() {
-  const s = $('progSel'), cur = s.value;
-  s.innerHTML = '<option value="__PESO__">⚖ Peso Corporal</option>';
-  const names = new Set(); workouts.forEach(w => (w.exercises || []).forEach(e => names.add(e.ex)));
-  [...names].sort().forEach(x => s.add(new Option(x, x)));
-  if (cur && [...s.options].some(o => o.value === cur)) s.value = cur;
-}
-function selPill(v, btn) { document.querySelectorAll('.qp').forEach(e => e.classList.remove('on')); btn?.classList.add('on'); const s = $('progSel'); if (![...s.options].some(o => o.value === v)) s.add(new Option(v, v)); s.value = v; drawExChart(); }
-function setMet(m, btn) { cMetric = m;['mMax', 'm1RM', 'mVol'].forEach(id => $(id).classList.remove('on')); btn.classList.add('on'); drawExChart(); }
-function setTR(t, btn) { cTime = t; btn.parentNode.querySelectorAll('.seg-b').forEach(e => e.classList.remove('on')); btn.classList.add('on'); drawExChart(); }
-function drawExChart() {
-  const ex = $('progSel').value; let recs = [], cd = new Date('1970-01-01');
-  if (cTime === '1M') { const d = new Date(); d.setMonth(d.getMonth() - 1); cd = d; }
-  if (cTime === '3M') { const d = new Date(); d.setMonth(d.getMonth() - 3); cd = d; }
-  if (cTime === '6M') { const d = new Date(); d.setMonth(d.getMonth() - 6); cd = d; }
-  if (ex === '__PESO__') {
-    $('m1RM').disabled = true; $('mVol').disabled = true;
-    recs = weightLogs.filter(l => new Date(l.date) >= cd).map(l => ({ date: l.date, val: parseFloat(l.weight) })).sort((a, b) => a.date.localeCompare(b.date));
-    $('prMax').textContent = recs.length ? Math.max(...recs.map(r => r.val)) + ' kg' : '—'; $('pr1RM').textContent = '—'; $('prVol').textContent = '—';
-  } else {
-    $('m1RM').disabled = false; $('mVol').disabled = false;
-    let mo = 0, m1 = 0, mv = 0; const dm = {};
-    workouts.filter(w => new Date(w.date) >= cd).forEach(w => { const exs = (w.exercises || []).filter(e => e.ex === ex); if (!exs.length) return; let mk = 0, d1 = 0, dv = 0; exs.forEach(e => { const k = +e.kg || 0, s2 = +e.sets || 1, r = +e.reps || 1; if (k > mk) mk = k; const rm = k * (1 + r / 30); if (rm > d1) d1 = rm; dv += k * s2 * r; }); if (mk > mo) mo = mk; if (d1 > m1) m1 = d1; if (dv > mv) mv = dv; dm[w.date] = { MAX: mk, '1RM': parseFloat(d1.toFixed(1)), VOL: dv }; });
-    recs = Object.keys(dm).sort().map(d => ({ date: d, val: dm[d][cMetric] }));
-    $('prMax').textContent = mo ? mo + ' kg' : '—'; $('pr1RM').textContent = m1 ? parseFloat(m1.toFixed(1)) + ' kg' : '—'; $('prVol').textContent = mv ? big(mv) + ' kg' : '—';
-  }
-  const ctx = $('exChart').getContext('2d');
-  mkChart('exChart', { type: 'line', data: { labels: recs.map(r => r.date.substring(5)), datasets: [{ data: recs.map(r => r.val), borderColor: 'rgba(79,140,255,.9)', borderWidth: 2, backgroundColor: blueGrad(ctx, 220), fill: true, pointBackgroundColor: 'rgba(79,140,255,1)', pointBorderColor: '#111114', pointBorderWidth: 1.5, pointRadius: 4, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: 'rgba(244,244,246,.28)' } }, y: { grid: { color: 'rgba(255,255,255,.04)' }, border: { display: false }, beginAtZero: cMetric === 'VOL', ticks: { color: 'rgba(244,244,246,.28)', callback: v => cMetric === 'VOL' ? big(v) : v } } } } });
+  const shown = prs.slice(-25).reverse();
+  progShow('prSec', shown.length > 0);
+  if (!shown.length) return;
+  el.innerHTML = shown.map(p => `<div class="pr-row"><span class="pr-d">${progEsc(p.date)}</span><span class="pr-ex">${progEsc(p.ex)}</span><span class="pr-kg">${big(p.kg)} kg</span></div>`).join('');
 }
 
-/* ══ MUSCLE BALANCE RADAR (Pro) ══ */
-function renderMuscleRadar() {
-  const badge = $('radarProBadge');
-  const wrap = $('radarWrap');
-  if (!Pro.can('advanced_analytics')) {
-    if (badge) badge.style.display = '';
-    wrap.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'advanced_analytics\')" style="height:100%;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Balance muscular radar — Pro</div></div>';
-    return;
-  }
-  if (badge) badge.style.display = 'none';
-  // Restore canvas if it was replaced
-  if (!$('muscleRadar')) {
-    wrap.innerHTML = '<canvas id="muscleRadar"></canvas>';
-  }
-  // Calculate muscle volume from last 30 days
-  const a30 = new Date(); a30.setDate(a30.getDate() - 30);
-  const volByMuscle = {};
-  workouts.filter(w => new Date(w.date) >= a30).forEach(w => {
-    (w.exercises || []).forEach(e => {
-      const m = getMuscle(e.ex);
-      volByMuscle[m] = (volByMuscle[m] || 0) + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1);
-    });
-  });
-  const allMuscles = ['Pecho', 'Espalda', 'Hombro', 'Bíceps', 'Tríceps', 'Pierna', 'Core'];
+/* ══ BALANCE MUSCULAR (radar) — volumen por grupo de los últimos 30 días, sin cardio ni "Otros" ══ */
+function renderMuscleRadar(volByMuscle) {
+  const wrap = document.getElementById('radarWrap');
+  if (!wrap) return;
+  if (!document.getElementById('muscleRadar')) wrap.innerHTML = '<canvas id="muscleRadar"></canvas>';
+  volByMuscle = volByMuscle || (typeof recentMuscles === 'function' ? recentMuscles(30) : {});
+  const allMuscles = ['Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Piernas', 'Core'];
   const maxVol = Math.max(...allMuscles.map(m => volByMuscle[m] || 0), 1);
   const data = allMuscles.map(m => Math.round(((volByMuscle[m] || 0) / maxVol) * 100));
-  const colors = allMuscles.map(m => MC[m] || 'var(--a)');
+  const colors = allMuscles.map(m => MC[m] || '#888');
 
   mkChart('muscleRadar', {
     type: 'radar',
     data: {
-      labels: allMuscles,
+      labels: allMuscles.map(m => progT(m)),
       datasets: [{
         data,
         backgroundColor: 'rgba(79,140,255,0.15)',

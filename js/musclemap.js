@@ -2,7 +2,9 @@
    MAPA MUSCULAR — figura que se ilumina según el volumen trabajado
    ══════════════════════════════════════════════
    renderMuscleMap(containerId, muscles): muscles = { Pecho: vol, ... }
-   recentMuscles(days): agrega el volumen por músculo de los últimos N días.
+   recentMuscles(days): agrega el volumen por músculo de los últimos N días (sin cardio).
+   Espejo de ui/common/MuscleMap.kt (Android): al tocar un grupo en la leyenda se resalta
+   (los demás ×0.15) y se muestra su volumen, % y hasta 8 ejercicios de los últimos 30 días.
    ══════════════════════════════════════════════ */
 (function () {
   // Mismas imagenes que las apps: cuerpo 3D en gris + una mascara por grupo muscular.
@@ -15,14 +17,15 @@
 
   const colorOf = m => (typeof MC !== 'undefined' && MC[m]) || '#888888';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const bigKg = v => (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v)) + ' kg';
+  const T = s => (typeof I18N !== 'undefined' && I18N.t) ? I18N.t(s) : s;
+  const bigKg = v => (typeof big === 'function' ? big(v) : Math.round(v)) + ' kg';
 
   function opacityFor(m, muscles, maxV) {
     const v = muscles[m] || 0;
     if (v <= 0) return 0;
     const base = Math.min(0.95, Math.max(0.5, 0.5 + 0.45 * (v / maxV)));
-    // Si hay un musculo seleccionado, atenua los demas para destacarlo.
-    if (selected) return m === selected ? 0.98 : base * 0.35;
+    // Si hay un musculo seleccionado, mantiene su opacidad base y atenua los demas (MuscleMap.kt:91).
+    if (selected && m !== selected) return base * 0.15;
     return base;
   }
 
@@ -42,22 +45,23 @@
     const total = order.reduce((s, [, v]) => s + v, 0) || 1;
     return `<div class="mm-legend">` + order.map(([m, v]) => {
       const on = selected === m;
-      return `<button class="mm-chip${on ? ' on' : ''}" style="${on ? 'background:' + colorOf(m) : ''}" onclick="mmSelect('${m}')"><i style="background:${colorOf(m)}"></i>${esc(m)} ${Math.floor(v / total * 100)}%</button>`;
+      return `<button class="mm-chip${on ? ' on' : ''}" style="${on ? 'background:' + colorOf(m) : ''}" onclick="mmSelect('${m}')"><i style="background:${colorOf(m)}"></i>${esc(T(m))} ${Math.round(v / total * 100)}%</button>`;
     }).join('') + `</div>`;
   }
 
+  /* Ejercicios (sin cardio) del grupo en los últimos 30 días, en orden de aparición (como el LinkedHashSet de Android). */
   function exercisesFor(group) {
     if (typeof workouts === 'undefined') return [];
     const cut = new Date(); cut.setDate(cut.getDate() - 30); cut.setHours(0, 0, 0, 0);
-    const m = {};
+    const seen = new Set(), out = [];
     workouts.forEach(w => {
       if (new Date(w.date + 'T00:00:00') < cut) return;
       (w.exercises || []).forEach(e => {
-        if (e.cardio || getMuscle(e.ex) !== group) return;
-        m[e.ex] = (m[e.ex] || 0) + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1);
+        if (e.cardio || e.isCardio || getMuscle(e.ex) !== group || seen.has(e.ex)) return;
+        seen.add(e.ex); out.push(e.ex);
       });
     });
-    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+    return out;
   }
 
   function detail(muscles) {
@@ -66,10 +70,10 @@
     const total = Object.values(muscles).reduce((a, b) => a + (+b || 0), 0) || 1;
     const exs = exercisesFor(g);
     const rows = exs.length
-      ? exs.slice(0, 6).map(([n, v]) => `<div class="mm-ex"><span>${esc(n)}</span><b>${bigKg(v)}</b></div>`).join('')
-      : `<div class="mm-none">Sin ejercicios en los últimos 30 días.</div>`;
+      ? `<div class="mm-exh">${T('Ejercicios (30 días)')}</div>` + exs.slice(0, 8).map(n => `<div class="mm-ex"><span>• ${esc(n)}</span></div>`).join('')
+      : '';
     return `<div class="mm-detail" style="background:color-mix(in srgb, ${c} 10%, transparent)">
-      <div class="mm-dh"><i style="background:${c}"></i><strong>${esc(g)}</strong><span style="color:${c}">${bigKg(vol)} · ${Math.floor(vol / total * 100)}%</span></div>${rows}</div>`;
+      <div class="mm-dh"><i style="background:${c}"></i><strong>${esc(T(g))} · ${bigKg(vol)} · ${Math.round(vol / total * 100)}%</strong></div>${rows}</div>`;
   }
 
   window.mmSelect = function (m) {
@@ -98,10 +102,6 @@
   function renderMuscleMap(containerId, muscles) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('muscle_map')) {
-      el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'muscle_map\')" style="position:relative;min-height:120px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Mapa muscular — Pro</div></div>';
-      return;
-    }
     muscles = muscles || {};
     const total = Object.values(muscles).reduce((a, b) => a + (+b || 0), 0);
     if (!total) {

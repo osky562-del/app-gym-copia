@@ -378,6 +378,36 @@
 }
 
 /* ══ Profile Plan Card ══ */
+/* ══ Pantalla de planes (ProScreen.kt): Gratis · Pro · Pro+ · Élite ══ */
+.pro-plans {
+  width: 100%; max-width: 520px; min-height: 100%; background: var(--bg); padding: calc(var(--st, 0px) + 12px) 16px 16px; box-sizing: border-box;
+  overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: left;
+}
+.pro-plans-h { display: flex; align-items: center; gap: 4px; }
+.pro-plans-back { min-width: 40px; height: 40px; background: none; border: none; color: var(--t1); font-size: 1.7rem; line-height: 1; cursor: pointer; padding: 0; text-align: left; }
+.pro-plans-t { font-size: 1.25rem; font-weight: 700; color: var(--t1); }
+.pro-plans-intro { font-size: .82rem; color: var(--t3); line-height: 1.45; margin-top: 8px; }
+.pro-plans-sim { font-size: .64rem; color: var(--t3); margin: 4px 0 14px; }
+.pro-tier { background: var(--s2); border-radius: 16px; padding: 16px; margin: 6px 0; border: 1.5px solid transparent; }
+.pro-tier.best { background: color-mix(in srgb, var(--a) 8%, transparent); }
+.pro-tier.best, .pro-tier.cur { border-color: var(--a); }
+.pro-tier-row { display: flex; align-items: center; gap: 8px; }
+.pro-tier-name { font-size: 1.1rem; font-weight: 700; color: var(--t1); }
+.pro-tier-pop { background: var(--a); color: #fff; font-size: .58rem; font-weight: 700; border-radius: 100px; padding: 2px 8px; }
+.pro-tier-price { color: var(--a); font-weight: 700; font-size: 1.05rem; }
+.pro-tier-meta { font-size: .72rem; color: var(--t3); margin-top: 2px; min-height: 1em; }
+.pro-tier-feats { margin-top: 8px; }
+.pro-tier-f { display: flex; gap: 8px; padding: 2px 0; font-size: .82rem; color: var(--t1); }
+.pro-tier-f span:first-child { color: var(--a); font-weight: 700; }
+.pro-tier-trial { margin-top: 8px; color: var(--a); font-size: .72rem; font-weight: 600; }
+.pro-tier-btn {
+  width: 100%; margin-top: 10px; border: none; border-radius: 10px; padding: 11px; background: var(--a); color: #fff; font-weight: 700; font-size: .88rem; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pro-tier-btn.cur { background: var(--s3); color: var(--t3); }
+.pro-plans-cancel { display: block; background: none; border: none; color: var(--t3); font-size: .78rem; font-weight: 600; padding: 8px 10px; margin-top: 8px; cursor: pointer; }
+.pro-plans-done { margin-top: 12px; background: color-mix(in srgb, var(--a) 14%, transparent); border-radius: 12px; padding: 14px; color: var(--a); font-weight: 700; font-size: .88rem; }
+
 .plan-card-wrap { margin-bottom: 9px; }
 .plan-card {
   background: var(--s1);

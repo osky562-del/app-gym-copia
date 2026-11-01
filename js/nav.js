@@ -24,6 +24,13 @@ function goPage(p) {
   if (p === 'hist') renderHist();
   if (p === 'dash') { renderDash(); updateXpBar(); }
   if (p === 'profile') { renderProfile(); if (typeof Admin !== 'undefined') Admin.onProfileVisible(); }
-  if (p === 'ai') { loadPerfil(); updateAiUsageBadge(); }
+  if (p === 'ai') { if (typeof renderCoach === 'function') renderCoach(); }
   if (p === 'awards') renderAwards();
 }
+/* Pantalla de inicio elegida en Perfil (STORE 'startTab': 0 Inicio · 1 Entreno · 2 Progreso · 3 Historial). */
+document.addEventListener('DOMContentLoaded', () => {
+  let st = 0; try { st = +(STORE.get('startTab') || 0); } catch (e) { st = 0; }
+  if (st === 1 && typeof openPlanTab === 'function') openPlanTab();
+  else if (st === 2) goPage('prog');
+  else if (st === 3) goPage('hist');
+});

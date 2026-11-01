@@ -1,145 +1,303 @@
-/* ══ PROFILE ══ */
+/* ══ PERFIL — paridad con ProfileScreen.kt (Android) ══
+   Orden: identidad · Hazte PRO · Ayuda · Color de la app · Personalización · Tus datos ·
+   Peso corporal · Idioma · Salud y reloj · Copia en el NAS · Cerrar sesión. */
 function getUserName() { return STORE.get('name') || ''; }
-function saveName() {
-  const n = $('nameInput').value.trim();
-  if (!n) return toast('Escribe tu nombre', 'err');
-  STORE.set('name', n);
-  updateGreeting();
-  toast('¡Hola, ' + n + '! 👋', 'good');
-}
 function updateGreeting() {
   const n = getUserName();
-  $('greetName').textContent = n || 'Atleta';
-}
-function renderPlanCard() {
-  const el = $('profilePlanCard');
-  if (!el) return;
-  const plan = Pro.getPlan();
-  const name = Pro.getPlanName();
-  const isPro = Pro.isPro();
-  const remaining = Pro.aiRemaining();
-
-  if (isPro) {
-    el.innerHTML = `
-      <div class="plan-card pro-active">
-        <div class="plan-card-badge">${plan.name}</div>
-        <div class="plan-card-status">Plan activo</div>
-        <div class="plan-card-perks">
-          <span>Coach ilimitado</span><span>Analíticas avanzadas</span><span>Todos los colores</span>
-        </div>
-      </div>`;
-  } else {
-    el.innerHTML = `
-      <div class="plan-card" onclick="Pro.showUpgradeModal('unlimited_workouts')">
-        <div class="plan-card-row">
-          <div>
-            <div class="plan-card-badge free">Gratuito</div>
-            <div class="plan-card-status">Funciones limitadas</div>
-          </div>
-          <button class="plan-card-upgrade">Mejorar plan</button>
-        </div>
-        <div class="plan-card-limits">
-          <div class="plan-limit"><span>Coach</span><span class="${remaining === 0 ? 'limit-warn' : ''}">${remaining}/1 esta semana</span></div>
-          <div class="plan-limit"><span>Sesiones guardadas</span><span>${workouts.length}/${plan.maxSessions}</span></div>
-          <div class="plan-limit"><span>Historial visible</span><span>${plan.maxHistory} sesiones</span></div>
-          <div class="plan-limit"><span>Colores</span><span>2 de 6</span></div>
-        </div>
-      </div>`;
-  }
+  const g = $('greetName'); if (g) g.textContent = n || 'Atleta';
 }
 
-function renderProfile() {
-  if ($('npName')) {
-    const n = getUserName();
-    $('npName').textContent = n || 'Atleta';
-    $('npAv').textContent = (n || 'A').charAt(0).toUpperCase();
-    const xp = calcXp();
-    $('npSub').textContent = getLvl(xp).title + ' · ' + xp.toLocaleString() + ' XP · ' + workouts.length + ' sesiones';
-  }
-  const ca = STORE.get('accent') || 'red';
-  document.querySelectorAll('.acc-sw').forEach(el => {
-    const c = el.dataset.accent;
-    el.classList.toggle('on', c === ca);
-    // Show lock on premium colors for free users
-    if (!Pro.isAccentAvailable(c)) {
-      el.classList.add('pro-locked-accent');
-      if (!el.querySelector('.acc-lock')) {
-        const lock = document.createElement('span');
-        lock.className = 'acc-lock';
-        lock.textContent = '🔒';
-        el.appendChild(lock);
-      }
-    } else {
-      el.classList.remove('pro-locked-accent');
-      const lock = el.querySelector('.acc-lock');
-      if (lock) lock.remove();
-    }
-  });
-  applyAccent();
-  renderPlanCard();
-  // Load saved name into input
-  const n = getUserName();
-  if ($('nameInput')) $('nameInput').value = n;
-  let tv = 0, th = 0, sr = 0, rc = 0; workouts.forEach(w => { (w.exercises || []).forEach(e => tv += (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1)); if (w.duration) th += +w.duration; if (w.rpe) { sr += +w.rpe; rc++; } });
-  $('psW').textContent = workouts.length; $('psK').textContent = big(tv); $('psS').textContent = calcMaxStreak(); $('psH').textContent = Math.round(th / 60) + 'h';
-  $('irS').textContent = workouts.length; $('irK').textContent = big(tv) + ' kg'; $('irH').textContent = Math.round(th / 60) + 'h'; $('irR').textContent = rc ? (sr / rc).toFixed(1) : '—';
+/* ── Preferencias de personalización (mismas claves que UserPrefs en Android) ── */
+const AVATARS = ['💪', '🔥', '🏋️', '🦁', '🐺', '⚡️', '🥇', '👑', '🦍', '🚀', '🎯', '🧠'];
+const PREF_DEFAULTS = { pureBlack: false, haptics: true, restSound: true, coachProactive: true, startTab: 0 };
+function prefGet(k) { const v = STORE.get(k); return (v === null || v === undefined) ? PREF_DEFAULTS[k] : v; }
+function prefSet(k, v) {
+  STORE.set(k, v);
+  if (k === 'pureBlack') applyPureBlack();
+  renderPersonal();
 }
-
-/* ══ THEME / ACCENT ══ */
-const ACCENTS = {
-  blue: { hex: '#4f8cff', rgba: 'rgba(79, 140, 255, 0.12)' },
-  green: { hex: '#2dd98a', rgba: 'rgba(45, 217, 138, 0.12)' },
-  purple: { hex: '#a57aff', rgba: 'rgba(165, 122, 255, 0.12)' },
-  amber: { hex: '#ffa040', rgba: 'rgba(255, 160, 64, 0.12)' },
-  red: { hex: '#ff3b30', rgba: 'rgba(255, 59, 48, 0.12)' },
-  pink: { hex: '#ff6eb4', rgba: 'rgba(255, 110, 180, 0.12)' }
-};
-
-function setAccent(color, el) {
-  if (!Pro.isAccentAvailable(color)) {
-    Pro.showUpgradeModal('custom_themes');
-    return;
-  }
-  STORE.set('accent', color);
-  if (el) {
-    document.querySelectorAll('.acc-sw, .ob-color').forEach(sw => sw.classList.remove('on'));
-    el.classList.add('on');
-  }
-  applyAccent();
-  toast('Color actualizado', 'good');
-}
-
-function obColor(color, btn) {
-  setAccent(color, btn);
-}
-
-function applyAccent() {
-  const color = STORE.get('accent') || 'red';
-  const theme = ACCENTS[color] || ACCENTS.red;
+function getAvatar() { return STORE.get('avatar') || '💪'; }
+function setAvatar(e) { STORE.set('avatar', e); renderProfile(); }
+function applyPureBlack() {
   const root = document.documentElement;
-  root.style.setProperty('--a', theme.hex);
-  root.style.setProperty('--ag', theme.rgba);
-  // Update UI elements that might need forced color
-  document.querySelectorAll('.p-accent').forEach(e => e.style.color = theme.hex);
+  if (prefGet('pureBlack')) root.style.setProperty('--bg', '#000000'); else root.style.removeProperty('--bg');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', prefGet('pureBlack') ? '#000000' : '#0a0a0a');
 }
-applyAccent(); // Initial call
-$('btnSaveW').addEventListener('click', () => { const w = parseFloat($('bwInput').value); if (!w || w < 20 || w > 300) return toast('Peso inválido', 'err'); const d = new Date().toISOString().split('T')[0]; const idx = weightLogs.findIndex(l => l.date === d); if (idx >= 0) weightLogs[idx].weight = w; else weightLogs.push({ date: d, weight: w }); saveWeights(); toast('Peso guardado ✓', 'good'); $('bwInput').value = ''; });
+applyPureBlack();
 
-/* ══ FONT SIZE ══ */
-const FS_PX = [14, 16, 19, 22, 26, 30];
-const FS_LBL = ['A', 'A+', 'A++', 'A+++', 'A++++', 'A+++++'];
-let fsIdx = parseInt(localStorage.getItem('ko95_fs') || '0');
-if (isNaN(fsIdx) || fsIdx < 0 || fsIdx >= FS_PX.length) fsIdx = 0;
+/* Email de la cuenta (NAS o Firebase) o null en modo local. */
+function profileEmail() {
+  try {
+    if (typeof NAS !== 'undefined' && NAS.enabled() && NAS.loggedIn()) { const u = NAS.user(); if (u && u.email) return u.email; }
+  } catch (e) { }
+  try { if (typeof fbUser !== 'undefined' && fbUser && fbUser.email) return fbUser.email; } catch (e) { }
+  return null;
+}
+function isLocalSession() { return localStorage.getItem('ko95_sess') === 'local' || !profileEmail(); }
 
-function applyFontSize() {
-  document.documentElement.style.fontSize = FS_PX[fsIdx] + 'px';
-  const btn = document.getElementById('tbFsBtn');
-  if (btn) btn.textContent = FS_LBL[fsIdx];
+/* ── Render completo de la pestaña ── */
+function renderProfile() {
+  if (!$('npName')) return;
+  const n = getUserName(), email = profileEmail();
+  $('npAv').textContent = getAvatar();
+  $('npName').textContent = n || email || I18N.t('Modo local (sin cuenta)');
+  $('npSub').textContent = email || '';
+  $('npSub').style.display = email ? '' : 'none';
+
+  renderAccentGrid();
+  renderPersonal();
+
+  // Tus datos
+  const p = STORE.get('perfil') || {};
+  if ($('pfNombre')) $('pfNombre').value = n;
+  if ($('pfAltura')) $('pfAltura').value = p.altura || '';
+  if ($('pfObjetivo')) $('pfObjetivo').value = p.objetivo || '';
+  renderSexPills(p.sexo || '');
+  const sb = $('pfSaveBtn'); if (sb) { sb.textContent = I18N.t('Guardar'); sb.classList.remove('saved'); }
+
+  renderWeight();
+  renderNasCard();
+
+  // Sesión
+  const local = isLocalSession();
+  const lo = $('profLogoutTxt'); if (lo) lo.textContent = I18N.t(local ? 'Salir del modo local' : 'Cerrar sesión');
+  const acc = $('profAccountSec'); if (acc) acc.style.display = local ? 'none' : '';
 }
-function cycleFontSize() {
-  fsIdx = (fsIdx + 1) % FS_PX.length;
-  localStorage.setItem('ko95_fs', String(fsIdx));
-  applyFontSize();
-  toast('Texto ' + FS_LBL[fsIdx]);
+
+/* ── Color de la app (Theme.kt: 8 colores + personalizado) ── */
+const ACCENTS = {
+  red:    { hex: '#ff3b30' },
+  blue:   { hex: '#4f8cff' },
+  green:  { hex: '#2dd98a' },
+  purple: { hex: '#a57aff' },
+  orange: { hex: '#ff9f40' },
+  pink:   { hex: '#ff5c8a' },
+  teal:   { hex: '#22d3d3' },
+  gold:   { hex: '#f5a623' },
+};
+function accentKey() {
+  const k = STORE.get('accent') || 'red';
+  if (k === 'amber') return 'orange';           // nombre antiguo de la web
+  return (k === 'custom' || ACCENTS[k]) ? k : 'red';
 }
-applyFontSize();
+function accentHex(k) {
+  if (k === 'custom') return STORE.get('accentCustom') || ACCENTS.red.hex;
+  return (ACCENTS[k] || ACCENTS.red).hex;
+}
+function hexToRgba(hex, a) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+  if (!m) return 'rgba(255,59,48,' + a + ')';
+  return 'rgba(' + parseInt(m[1], 16) + ',' + parseInt(m[2], 16) + ',' + parseInt(m[3], 16) + ',' + a + ')';
+}
+function renderAccentGrid() {
+  const grid = $('accentGrid'); if (!grid) return;
+  const cur = accentKey();
+  const isPro = Pro.isPro();
+  let html = '';
+  Object.keys(ACCENTS).forEach(k => {
+    const sel = cur === k, locked = !Pro.isAccentAvailable(k);
+    html += `<div class="acc-sw${sel ? ' on' : ''}" data-accent="${k}" style="background:${ACCENTS[k].hex}" onclick="setAccent('${k}',this)">${locked ? '<span class="acc-lock">🔒</span>' : sel ? '<span class="acc-check">✓</span>' : ''}</div>`;
+  });
+  const cs = cur === 'custom';
+  html += `<div class="acc-sw acc-custom${cs ? ' on' : ''}" style="background:${cs ? accentHex('custom') : 'var(--s3)'}" onclick="pickCustomAccent()">${isPro ? '🎨' : '<span class="acc-lock">🔒</span>'}</div>`;
+  html += `<input type="color" id="accentCustomInp" value="${accentHex(cur === 'custom' ? 'custom' : cur)}" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;" oninput="setCustomAccent(this.value)">`;
+  grid.innerHTML = html;
+  const lim = $('accentLimit');
+  if (lim) lim.style.display = isPro ? 'none' : '';
+}
+function setAccent(color, el) {
+  if (color === 'amber') color = 'orange';
+  if (!Pro.isAccentAvailable(color)) { Pro.showUpgradeModal('custom_themes'); return; }
+  STORE.set('accent', color);
+  document.querySelectorAll('.ob-color').forEach(sw => sw.classList.toggle('on', sw.dataset.accent === color));
+  applyAccent();
+  renderAccentGrid();
+}
+function pickCustomAccent() {
+  if (!Pro.isPro()) { Pro.showUpgradeModal('custom_themes'); return; }
+  const inp = $('accentCustomInp'); if (inp) inp.click();
+}
+function setCustomAccent(hex) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return;
+  STORE.set('accentCustom', hex.toLowerCase());
+  STORE.set('accent', 'custom');
+  applyAccent();
+  const sw = document.querySelector('.acc-custom'); if (sw) { sw.style.background = hex; sw.classList.add('on'); }
+  document.querySelectorAll('.acc-sw:not(.acc-custom)').forEach(s => s.classList.remove('on'));
+}
+function obColor(color, btn) { setAccent(color, btn); }
+function applyAccent() {
+  const hex = accentHex(accentKey());
+  const root = document.documentElement;
+  root.style.setProperty('--a', hex);
+  root.style.setProperty('--ag', hexToRgba(hex, 0.12));
+  document.querySelectorAll('.p-accent').forEach(e => e.style.color = hex);
+  const c = $('bwChart'); if (c && c.offsetParent) renderWeight();
+}
+applyAccent();
+
+/* ── Personalización: avatar, interruptores y pantalla de inicio ── */
+function renderPersonal() {
+  const av = $('avatarRow');
+  if (av) {
+    const cur = getAvatar();
+    av.innerHTML = AVATARS.map(e => `<button type="button" class="np-avatar${e === cur ? ' on' : ''}" onclick="setAvatar('${e}')">${e}</button>`).join('');
+  }
+  ['pureBlack', 'haptics', 'restSound', 'coachProactive'].forEach(k => {
+    const t = $('tg_' + k); if (t) t.classList.toggle('on', !!prefGet(k));
+  });
+  const st = +prefGet('startTab') || 0;
+  document.querySelectorAll('#startTabRow .np-seg').forEach((b, i) => b.classList.toggle('on', i === st));
+}
+function togglePref(k) { prefSet(k, !prefGet(k)); if (typeof vib === 'function') vib([10]); }
+function setStartTab(i) { prefSet('startTab', Math.min(Math.max(+i || 0, 0), 3)); }
+
+/* ── Tus datos ── */
+let _pfSex = '';
+function renderSexPills(v) {
+  _pfSex = v || '';
+  const h = $('pfSexoH'), m = $('pfSexoM');
+  if (h) h.classList.toggle('on', _pfSex === 'hombre');
+  if (m) m.classList.toggle('on', _pfSex === 'mujer');
+}
+function setProfileSex(v) {
+  renderSexPills(v);
+  const p = STORE.get('perfil') || {}; p.sexo = v; STORE.set('perfil', p);
+  const sb = $('pfSaveBtn'); if (sb) { sb.textContent = I18N.t('Guardar'); sb.classList.remove('saved'); }
+}
+function saveProfileData() {
+  const name = ($('pfNombre').value || '').trim();
+  const p = STORE.get('perfil') || {};
+  const h = parseInt($('pfAltura').value, 10);
+  p.altura = (h > 0) ? h : 0;
+  p.objetivo = ($('pfObjetivo').value || '').trim();
+  if (_pfSex) p.sexo = _pfSex;
+  if (name) p.nombre = name;
+  STORE.set('perfil', p);
+  STORE.set('name', name);
+  updateGreeting();
+  const sb = $('pfSaveBtn'); if (sb) { sb.textContent = I18N.t('Guardado ✓'); sb.classList.add('saved'); }
+  renderProfile();
+  if (sb) { sb.textContent = I18N.t('Guardado ✓'); sb.classList.add('saved'); }
+  try { if (typeof renderDash === 'function') renderDash(); } catch (e) { }
+  try { if (typeof NAS !== 'undefined' && NAS.enabled() && NAS.loggedIn()) setTimeout(() => NAS.sync(), 400); } catch (e) { }
+}
+
+/* ── Peso corporal: registro + último peso + evolución (gráfica de línea, 70 px) ── */
+function addBodyWeight() {
+  const inp = $('bwInput');
+  const w = parseFloat(String(inp.value).replace(',', '.'));
+  if (!w || w < 20 || w > 300) { toast(I18N.t('Peso inválido'), 'err'); return; }
+  const d = new Date(); const ymd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const idx = weightLogs.findIndex(l => l.date === ymd);
+  if (idx >= 0) weightLogs[idx].weight = w; else weightLogs.push({ date: ymd, weight: w });
+  weightLogs.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  saveWeights();
+  inp.value = '';
+  renderWeight();
+  try { if (typeof NAS !== 'undefined' && NAS.enabled() && NAS.loggedIn()) setTimeout(() => NAS.sync(), 400); } catch (e) { }
+}
+function fmtKg(v) { return (Math.round(v * 10) / 10).toString().replace(/\.0$/, ''); }
+function renderWeight() {
+  const empty = $('bwEmpty'), data = $('bwData'); if (!empty || !data) return;
+  const logs = [...(weightLogs || [])].filter(l => +l.weight > 0).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  if (!logs.length) { empty.style.display = ''; data.style.display = 'none'; return; }
+  empty.style.display = 'none'; data.style.display = '';
+  const last = +logs[logs.length - 1].weight, first = +logs[0].weight, delta = last - first;
+  $('bwLast').textContent = fmtKg(last) + ' kg';
+  const de = $('bwDelta');
+  if (logs.length > 1) {
+    de.style.display = '';
+    de.textContent = (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' kg';
+    de.style.color = delta > 0 ? 'var(--a)' : '#2dd98a';
+  } else de.style.display = 'none';
+  drawWeightChart($('bwChart'), logs);
+}
+function drawWeightChart(c, logs) {
+  if (!c) return;
+  const w = c.clientWidth || 300, h = 70, dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, w, h);
+  const kgs = logs.map(l => +l.weight);
+  const min = Math.min(...kgs), max = Math.max(...kgs), range = Math.max(max - min, 0.1);
+  const n = logs.length;
+  const pts = logs.map((l, i) => ({ x: n <= 1 ? w / 2 : i / (n - 1) * (w - 10) + 5, y: h * 0.9 - ((+l.weight - min) / range) * (h * 0.8) }));
+  const col = getComputedStyle(document.documentElement).getPropertyValue('--a').trim() || '#ff3b30';
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (pts.length >= 2) { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); }
+  pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill(); });
+}
+
+/* ── Copia en el NAS (frase según NasEstado.kt) ── */
+function fmtDateTime(ms) {
+  try { const d = new Date(ms); const p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); } catch (e) { return ''; }
+}
+/* Mismo orden que resumenNas(): copiando · falló · pendientes · rechazados · nunca · todo copiado. */
+function nasSummary(s) {
+  const t = I18N.t;
+  const pend = +s.pending || 0;
+  const rej = Array.isArray(s.rejectedIds) ? s.rejectedIds.length : (+s.rejected || 0);
+  if (s.syncing) return { text: t('Copiando al NAS…'), color: 'var(--t1)' };
+  if (s.lastError) return { text: t('No se ha podido copiar en el NAS') + (pend > 0 ? ' · ' + t('Pendiente de copiar') + ': ' + pend : ''), color: '#f5a623' };
+  if (pend > 0) return { text: t('Pendiente de copiar') + ': ' + pend, color: 'var(--t1)' };
+  if (rej > 0) return { text: t('Hay entrenos que el NAS no aceptó'), color: '#f5a623' };
+  if (!s.lastOkMs) return { text: t('Sin copiar todavía'), color: 'var(--t3)' };
+  return { text: t('Todo copiado en el NAS ✓') + ' · ' + t('última vez') + ': ' + fmtDateTime(s.lastOkMs), color: '#2dd98a' };
+}
+function renderNasCard() {
+  const sec = $('nasSec'); if (!sec) return;
+  const on = typeof NAS !== 'undefined' && NAS.enabled() && NAS.loggedIn() && typeof NAS.status === 'function';
+  sec.style.display = on ? '' : 'none';
+  if (!on) return;
+  const s = NAS.status();
+  const r = nasSummary(s);
+  const st = $('nasStateTxt'); st.textContent = r.text; st.style.color = r.color;
+  const er = $('nasErrTxt'); er.textContent = s.lastError || ''; er.style.display = s.lastError ? '' : 'none';
+  const rj = $('nasRejected');
+  const ids = Array.isArray(s.rejectedIds) ? s.rejectedIds : [];
+  if (ids.length) {
+    rj.style.display = '';
+    rj.innerHTML = `<div style="font-size:.78rem;font-weight:600;color:var(--t1);margin-top:10px;">${I18N.t('El NAS no ha aceptado estos entrenos (siguen guardados en el móvil):')}</div>` +
+      ids.map(id => `<div style="margin-top:6px;"><div style="font-size:.72rem;font-weight:600;color:var(--a);word-break:break-all;">${id}</div><button type="button" class="np-link" onclick="NAS.forgetRejected('${String(id).replace(/'/g, "\\'")}');renderNasCard()">${I18N.t('Entendido, quitar el aviso')}</button></div>`).join('');
+  } else { rj.style.display = 'none'; rj.innerHTML = ''; }
+}
+function nasRetryNow() { try { if (typeof NAS !== 'undefined') { NAS.sync(); if (typeof vib === 'function') vib([10]); } } catch (e) { } }
+window.addEventListener('nas-sync', () => { const pg = $('pageProf'); if (pg && pg.classList.contains('on')) renderNasCard(); });
+
+/* ── Sesión ── */
+function exitLocalMode() {
+  localStorage.removeItem('ko95_sess');
+  const ov = $('authOverlay'); if (ov) ov.classList.add('show');
+}
+function profileSignOut() { if (isLocalSession()) exitLocalMode(); else logoutCloud(); }
+function profileLogoutAll() {
+  if (typeof NAS === 'undefined' || !NAS.loggedIn()) return;
+  if (!confirm(I18N.t('Se cerrará la sesión en este móvil y en cualquier otro aparato (incluido el iPhone). Tendrás que volver a entrar con tu email y contraseña. Tus entrenos no se borran.'))) return;
+  NAS.logoutAll().catch(e => showAccountNotice(NAS.friendly(e), true));
+}
+function profileDeleteAccount() {
+  if (typeof NAS === 'undefined' || !NAS.loggedIn()) return;
+  if (!confirm(I18N.t('Esto borra tu cuenta y TODOS sus datos del NAS, y no se puede deshacer. Los entrenos guardados en este móvil no se borran.'))) return;
+  const typed = prompt(I18N.t('Para confirmar, escribe BORRAR en mayúsculas.'), '');
+  if ((typed || '').trim() !== 'BORRAR') return;
+  NAS.deleteAccount().then(() => {
+    renderProfile();
+    showAccountNotice(I18N.t('Cuenta borrada del NAS. Tus entrenos siguen en este móvil.'), false);
+  }).catch(e => showAccountNotice(NAS.friendly(e), true));
+}
+function showAccountNotice(msg, isErr) {
+  const el = $('profAccountMsg'); if (!el) return;
+  el.style.display = '';
+  el.innerHTML = `<div style="font-size:.78rem;color:${isErr ? '#ff5555' : '#2dd98a'};line-height:1.45;">${msg}</div><button type="button" class="np-link" onclick="this.parentNode.style.display='none'">${I18N.t('Cerrar')}</button>`;
+}
+
+/* "Tamaño de texto" ya no existe en Perfil (paridad con Android); la barra superior oculta aún lo referencia. */
+function cycleFontSize() { }
+
+/* ── Sonido al terminar descanso: respeta el interruptor (rest.js define playRestEndSound) ── */
+(function () {
+  const prev = window.playRestEndSound;
+  if (typeof prev !== 'function') return;
+  window.playRestEndSound = function () { if (prefGet('restSound') === false) return; return prev.apply(this, arguments); };
+})();

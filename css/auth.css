@@ -243,3 +243,39 @@
   cursor: pointer;
   display: none; /* Oculto según preferencia de email-only */
 }
+
+/* ══ Entrada nativa (AuthScreen.kt): pestañas, ojo, mensajes en línea, spinner, aviso de cierre ══ */
+.auth-tabs { display: flex; background: var(--s2); border-radius: 14px; padding: 4px; margin: 4px 0 20px; }
+.auth-tab {
+  flex: 1; border: none; border-radius: 11px; padding: 12px; background: transparent; color: var(--t3); font-weight: 500; font-size: .9rem;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.auth-tab.on { background: var(--s3); color: var(--t1); font-weight: 700; }
+.auth-pass { position: relative; }
+.auth-pass .auth-inp { padding-right: 48px; }
+.auth-eye {
+  position: absolute; right: 6px; top: 0; height: calc(100% - 12px); width: 40px; background: none; border: none; color: var(--t3); font-size: 1rem;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.auth-hint { font-size: .74rem; color: var(--t3); line-height: 1.45; text-align: center; margin: 6px 0; }
+.auth-hint.small { font-size: .7rem; margin-top: 14px; }
+.auth-msg { font-size: .78rem; line-height: 1.45; text-align: center; margin: 10px 0; white-space: pre-line; }
+.auth-msg.err { color: var(--a); }
+.auth-msg.info { color: #2dd98a; }
+.auth-link {
+  display: block; width: 100%; background: none; border: none; color: var(--t3); font-size: .82rem; font-weight: 500; padding: 10px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.auth-link.strong { font-weight: 700; margin-top: 4px; }
+.auth-link:disabled { opacity: .5; }
+.auth-closed {
+  background: rgba(245, 166, 35, .12); border: 1px solid rgba(245, 166, 35, .4); border-radius: 12px; padding: 12px; margin: 0 0 14px;
+  color: #f5a623; font-size: .78rem; line-height: 1.45; text-align: center;
+}
+.auth-closed .auth-link { padding: 6px; margin-top: 2px; }
+.auth-spin {
+  display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%;
+  animation: authSpin .8s linear infinite; vertical-align: middle;
+}
+@keyframes authSpin { to { transform: rotate(360deg); } }
+#btnAuthMain:disabled { opacity: .85; }

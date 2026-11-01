@@ -358,17 +358,23 @@
       'tobillo': 'evita saltos, gemelos y estocadas; usa máquinas sentado',
     };
     const pauta = pautas[norm(p.zona)] || 'reduce la carga en esa zona y trabaja solo en rango sin dolor';
-    const pro = p.severidad >= 4 ? ' Con dolor ' + p.severidad + '/5, consulta a un profesional sanitario antes de seguir cargando la zona.' : '';
-    return p.zona + ': ' + pauta + '.' + pro;
+    const sev = +p.severidad || 0;
+    const pro = sev >= 4 ? ' Con dolor ' + sev + '/5, consulta a un profesional sanitario antes de seguir cargando la zona.' : '';
+    return p.zona + ' (' + sev + '/5): ' + pauta + '.' + pro;
   }
 
-  function analyze(workouts, pains, weightKg, goalText, level, maxAlerts) {
+  /* suggestRoutine (Pro.kt coachCadence): si hay >=2 ejercicios estancados o no hay historial, propone una rutina. */
+  function analyze(workouts, pains, weightKg, goalText, level, maxAlerts, suggestRoutine) {
     const goal = goalOf(goalText);
     const st = stats(workouts);
     const alerts = [];
+    pains = pains || [];
     const add = (tipo, prioridad, titulo, detalle) => alerts.push({ tipo, prioridad, titulo, detalle });
 
-    if (pains.length) add('molestia', 'alta', 'Molestias: adapta el entreno', pains.map(painAdvice).join(' '));
+    if (pains.length) {
+      const top = Math.max(...pains.map(p => +p.severidad || 0));
+      add('molestia', top >= 3 ? 'alta' : 'media', 'Molestias: adapta el entreno', pains.map(painAdvice).join(' '));
+    }
     if (!workouts.length) {
       add('consejo', 'media', 'Empieza con 2-3 días', 'Aún no hay entrenos registrados. Para empezar, 2-3 sesiones de cuerpo completo por semana con ejercicios básicos es lo que recomienda el ACSM para principiantes.');
     } else {
@@ -396,6 +402,13 @@
 
     const rank = { alta: 0, media: 1, baja: 2 };
     const sorted = alerts.map((a, i) => ({ a, i })).sort((x, y) => (rank[x.a.prioridad] - rank[y.a.prioridad]) || (x.i - y.i)).map(x => x.a).slice(0, Math.max(maxAlerts || 4, 1));
+    const change = st.stalled.length >= 2;
+    let rutinaSugerida = null;
+    if (suggestRoutine && (change || !workouts.length)) {
+      try {
+        rutinaSugerida = buildRoutine({ dias: Math.min(Math.max(Math.round(st.perWeek), 3), 5), enfoque: goalText, equipo: 'gimnasio completo', history: workouts, level, pains });
+      } catch (e) { rutinaSugerida = null; }
+    }
 
     let resumen;
     if (!workouts.length) resumen = 'Todavía no hay entrenos que analizar.';
@@ -404,7 +417,7 @@
       const top = Object.entries(st.weeklySets).sort((a, b) => b[1] - a[1])[0];
       if (top && top[1] > 0) resumen += ' Lo que más trabajas: ' + AREA[top[0]].es + ' (~' + f1(top[1]) + ' series/semana).';
     }
-    return { resumen, alertas: sorted, stats: st };
+    return { resumen, alertas: sorted, stats: st, cambioRutinaRecomendado: change, rutinaSugerida };
   }
 
   /* Consejo en texto con secciones (🎯 💪 🥗 😴 ⚡): lo pinta el mismo render que usaba la IA. */

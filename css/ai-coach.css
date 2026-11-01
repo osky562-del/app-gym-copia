@@ -1,4 +1,53 @@
 /* ─── IA COACH PAGE ─── */
+
+/* ══ Coach nativo (CoachScreen.kt): tarjetas planas, sin degradados ══ */
+.co-head { display: flex; align-items: center; gap: 4px; margin: 0 0 8px; }
+.co-ttl { font-size: 1.3rem; font-weight: 700; color: var(--t1); }
+.co-intro { font-size: .82rem; color: var(--t3); margin-bottom: 16px; }
+.co-card { background: var(--s2); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+.co-h { display: flex; align-items: center; gap: 8px; }
+.co-ic { font-size: 1.25rem; line-height: 1; }
+.co-t { font-size: .95rem; font-weight: 700; color: var(--t1); }
+.co-sub { font-size: .76rem; color: var(--t3); margin-top: 4px; }
+.co-muted { font-size: .78rem; color: var(--t3); line-height: 1.45; }
+.co-lock { background: var(--s3); border-radius: 12px; padding: 14px; text-align: center; color: var(--t3); font-size: .85rem; font-weight: 600; }
+.co-teaser {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 10px; border-radius: 10px;
+  background: color-mix(in srgb, var(--a) 12%, transparent); color: var(--t3); font-size: .72rem; line-height: 1.4;
+}
+.co-btn {
+  display: flex; align-items: center; justify-content: center; width: 100%; height: 48px; border: none; border-radius: 12px; background: var(--a); color: #fff;
+  font-weight: 700; font-size: .92rem; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.co-btn:disabled { opacity: .85; }
+.co-btn.co-btn-sm { height: 44px; border-radius: 10px; font-size: .84rem; margin-top: 10px; }
+.co-btn.done { opacity: .4; }
+.co-btn-ghost { background: var(--s3); color: var(--t1); }
+.co-spin { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: authSpin .8s linear infinite; }
+.co-err { margin-top: 10px; color: var(--a); font-size: .78rem; }
+.co-resumen { margin-top: 12px; font-size: .86rem; line-height: 1.5; color: var(--t1); }
+.co-alert { display: flex; align-items: flex-start; gap: 10px; background: var(--s3); border-radius: 12px; padding: 12px; margin-top: 8px; }
+.co-bar { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+.co-at { font-size: .86rem; font-weight: 700; color: var(--t1); }
+.co-ad { font-size: .78rem; color: var(--t3); line-height: 1.45; margin-top: 2px; }
+.co-routine { background: var(--s3); border-radius: 12px; padding: 12px; margin-top: 10px; }
+.co-disc { margin-top: 12px; font-size: .66rem; color: var(--t3); line-height: 1.4; }
+.co-add { background: none; border: none; color: var(--a); font-weight: 700; font-size: .84rem; padding: 4px 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.co-pain { display: flex; align-items: center; gap: 8px; background: var(--s3); border-radius: 10px; padding: 10px; margin-top: 8px; }
+.co-pain-t { font-size: .86rem; font-weight: 600; color: var(--t1); }
+.co-pain-m { font-size: .72rem; color: var(--t3); }
+.co-x { background: none; border: none; color: var(--t3); font-size: 1rem; padding: 4px 6px; cursor: pointer; }
+.co-metrics { display: flex; gap: 12px; }
+.co-metric { flex: 1; background: var(--s3); border-radius: 12px; padding: 14px; }
+.co-mv { font-size: 1.15rem; font-weight: 700; color: var(--t1); }
+.co-ml { font-size: .64rem; font-weight: 600; color: var(--t3); text-transform: uppercase; margin-top: 2px; }
+.co-zones { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.co-zones::-webkit-scrollbar { display: none; }
+.co-zone { flex-shrink: 0; border: none; border-radius: 8px; padding: 6px 10px; background: var(--s3); color: var(--t1); font-size: .78rem; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.co-zone.on { background: var(--a); color: #fff; }
+.co-range { width: 100%; accent-color: var(--a); margin: 6px 0 10px; }
+.co-inp { width: 100%; box-sizing: border-box; background: var(--s3); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--t1); font-size: .9rem; outline: none; }
+.co-inp:focus { border-color: var(--a); }
 .ai-hero {
   background: linear-gradient(135deg, #0d1a2e, #0a0a0a);
   border: 1px solid rgba(79, 140, 255, .2);
