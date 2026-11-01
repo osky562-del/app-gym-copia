@@ -5,63 +5,81 @@
    recentMuscles(days): agrega el volumen por músculo de los últimos N días.
    ══════════════════════════════════════════════ */
 (function () {
-  const SKIN = '#34343d', LINE = '#15151a';
+  // Mismas imagenes que las apps: cuerpo 3D en gris + una mascara por grupo muscular.
+  const MASKS = [
+    ['Piernas', 'piernas'], ['Espalda', 'espalda'], ['Pecho', 'pecho'], ['Core', 'core'],
+    ['Hombros', 'hombros'], ['Bíceps', 'biceps'], ['Tríceps', 'triceps'],
+  ];
+  let current = { id: null, muscles: {} };
+  let selected = null;
 
-  function fillFor(m, muscles, maxV) {
+  const colorOf = m => (typeof MC !== 'undefined' && MC[m]) || '#888888';
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const bigKg = v => (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v)) + ' kg';
+
+  function opacityFor(m, muscles, maxV) {
     const v = muscles[m] || 0;
-    if (!v || maxV <= 0) return `fill="#26262e"`;
-    const base = (typeof MC !== 'undefined' && MC[m]) || '#4f8cff';
-    const op = (0.42 + 0.58 * (v / maxV)).toFixed(2);
-    return `fill="${base}" fill-opacity="${op}"`;
+    if (v <= 0) return 0;
+    const base = Math.min(0.95, Math.max(0.5, 0.5 + 0.45 * (v / maxV)));
+    // Si hay un musculo seleccionado, atenua los demas para destacarlo.
+    if (selected) return m === selected ? 0.98 : base * 0.35;
+    return base;
   }
 
-  // Dibuja una figura. parts mapea zona->grupo muscular (frente vs espalda difieren).
-  function figure(cx, parts, F) {
-    const E = (x, y, rx, ry, f) => `<ellipse cx="${cx + x}" cy="${y}" rx="${rx}" ry="${ry}" ${f} stroke="${LINE}" stroke-width="1.4"/>`;
-    const R = (x, y, w, h, r, f) => `<rect x="${cx + x}" y="${y}" width="${w}" height="${h}" rx="${r}" ${f} stroke="${LINE}" stroke-width="1.4"/>`;
-    const skin = `fill="${SKIN}"`;
-    return `
-      ${E(0, 20, 12, 13, skin)}                            <!-- cabeza -->
-      ${R(-5, 32, 10, 8, 3, skin)}                          <!-- cuello -->
-      ${E(-21, 48, 11, 8, F(parts.sh))}                     <!-- hombro izq -->
-      ${E(21, 48, 11, 8, F(parts.sh))}                      <!-- hombro der -->
-      ${R(-19, 45, 38, (parts.torsoTall ? 30 : 24), 9, F(parts.torso))}  <!-- torso -->
-      ${E(-29, 68, 6.5, 15, F(parts.arm))}                  <!-- brazo sup izq -->
-      ${E(29, 68, 6.5, 15, F(parts.arm))}                   <!-- brazo sup der -->
-      ${E(-32, 94, 5.5, 14, skin)}                          <!-- antebrazo izq -->
-      ${E(32, 94, 5.5, 14, skin)}                           <!-- antebrazo der -->
-      ${R(-14, (parts.torsoTall ? 76 : 70), 28, 30, 6, F(parts.mid))}    <!-- medio (abs/lumbar) -->
-      ${R(-15, 104, 30, 12, 5, skin)}                       <!-- cadera -->
-      ${E(-8, 142, 9.5, 28, F(parts.leg))}                  <!-- muslo izq -->
-      ${E(8, 142, 9.5, 28, F(parts.leg))}                   <!-- muslo der -->
-      ${E(-8, 192, 6.5, 19, F(parts.leg))}                  <!-- gemelo izq -->
-      ${E(8, 192, 6.5, 19, F(parts.leg))}                   <!-- gemelo der -->
-      ${E(-8, 216, 5, 7, skin)}${E(8, 216, 5, 7, skin)}     <!-- pies -->
-    `;
-  }
-
-  function buildSVG(muscles) {
+  function buildMap(muscles) {
     const maxV = Math.max(1, ...Object.values(muscles).map(v => +v || 0));
-    const F = m => fillFor(m, muscles, maxV);
-    const front = figure(66, { sh: 'Hombros', torso: 'Pecho', arm: 'Bíceps', mid: 'Core', leg: 'Piernas', torsoTall: false }, F);
-    const back = figure(194, { sh: 'Hombros', torso: 'Espalda', arm: 'Tríceps', mid: 'Espalda', leg: 'Piernas', torsoTall: true }, F);
-    const lbl = `font-size="11" fill="var(--t3,#7a7a86)" text-anchor="middle" font-weight="700"`;
-    return `<svg viewBox="0 0 260 240" width="100%" style="max-width:340px;display:block;margin:0 auto;">
-      ${front}${back}
-      <text x="66" y="236" ${lbl}>Frente</text>
-      <text x="194" y="236" ${lbl}>Espalda</text>
-    </svg>`;
+    const layers = MASKS.map(([m, file]) => {
+      const url = `img/muscle/mask_${file}.png`;
+      return `<div class="mm-layer" style="background:${colorOf(m)};opacity:${opacityFor(m, muscles, maxV).toFixed(2)};-webkit-mask-image:url(${url});mask-image:url(${url});"></div>`;
+    }).join('');
+    return `<div class="mm-body" onclick="mmSelect(null)"><img src="img/muscle/body_base.png" alt="">${layers}</div>
+      <div class="mm-sides"><span>Frente</span><span>Espalda</span></div>`;
   }
 
   function legend(muscles) {
     const order = Object.entries(muscles).filter(([, v]) => +v > 0).sort((a, b) => b[1] - a[1]);
     if (!order.length) return '';
     const total = order.reduce((s, [, v]) => s + v, 0) || 1;
-    return `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;">` +
-      order.map(([m, v]) => {
-        const c = (typeof MC !== 'undefined' && MC[m]) || '#888';
-        return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--t2,#c8c8d0);background:var(--s2,#1a1a1f);border:1px solid var(--line2,#2a2a32);border-radius:7px;padding:3px 8px;"><span style="width:8px;height:8px;border-radius:50%;background:${c};"></span>${m} ${Math.round(v / total * 100)}%</span>`;
-      }).join('') + `</div>`;
+    return `<div class="mm-legend">` + order.map(([m, v]) => {
+      const on = selected === m;
+      return `<button class="mm-chip${on ? ' on' : ''}" style="${on ? 'background:' + colorOf(m) : ''}" onclick="mmSelect('${m}')"><i style="background:${colorOf(m)}"></i>${esc(m)} ${Math.floor(v / total * 100)}%</button>`;
+    }).join('') + `</div>`;
+  }
+
+  function exercisesFor(group) {
+    if (typeof workouts === 'undefined') return [];
+    const cut = new Date(); cut.setDate(cut.getDate() - 30); cut.setHours(0, 0, 0, 0);
+    const m = {};
+    workouts.forEach(w => {
+      if (new Date(w.date + 'T00:00:00') < cut) return;
+      (w.exercises || []).forEach(e => {
+        if (e.cardio || getMuscle(e.ex) !== group) return;
+        m[e.ex] = (m[e.ex] || 0) + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1);
+      });
+    });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }
+
+  function detail(muscles) {
+    if (!selected) return '';
+    const g = selected, c = colorOf(g), vol = muscles[g] || 0;
+    const total = Object.values(muscles).reduce((a, b) => a + (+b || 0), 0) || 1;
+    const exs = exercisesFor(g);
+    const rows = exs.length
+      ? exs.slice(0, 6).map(([n, v]) => `<div class="mm-ex"><span>${esc(n)}</span><b>${bigKg(v)}</b></div>`).join('')
+      : `<div class="mm-none">Sin ejercicios en los últimos 30 días.</div>`;
+    return `<div class="mm-detail" style="background:color-mix(in srgb, ${c} 10%, transparent)">
+      <div class="mm-dh"><i style="background:${c}"></i><strong>${esc(g)}</strong><span style="color:${c}">${bigKg(vol)} · ${Math.floor(vol / total * 100)}%</span></div>${rows}</div>`;
+  }
+
+  window.mmSelect = function (m) {
+    selected = m && selected !== m ? m : null;
+    draw();
+  };
+
+  function draw() {
+    const el = document.getElementById(current.id);
+    if (el) el.innerHTML = buildMap(current.muscles) + legend(current.muscles) + detail(current.muscles);
   }
 
   function recentMuscles(days) {
@@ -90,7 +108,9 @@
       el.innerHTML = `<div style="color:var(--t3);font-size:.85rem;text-align:center;padding:14px;">Entrena para ver aquí los músculos que trabajas 💪</div>`;
       return;
     }
-    el.innerHTML = buildSVG(muscles) + legend(muscles);
+    current = { id: containerId, muscles };
+    if (selected && !muscles[selected]) selected = null;
+    draw();
   }
 
   window.renderMuscleMap = renderMuscleMap;

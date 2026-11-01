@@ -156,20 +156,23 @@ const Admin = (function() {
   let _tapCount = 0;
   let _tapTimer = null;
   function attachPinTrigger() {
-    const av = document.querySelector('.p-av');
+    const av = document.getElementById('npAv');
     if (!av || av._admPinAttached) return;
     av._admPinAttached = true;
     av.style.cursor = 'pointer';
     av.addEventListener('click', () => {
       // El trigger solo se activa para el UID admin, y solo si está bloqueado.
-      if (!isAdminUser() || isUnlocked()) { _tapCount = 0; return; }
+      // Con cuenta del NAS no hay panel de usuarios: se avisa en vez de no hacer nada.
+      const nasUser = typeof NAS !== 'undefined' && NAS.user && NAS.user();
+      if ((!isAdminUser() && !nasUser) || isUnlocked()) { _tapCount = 0; return; }
       _tapCount++;
       if (_tapTimer) clearTimeout(_tapTimer);
       _tapTimer = setTimeout(() => { _tapCount = 0; }, 2000);
       if (_tapCount >= 5) {
         _tapCount = 0;
         clearTimeout(_tapTimer);
-        _openPinPrompt();
+        if (isAdminUser()) _openPinPrompt();
+        else if (typeof toast === 'function') toast('El panel admin solo funciona con tu cuenta de Firebase. Las cuentas del NAS ya tienen Pro.', 'ok');
       }
     });
   }
