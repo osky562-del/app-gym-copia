@@ -1,97 +1,39 @@
-/* ══ POST-WORKOUT SUMMARY ══ */
+/* ══ POST-WORKOUT SUMMARY (SummaryOverlay de LiveScreen.kt:643-713) ══ */
 function showSummary(wk, xpGained, newPRs) {
   window.__lastSummaryWk = wk;   // para el botón "Compartir imagen"
-  const _st = document.querySelector('#summaryMode .sum-title');
-  if (_st) _st.innerHTML = wk.name ? `${wk.name} <em>✓</em>` : 'Entreno <em>completado</em> 💪';
+  const t = (es) => (typeof I18N !== 'undefined' && I18N.t) ? I18N.t(es) : es;
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const exs = wk.exercises || [];
+  const name = (wk.name || '').trim();
+  $('sumTitle').textContent = name ? name + ' ✓' : t('Entreno completado');
   const totalSets = exs.reduce((s, e) => s + (+e.sets || 0), 0);
-  const totalVol = exs.reduce((s, e) => s + (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1), 0);
-  const dur = wk.duration ? wk.duration + 'min' : '—';
+  const totalVol = exs.reduce((s, e) => s + (+e.kg || 0) * Math.max(1, +e.sets || 1) * Math.max(1, +e.reps || 1), 0);
+  const dur = (+wk.duration || 0) + 'min';
+  const cal = wk.calories != null ? wk.calories : (+wk.duration || 0) * 6;
 
-  const _cal = wk.calories || (typeof estimateCalories === 'function' ? estimateCalories(wk.duration) : 0);
   $('sumStats').innerHTML = [
-    { v: dur, l: 'Duración', c: 'var(--a)' },
-    { v: exs.length, l: 'Ejercicios', c: 'var(--green)' },
-    { v: totalSets, l: 'Series', c: 'var(--purple)' },
-    { v: big(totalVol) + 'kg', l: 'Volumen', c: 'var(--amber)' },
-    { v: _cal + ' kcal', l: 'Calorías', c: 'var(--red, #ff6b6b)' },
-  ].map(s => `<div class="sum-stat" style="--sc:${s.c}">
-<div class="sum-stat-v">${s.v}</div>
-<div class="sum-stat-l">${s.l}</div>
-  </div>`).join('');
+    { v: dur, l: 'Duración' },
+    { v: exs.length, l: 'Ejercicios' },
+    { v: totalSets, l: 'Series' },
+    { v: big(totalVol) + 'kg', l: 'Volumen' },
+    { v: cal, l: 'Calorías' },
+  ].map(s => `<div class="sum-stat"><div class="sum-stat-v">${s.v}</div><div class="sum-stat-l">${t(s.l)}</div></div>`).join('');
 
-  $('sumPR').innerHTML = newPRs.length ? `
-<div class="sum-pr">
-  <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-  <div>
-    <div class="sum-pr-t">🏆 ${newPRs.length} récord${newPRs.length > 1 ? 's' : ''} personal${newPRs.length > 1 ? 'es' : ''}</div>
-    <div class="sum-pr-s">${newPRs.join(' · ')}</div>
-  </div>
+  const prs = newPRs || [];
+  $('sumPR').innerHTML = prs.length ? `<div class="sum-pr">
+  <div class="sum-pr-t">${prs.length} ${t('récords personales 🏆')}</div>
+  ${prs.slice(0, 5).map(p => `<div class="sum-pr-s">${esc(p)}</div>`).join('')}
 </div>` : '';
 
-  const xp = calcXp(), lv = getLvl(xp);
-  $('sumXP').innerHTML = `
-<div class="sum-xp-ic">+${xpGained}</div>
-<div>
-  <div class="sum-xp-v">+${xpGained} XP ganados</div>
-  <div class="sum-xp-s">Nivel ${lv.lvl} · ${lv.title} · Total ${xp.toLocaleString()} XP</div>
-</div>`;
+  $('sumXP').textContent = `+${xpGained} ${t('XP ganados')}`;
 
-  $('sumExs').innerHTML = exs.map(e => `
-<div class="sum-ex">
-  <div class="sum-ex-n">${e.ex}</div>
-  <div class="sum-ex-st">${e.sets}×${e.reps}</div>
-  <div class="sum-ex-kg">${e.kg ? e.kg + 'kg' : '—'}</div>
-</div>`).join('');
-
-  // Pro insights: muscle breakdown + recovery estimation
-  const proInsights = $('sumProInsights');
-  if (proInsights) {
-    if (Pro.can('advanced_analytics')) {
-      const muscles = getWorkoutMuscles(wk);
-      const rpe = +wk.rpe || 7;
-      const sorted = Object.entries(muscles).sort((a, b) => b[1] - a[1]);
-      const totalMVol = sorted.reduce((s, [, v]) => s + v, 0) || 1;
-
-      let html = '<div class="sum-pro-section">';
-      html += '<div class="sum-pro-title">Músculos trabajados</div>';
-      html += '<div class="sum-pro-muscles">';
-      sorted.forEach(([m, v]) => {
-        const pct = Math.round(v / totalMVol * 100);
-        const color = MC[m] || 'var(--a)';
-        html += `<div class="sum-muscle-row">
-          <span class="sum-muscle-dot" style="background:${color}"></span>
-          <span class="sum-muscle-name">${m}</span>
-          <div class="sum-muscle-bar"><div class="sum-muscle-fill" style="width:${pct}%;background:${color}"></div></div>
-          <span class="sum-muscle-pct">${pct}%</span>
-        </div>`;
-      });
-      html += '</div>';
-
-      // Recovery estimation
-      html += '<div class="sum-pro-title" style="margin-top:14px;">Recuperación estimada</div>';
-      html += '<div class="sum-pro-recovery">';
-      sorted.slice(0, 4).forEach(([m]) => {
-        const hrs = estimateRecovery(m, muscles[m], rpe);
-        const readyDate = new Date(Date.now() + hrs * 3600000);
-        const dayName = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][readyDate.getDay()];
-        html += `<div class="sum-rec-chip">
-          <span class="sum-rec-muscle">${m}</span>
-          <span class="sum-rec-time">${hrs}h → ${dayName}</span>
-        </div>`;
-      });
-      html += '</div></div>';
-      proInsights.innerHTML = html;
-    } else {
-      proInsights.innerHTML = `<div class="sum-pro-upsell" onclick="Pro.showUpgradeModal('advanced_analytics')">
-        <span>Desbloquea análisis muscular y recuperación</span>
-        <span class="sum-pro-upsell-badge">PRO</span>
-      </div>`;
-    }
-  }
+  const conCuenta = typeof NAS !== 'undefined' && NAS.enabled && NAS.enabled() && NAS.loggedIn && NAS.loggedIn();
+  const saved = $('sumSaved');
+  saved.textContent = conCuenta ? t('Guardado en el móvil · se copia al NAS') : t('Guardado en este dispositivo');
+  saved.classList.toggle('ok', !!conCuenta);
 
   $('summaryMode').classList.add('show');
-  if (newPRs.length > 0 || exs.length >= 4) setTimeout(launchConfetti, 350);
+  setTimeout(launchConfetti, 350);   // confeti siempre, como Android
   vib([80, 40, 200]);
 }
 function closeSummary() {

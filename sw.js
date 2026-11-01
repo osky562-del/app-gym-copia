@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ko95fit-v12';
+const CACHE_NAME = 'ko95fit-v13';
 const ASSETS = [
   '/',
   '/index.html',

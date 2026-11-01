@@ -3,7 +3,6 @@ function renderDash() {
   renderNativeHome();
   updateGreeting();
   setTimeout(updateStreakAnim, 100);
-  if (typeof renderInsights === 'function') renderInsights();
   const now = new Date();
   const _loc = (typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES';
   let _wd = now.toLocaleDateString(_loc, { weekday: 'long' });
@@ -54,16 +53,39 @@ function renderDash() {
 /* ══ INICIO (mismo orden y contenido que las apps nativas) ══ */
 function nhVol(w) { return (w.exercises || []).reduce((s, e) => s + (e.isCardio ? 0 : (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1)), 0); }
 function nhBig(v) { return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v)); }
+/* Fecha local YYYY-MM-DD (toISOString() es UTC y en España desplaza un día por la noche). */
+function nhYmd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function nhAddDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+/* Saludo como HomeViewModel.kt: nombre del perfil → email de la cuenta → "Atleta". */
+function nhGreetingName() {
+  const n = (typeof getUserName === 'function') ? getUserName() : (STORE.get('name') || '');
+  if (n) return n;
+  try {
+    if (localStorage.getItem('ko95_sess')) {
+      const u = JSON.parse(localStorage.getItem('ko95_nasUser') || 'null');
+      if (u && u.email) return u.email;
+    }
+  } catch (e) { }
+  try { if (typeof fbUser !== 'undefined' && fbUser && fbUser.email) return fbUser.email; } catch (e) { }
+  return '';
+}
+/* Pro.showAds de Android: Free y Pro ven el hueco de anuncio; Pro+ y Élite no. */
+function nhShowAds() {
+  try { const p = Pro.getPlanName(); return p === 'free' || p === 'pro'; } catch (e) { return true; }
+}
 function renderNativeHome() {
   if (!$('nhStreak')) return;
   const xp = calcXp(), lv = getLvl(xp), streak = calcStreak();
   const loc0 = (typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES';
-  $('nhName').textContent = getUserName() || 'Atleta';
+  let isPro = false; try { isPro = Pro.isPro(); } catch (e) { }
+  $('nhName').textContent = nhGreetingName() || 'Atleta';
+  const pb = $('nhProBadge'); if (pb) pb.style.display = isPro ? '' : 'none';
+  const ad = $('nhAd'); if (ad) ad.style.display = nhShowAds() ? '' : 'none';
   const now = new Date();
   let wd = now.toLocaleDateString(loc0, { weekday: 'long' }); wd = wd.charAt(0).toUpperCase() + wd.slice(1);
   $('nhDate').textContent = wd + ', ' + now.toLocaleDateString(loc0, { day: 'numeric', month: 'long' });
   // Tarjeta de XP (nivel, titulo, barra) como en Android
-  $('nhLvBadge').textContent = 'Nivel ' + lv.lvl;
+  const lvn = $('nhLvN'); if (lvn) lvn.textContent = lv.lvl; else $('nhLvBadge').textContent = 'Nv. ' + lv.lvl;
   $('nhLvl').textContent = lv.title;
   $('nhXp').textContent = xp.toLocaleString() + ' XP';
   const pct = lv.max === Infinity ? 100 : Math.round((xp - lv.min) / (lv.max - lv.min) * 100);
@@ -78,7 +100,7 @@ function renderNativeHome() {
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
   $('nhWeekStrip').innerHTML = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(t0); d.setDate(d.getDate() - (6 - i));
-    const ds = d.toISOString().split('T')[0], hit = workouts.some(w => w.date === ds), isT = i === 6;
+    const ds = nhYmd(d), hit = workouts.some(w => w.date === ds), isT = i === 6;
     let lbl = d.toLocaleDateString(loc0, { weekday: 'short' }).replace('.', ''); lbl = lbl.charAt(0).toUpperCase() + lbl.slice(1);
     return `<div class="nh-wd"><div class="nh-wdbar${hit ? ' hit' : ''}${isT ? ' today' : ''}"></div><span${isT ? ' class="today"' : ''}>${lbl}</span></div>`;
   }).join('');
@@ -86,44 +108,60 @@ function renderNativeHome() {
   let ex = 0, vol = 0, sr = 0, rc = 0;
   workouts.forEach(w => { if (+w.rpe) { sr += +w.rpe; rc++; } ex += (w.exercises || []).length; vol += nhVol(w); });
   $('nhS').textContent = workouts.length;
-  $('nhV').textContent = nhBig(vol) + ' kg';
+  $('nhV').textContent = big(vol);
   $('nhE').textContent = ex;
   $('nhR').textContent = rc ? (sr / rc).toFixed(1) : '—';
 
-  // Esta semana: ultimos 7 dias, variacion frente a los 7 anteriores y barras por dia.
+  // Comparativa semanal (HomeViewModel.kt): semanas de LUNES a LUNES, esta vs la anterior.
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const thisMon = nhAddDays(today, -((today.getDay() + 6) % 7));
+  const weekStats = weeksAgo => {
+    const s = nhYmd(nhAddDays(thisMon, -7 * weeksAgo)), e = nhYmd(nhAddDays(thisMon, -7 * weeksAgo + 7));
+    let v = 0, n = 0;
+    workouts.forEach(w => { if (w.date >= s && w.date < e) { v += nhVol(w); n++; } });
+    return { v, n };
+  };
+  const cur = weekStats(0), prev = weekStats(1);
+  const hasPrevWeek = prev.n > 0 || prev.v > 0;
+  const volDelta = prev.v > 0 ? Math.round((cur.v - prev.v) / prev.v * 100) : 0;
+  const sessDelta = cur.n - prev.n;
+  const topM = getTopMuscles(4);
+
+  // Sin Pro: banner bloqueado (ProLockBanner) si hay algo que enseñar.
+  const lock = $('nhProLock');
+  if (lock) lock.style.display = (!isPro && (hasPrevWeek || topM.length)) ? '' : 'none';
+
   const wk = $('nhWeek');
-  wk.style.display = workouts.length ? '' : 'none';
-  if (workouts.length) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const days = [0, 0, 0, 0, 0, 0, 0];
-    let thisV = 0, lastV = 0, count = 0;
-    workouts.forEach(w => {
-      const d = new Date(w.date + 'T00:00:00');
-      const diff = Math.round((today - d) / 86400000);
-      if (diff >= 0 && diff < 7) { const v = nhVol(w); thisV += v; count++; days[6 - diff] += v; }
-      else if (diff >= 7 && diff < 14) lastV += nhVol(w);
-    });
-    const delta = lastV > 0 ? Math.round((thisV - lastV) / lastV * 100) : 0;
-    const mx = Math.max(...days, 1);
-    const loc = (typeof I18N !== 'undefined' && I18N.locale) ? I18N.locale() : 'es-ES';
-    const bars = days.map((v, i) => {
-      const d = new Date(today); d.setDate(d.getDate() - (6 - i));
-      const lbl = d.toLocaleDateString(loc, { weekday: 'narrow' }).toUpperCase();
-      return `<div class="nh-bar"><i style="height:${Math.max(3, Math.round(v / mx * 46))}px;opacity:${i === 6 ? 1 : .45}"></i><span>${lbl}</span></div>`;
-    }).join('');
-    wk.innerHTML = `<div class="nh-wh"><div class="nh-ct">Esta semana</div>${delta ? `<div class="nh-delta" style="color:${delta > 0 ? '#2dd98a' : '#ff6b6b'}">${delta > 0 ? '↗' : '↘'} ${Math.abs(delta)}%</div>` : ''}</div>
-      <div class="nh-wv">${count} entrenos · ${nhBig(thisV)} kg</div><div class="nh-bars">${bars}</div>`;
+  if (wk) {
+    wk.style.display = (isPro && hasPrevWeek) ? '' : 'none';
+    wk.innerHTML = (isPro && hasPrevWeek) ? `<span class="nh-wc-ic">${volDelta >= 0 ? '📈' : '📉'}</span>
+      <div style="flex:1;min-width:0;"><div class="nh-wc-t${volDelta >= 0 ? ' up' : ''}"><span>Esta semana</span>: ${volDelta >= 0 ? '+' : ''}${volDelta}% <span>volumen</span></div>
+      <div class="nh-cs">${cur.n} <span>sesiones</span> · ${sessDelta >= 0 ? '+' : ''}${sessDelta} <span>vs anterior</span></div></div>` : '';
   }
 
-  // Recientes
-  $('nhRecentTitle').style.display = workouts.length ? '' : 'none';
+  // ✨ Para ti (Pro): lo pinta insights.js en #nhInsights
+  if (typeof renderInsights === 'function') renderInsights();
+
+  // Músculos esta semana (Pro): top 4 grupos de los ultimos 7 dias
+  const mt = $('nhMusclesT'), mc = $('nhMuscles');
+  if (mt && mc) {
+    const show = isPro && topM.length > 0;
+    mt.style.display = show ? '' : 'none';
+    mc.style.display = show ? '' : 'none';
+    mc.innerHTML = show ? topM.map(([m, c]) => `<div class="nh-chip"><i style="background:${MC[m] || 'var(--a)'}"></i><span>${m}</span>&nbsp;×${c}</div>`).join('') : '';
+  }
+
+  // Recientes (RecentCard de HomeScreen.kt)
+  $('nhRecentTitle').style.display = '';
   $('nhRecent').innerHTML = workouts.length
     ? workouts.slice(0, 5).map(w => {
-      const exs = w.exercises || [], sets = exs.reduce((s, e) => s + (+e.sets || 0), 0);
-      return `<div class="nh-rec" onclick="goPage('hist')"><div style="min-width:0;flex:1;"><div class="nh-rt">${w.name || 'Entreno'}</div>
-        <div class="nh-cs">${w.date} · ${exs.length} ej · ${sets} series</div></div><div class="nh-rv">${nhBig(nhVol(w))} kg</div></div>`;
+      const exs = w.exercises || [];
+      const meta = [w.duration ? '⏱ ' + w.duration + 'min' : '', +w.rpe ? 'RPE ' + Math.round(+w.rpe) : '', big(nhVol(w)) + ' kg'].filter(Boolean).join(' · ');
+      const pills = exs.slice(0, 6).map(e => `<span class="nh-pill">${e.ex}${+e.kg > 0 ? ' ' + big(+e.kg) + 'kg' : ''}</span>`).join('');
+      return `<div class="nh-rec"><div class="nh-rec-h"><div class="nh-rt">${w.name || w.date}</div><span class="nh-cs" style="margin:0;flex-shrink:0;">${exs.length} <span>ej.</span></span></div>
+        <div class="nh-cs">${meta}</div>${exs.length ? `<div class="nh-pills">${pills}</div>` : ''}</div>`;
     }).join('')
-    : '<div class="nh-empty">Aún no hay entrenos. ¡Empieza el primero!</div>';
+    : `<div class="nh-card nh-rempty"><div class="nh-rempty-ic">💪</div><div class="nh-rempty-t">Sin sesiones aún</div><div class="nh-cs">Registra tu primer entrenamiento y verás aquí tu progreso.</div></div>`;
 }
 
 /* ══ STREAK ANIMATION ══ */
@@ -191,8 +229,10 @@ function renderDashProCard() {
 /* ══ MUSCLE FREQUENCY CHIPS ══ */
 function getTopMuscles(n) {
   const counts = {};
-  const a7 = new Date(); a7.setDate(a7.getDate() - 7);
-  workouts.filter(w => new Date(w.date) >= a7).forEach(w => {
+  // Ultimos 7 dias comparando strings YYYY-MM-DD en fecha local (new Date('YYYY-MM-DD') es UTC)
+  const a7 = new Date(); a7.setHours(0, 0, 0, 0); a7.setDate(a7.getDate() - 7);
+  const d7 = nhYmd(a7);
+  workouts.filter(w => (w.date || '') >= d7).forEach(w => {
     (w.exercises || []).forEach(e => {
       const m = getMuscle(e.ex);
       counts[m] = (counts[m] || 0) + 1;

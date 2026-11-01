@@ -1,37 +1,8 @@
 /* ══ RUTINA IA ══ */
 let rutinaGenerada = null; // {nombre, dias:[{titulo, ejercicios:[{ex,sets,reps,kg,nota}]}]}
-let _rutinaProgressInt = null;
 
-function _rutinaParamsHash(params) {
-  return btoa(unescape(encodeURIComponent(JSON.stringify(params)))).slice(0, 24);
-}
-
-function _showRutinaProgress(stat, dias) {
-  const steps = [
-    'Analizando tu perfil físico…',
-    'Estudiando tu historial de entrenos…',
-    'Identificando músculos a priorizar…',
-    `Diseñando día 1 de ${dias}…`,
-    `Diseñando día 2 de ${dias}…`,
-    dias >= 3 ? `Diseñando día 3 de ${dias}…` : null,
-    dias >= 4 ? `Diseñando día 4 de ${dias}…` : null,
-    dias >= 5 ? `Diseñando día 5 de ${dias}…` : null,
-    dias >= 6 ? `Diseñando día 6 de ${dias}…` : null,
-    'Optimizando series y repeticiones…',
-    'Aplicando técnicas avanzadas…',
-    'Casi listo…'
-  ].filter(Boolean);
-  let i = 0;
-  stat.textContent = steps[0];
-  _rutinaProgressInt = setInterval(() => {
-    i = (i + 1) % steps.length;
-    stat.textContent = steps[i];
-  }, 2200);
-}
-
-function _stopRutinaProgress() {
-  if (_rutinaProgressInt) { clearInterval(_rutinaProgressInt); _rutinaProgressInt = null; }
-}
+/* El generador es local e instantáneo: sin pasos simulados (paridad con Android). */
+function _stopRutinaProgress() { }
 
 async function generarRutinaIA() {
   if (!Pro.requirePro('ai_rutina')) return;
@@ -142,7 +113,7 @@ function guardarDiaRutina(diaIdx) {
   custom.push({ key: newKey, titulo: dia.titulo, ejercicios: dia.ejercicios });
   STORE.set('customTpl', custom);
 
-  // Refresh sheet list
+  // Refrescar "Mis rutinas" en Entreno
   renderTplList();
   toast('«' + dia.titulo + '» guardado en Rutinas ✓', 'good');
 }
@@ -157,20 +128,15 @@ function usarDiaRutina(diaIdx) {
   if (!rutinaGenerada) return;
   const dia = rutinaGenerada.dias[diaIdx];
   if (!dia) return;
-  // Load into planExs and open plan mode
-  planExs = dia.ejercicios.map(e => ({
-    name: e.ex,
-    sets: +e.sets || 3,
-    reps: +e.reps || 10,
-    kg: getLastKg(e.ex) || '',
-    restSec: 90
-  }));
+  // Cargar en el plan y abrir Entreno
   openPlan();
-  // Slight delay to let plan render
-  setTimeout(() => {
-    renderPlanList();
-    toast('«' + dia.titulo + '» cargado ✓', 'good');
-  }, 100);
+  planLoadItems(_rutinaDayItems(dia), dia.titulo || '');
+  STORE.set('lastRoutineChange', new Date().toISOString().split('T')[0]);
+  if (typeof openPlanTab === 'function') openPlanTab();
+}
+/* Ejercicios de un día generado → items del plan (cardio automático si lo es en la base). */
+function _rutinaDayItems(dia) {
+  return (dia.ejercicios || []).map(e => _mkPlanItem(e.ex, +e.sets || 3, +e.reps || 10, getLastKg(e.ex) || ''));
 }
 
 /* Título de una rutina guardada (para el nombre del entreno al encadenar). */
@@ -179,36 +145,10 @@ function _customTplTitle(key) {
   return t ? t.titulo : '';
 }
 
+/* La hoja "Rutinas" ya no existe: las plantillas y "Mis rutinas" se ven en línea en Entreno
+   (renderPlanTplInline). Se mantiene el nombre porque la sincronización con el NAS lo llama. */
 function renderTplList() {
-  const list = $('tplList');
-  if (!list) return;
-  // Encadenar: las plantillas/rutinas que toques se SUMAN al plan en vez de reemplazarlo.
-  const chainOn = typeof planChain !== 'undefined' && planChain;
-  let html = `<div style="display:flex;align-items:center;gap:10px;padding:4px 4px 10px;">
-  <button onclick="togglePlanChain()" style="border:none;border-radius:100px;padding:7px 14px;font-weight:800;font-size:.8rem;cursor:pointer;background:${chainOn ? 'var(--a)' : 'var(--c2)'};color:${chainOn ? '#fff' : 'var(--t1)'};">🔗 Encadenar</button>
-  <div style="flex:1;font-size:.68rem;color:var(--t3);line-height:1.35;">${chainOn ? 'Toca varias plantillas o rutinas: se añaden una detrás de otra en el mismo entreno.' : 'Activa para juntar varias rutinas en un mismo entreno.'}</div>
-</div>`;
-  // Default templates
-  html += `
-<div class="sh-card" onclick="loadTpl(1)"><div class="sh-ct">💪 Día 1 — Pecho + Tríceps</div><div class="sh-cd">Banca · Inclinado · Aperturas · Fondos · Extensión · Francés</div></div>
-<div class="sh-card" onclick="loadTpl(2)"><div class="sh-ct">🔗 Día 2 — Espalda + Bíceps</div><div class="sh-cd">Dominadas · Remo · Jalón · Curl barra · Curl alterno · Concentrado</div></div>
-<div class="sh-card" onclick="loadTpl(3)"><div class="sh-ct">🦵 Día 3 — Piernas</div><div class="sh-cd">Sentadilla · Prensa · Rumano · Femoral · Extensión · Gemelos</div></div>
-<div class="sh-card" onclick="loadTpl(4)"><div class="sh-ct">🛡 Día 4 — Hombros + Core</div><div class="sh-cd">Militar · Laterales · Frontales · Pájaros · Encogimientos · Crunch</div></div>`;
-  // Custom (IA generated)
-  const custom = STORE.get('customTpl') || [];
-  if (custom.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:.65rem;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.08em;">✦ Mis rutinas</div>`;
-    custom.forEach(t => {
-      html += `<div class="sh-card" style="border-color:rgba(79,140,255,.25);" onclick="loadTplCustom(${t.key})">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div class="sh-ct" style="color:var(--a)">${t.titulo}</div>
-      <button onclick="event.stopPropagation();deleteCustomTpl(${t.key})" style="background:none;border:none;color:var(--t4);font-size:1rem;cursor:pointer;padding:0 2px;">✕</button>
-    </div>
-    <div class="sh-cd">${(t.ejercicios || []).map(e => e.ex).join(' · ')}</div>
-  </div>`;
-    });
-  }
-  list.innerHTML = html;
+  if (typeof renderPlanTplInline === 'function') renderPlanTplInline();
 }
 
 function loadTplCustom(key) {
@@ -220,15 +160,113 @@ function loadTplCustom(key) {
     TPL[key] = t.ejercicios.map(e => ({ ex: e.ex, sets: e.sets, reps: e.reps, kg: '', s: e.sets, r: e.reps }));
   }
   loadTpl(key);
+  // Cargar una rutina guardada cuenta como "cambio de rutina" (CustomTemplates.markChanged).
+  STORE.set('lastRoutineChange', new Date().toISOString().split('T')[0]);
+  if (typeof renderPlanProCards === 'function') renderPlanProCards();
 }
 
+/* ✕ en "Mis rutinas": borra directamente, sin confirmación (como Android). */
 function deleteCustomTpl(key) {
-  if (!confirm('¿Eliminar esta rutina?')) return;
   const custom = (STORE.get('customTpl') || []).filter(t => t.key !== key);
   STORE.set('customTpl', custom);
   delete TPL[key];
   renderTplList();
-  toast('Rutina eliminada');
+}
+
+/* ══ GENERADOR DE RUTINA SOBRE ENTRENO (RoutineScreen.kt) ══
+   Hoja/modal que no sale de la pestaña Entreno. "Usar ahora ▶" carga el día en el plan y cierra. */
+const RG_FOCUS = ['hipertrofia', 'fuerza', 'perdida de grasa', 'resistencia'];
+const RG_FOCUS_LBL = { 'hipertrofia': 'Hipertrofia', 'fuerza': 'Fuerza', 'perdida de grasa': 'Pérdida de grasa', 'resistencia': 'Resistencia' };
+const RG_EQUIP = ['gimnasio completo', 'casa', 'mancuernas', 'peso corporal'];
+const RG_EQUIP_LBL = { 'gimnasio completo': 'Gimnasio completo', 'casa': 'Casa', 'mancuernas': 'Mancuernas', 'peso corporal': 'Peso corporal' };
+let rgState = { dias: 4, enfoque: 'hipertrofia', equipo: 'gimnasio completo', routine: null, savedDays: {}, savedAll: false, failed: false };
+
+function openRoutineGen() {
+  if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('ai_rutina')) {
+    if (Pro.showUpgradeModal) Pro.showUpgradeModal('ai_rutina');
+    return;
+  }
+  renderRoutineGen();
+  $('rgOv').classList.add('on');
+}
+function closeRoutineGen() { $('rgOv').classList.remove('on'); }
+function rgSet(k, v) { rgState[k] = v; renderRoutineGen(); }
+function renderRoutineGen() {
+  const t = (es) => (typeof I18N !== 'undefined' && I18N.t) ? I18N.t(es) : es;
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  $('rgDays').innerHTML = [3, 4, 5, 6].map(n => `<button class="rg-chip${rgState.dias === n ? ' on' : ''}" onclick="rgSet('dias',${n})">${n}</button>`).join('');
+  $('rgFocus').innerHTML = RG_FOCUS.map(f => `<button class="rg-chip${rgState.enfoque === f ? ' on' : ''}" onclick="rgSet('enfoque','${f}')">${t(RG_FOCUS_LBL[f])}</button>`).join('');
+  $('rgEquip').innerHTML = RG_EQUIP.map(f => `<button class="rg-chip${rgState.equipo === f ? ' on' : ''}" onclick="rgSet('equipo','${f}')">${t(RG_EQUIP_LBL[f])}</button>`).join('');
+  $('rgGenBtn').textContent = rgState.routine ? t('Generar otra') : t('Generar rutina personalizada');
+  $('rgStatus').textContent = rgState.failed ? t('No se pudo generar la rutina. Inténtalo de nuevo.') : '';
+  const r = rgState.routine;
+  if (!r) { $('rgResult').innerHTML = ''; return; }
+  const totalEx = r.dias.reduce((s, d) => s + (d.ejercicios || []).length, 0);
+  const partial = r.dias.length < rgState.dias;
+  $('rgResult').innerHTML = `
+<div class="rg-done">${partial ? `${r.dias.length}/${rgState.dias} ${t('días generados — pulsa otra vez para reintentar')}` : t('Rutina generada ✓')}</div>
+<div class="rg-rname">${esc(r.nombre)}</div>
+<div class="rg-rmeta">${r.dias.length} ${t('días por semana').toLowerCase()} · ${totalEx} ${t('ejercicios')}</div>
+<button class="rg-saveall${rgState.savedAll ? ' done' : ''}" onclick="rgSaveAll()"${rgState.savedAll ? ' disabled' : ''}>${rgState.savedAll ? t('Guardado en Mis rutinas ✓') : '💾 ' + t('Guardar los días en Mis rutinas')}</button>
+${r.dias.map((dia, di) => `
+<div class="rg-day">
+  <div class="rg-day-head">
+    <div style="flex:1;min-width:0;"><div class="rg-day-t">${esc(dia.titulo)}</div><div class="rg-day-m">${(dia.ejercicios || []).length} ${t('ejercicios')}</div></div>
+    <button class="rg-day-save" onclick="rgSaveDay(${di})">${rgState.savedDays[di] ? '✓' : '💾'}</button>
+    <button class="rg-day-use" onclick="rgUseDay(${di})">${t('Usar ahora')} ▶</button>
+  </div>
+  ${(dia.ejercicios || []).map((ex, ei) => `<div class="rg-ex"><span class="rg-ex-n">${ei + 1}</span><span>${esc(ex.ex)} · ${ex.sets}×${ex.reps}${ex.nota ? ' · ' + esc(ex.nota) : ''}</span></div>`).join('')}
+</div>`).join('')}`;
+}
+function rgGenerate() {
+  if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('ai_rutina')) { closeRoutineGen(); if (Pro.showUpgradeModal) Pro.showUpgradeModal('ai_rutina'); return; }
+  const btn = $('rgGenBtn');
+  btn.disabled = true;
+  btn.textContent = (typeof I18N !== 'undefined' && I18N.t) ? I18N.t('Generando tu rutina…') : 'Generando tu rutina…';
+  const perfil = STORE.get('perfil') || {};
+  setTimeout(() => {
+    let r = null;
+    try { r = EvidenceCoach.routine(rgState.dias, rgState.enfoque, rgState.equipo, workouts, perfil); } catch (e) { r = null; }
+    btn.disabled = false;
+    rgState.failed = !r || !r.dias || !r.dias.length;
+    rgState.routine = rgState.failed ? null : r;
+    rgState.savedDays = {}; rgState.savedAll = false;
+    if (!rgState.failed) rutinaGenerada = r;   // comparte el almacenamiento con guardarDiaRutina
+    renderRoutineGen();
+  }, 50);
+}
+function rgSaveDay(di) {
+  if (!rgState.routine) return;
+  rutinaGenerada = rgState.routine;
+  _rgSaveDaySilent(di);
+  rgState.savedDays[di] = true;
+  renderRoutineGen();
+}
+function rgSaveAll() {
+  if (!rgState.routine) return;
+  rutinaGenerada = rgState.routine;
+  rgState.routine.dias.forEach((_, i) => { if (!rgState.savedDays[i]) { _rgSaveDaySilent(i); rgState.savedDays[i] = true; } });
+  rgState.savedAll = true;
+  renderRoutineGen();
+}
+/* Guarda un día en "Mis rutinas" sin toast (el botón pasa a ✓). */
+function _rgSaveDaySilent(di) {
+  const dia = rgState.routine.dias[di];
+  if (!dia) return;
+  const existingKeys = Object.keys(TPL).map(Number);
+  const newKey = Math.max(...existingKeys, 100) + 1;
+  TPL[newKey] = dia.ejercicios.map(e => ({ ex: e.ex, sets: e.sets, reps: e.reps, kg: '', s: e.sets, r: e.reps }));
+  const custom = STORE.get('customTpl') || [];
+  custom.push({ key: newKey, titulo: dia.titulo, ejercicios: dia.ejercicios });
+  STORE.set('customTpl', custom);
+  renderTplList();
+}
+function rgUseDay(di) {
+  const dia = rgState.routine && rgState.routine.dias[di];
+  if (!dia) return;
+  planLoadItems(_rutinaDayItems(dia), dia.titulo || '');
+  STORE.set('lastRoutineChange', new Date().toISOString().split('T')[0]);
+  closeRoutineGen();
 }
 
 // Load custom tpls into TPL on init

@@ -12,9 +12,11 @@
     return [start, end];
   }
   function inRange(dateStr, r) { const d = new Date(dateStr + 'T00:00:00'); return d >= r[0] && d < r[1]; }
+  // Volumen como Workout.volume de Android: el cardio no suma.
+  function exVol(e) { return e.isCardio ? 0 : (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1); }
   function monthVolume(offset) {
     const r = monthRange(offset); let v = 0;
-    workouts.forEach(w => { if (inRange(w.date, r)) (w.exercises || []).forEach(e => v += (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1)); });
+    workouts.forEach(w => { if (inRange(w.date, r)) (w.exercises || []).forEach(e => v += exVol(e)); });
     return v;
   }
   function monthCount(offset) { const r = monthRange(offset); return workouts.filter(w => inRange(w.date, r)).length; }
@@ -42,7 +44,7 @@
   }
   function topMuscleThisMonth() {
     const r = monthRange(0), mus = {};
-    workouts.forEach(w => { if (inRange(w.date, r) && typeof getWorkoutMuscles === 'function') { const wm = getWorkoutMuscles(w); for (const k in wm) mus[k] = (mus[k] || 0) + wm[k]; } });
+    workouts.forEach(w => { if (inRange(w.date, r) && typeof getMuscle === 'function') (w.exercises || []).forEach(e => { if (!e.isCardio) { const m = getMuscle(e.ex); mus[m] = (mus[m] || 0) + exVol(e); } }); });
     const sorted = Object.entries(mus).filter(([m]) => m !== 'Otros').sort((a, b) => b[1] - a[1]);
     return sorted.length ? sorted[0][0] : null;
   }
@@ -51,44 +53,47 @@
     const out = [];
     if (typeof workouts === 'undefined' || !workouts.length) return out;
 
-    // Volumen este mes vs mes pasado
+    // Los textos van troceados en <span> para que el traductor de i18n.js (nodo a nodo) los pase a ingles.
+    // Volumen este mes vs mes pasado (HomeViewModel.kt: ±5%)
     const vThis = monthVolume(0), vLast = monthVolume(1);
     if (vLast > 0 && vThis > 0) {
       const pct = Math.round((vThis - vLast) / vLast * 100);
-      if (Math.abs(pct) >= 5) out.push({ ic: pct > 0 ? '📈' : '📉', c: pct > 0 ? '#2dd98a' : '#f5a623', t: `Este mes ${pct > 0 ? '+' : ''}${pct}% de volumen respecto al mes pasado` });
+      if (Math.abs(pct) >= 5) out.push({ ic: pct > 0 ? '📈' : '📉', c: pct > 0 ? '#2dd98a' : '#f5a623', t: `<span>Este mes</span> ${pct > 0 ? '+' : ''}${pct}% <span>de volumen vs el mes pasado</span>` });
     }
-    // Tendencia de fuerza del ejercicio más entrenado
+    // Tendencia de fuerza (1RM est.) del ejercicio más entrenado
     const ex = mostTrainedExercise();
     if (ex) {
       const tr = strengthTrendPerMonth(ex);
-      if (tr !== null && Math.abs(tr) >= 0.6) out.push({ ic: tr > 0 ? '💪' : '📉', c: '#4f8cff', t: `Tu ${ex} ${tr > 0 ? 'sube' : 'baja'} ~${Math.abs(tr).toFixed(1)} kg/mes (1RM est.)` });
+      if (tr !== null && Math.abs(tr) >= 0.6) out.push({
+        ic: tr > 0 ? '💪' : '📉', c: '#4f8cff',
+        t: tr > 0 ? `<span>Tu</span> <span>${ex}</span> <span>sube ~</span>${tr.toFixed(1)} <span>kg/mes (1RM est.)</span>`
+          : `<span>Tu</span> <span>${ex}</span> <span>baja ~</span>${Math.abs(tr).toFixed(1)} <span>kg/mes</span>`
+      });
     }
     // Músculo estrella del mes
     const tm = topMuscleThisMonth();
-    if (tm) out.push({ ic: '🎯', c: (typeof MC !== 'undefined' && MC[tm]) || '#9b72f5', t: `Tu grupo estrella este mes: ${tm}` });
+    if (tm) out.push({ ic: '🎯', c: (typeof MC !== 'undefined' && MC[tm]) || '#9b72f5', t: `<span>Tu grupo estrella este mes:</span> <span>${tm}</span>` });
     // Racha
     const streak = (typeof calcStreak === 'function') ? calcStreak() : 0;
-    if (streak >= 2) out.push({ ic: '🔥', c: '#ff6b6b', t: `Racha de ${streak} días seguidos. ¡No la rompas!` });
+    if (streak >= 2) out.push({ ic: '🔥', c: '#ff6b6b', t: `<span>Racha de</span> ${streak} <span>días seguidos. ¡No la rompas!</span>` });
     // Entrenos este mes
     const cThis = monthCount(0);
-    if (cThis >= 1) out.push({ ic: '🗓️', c: '#4dd4e8', t: `Llevas ${cThis} entreno${cThis > 1 ? 's' : ''} este mes` });
+    if (cThis >= 1) out.push({ ic: '🗓️', c: '#4dd4e8', t: `<span>Llevas</span> ${cThis} <span>${cThis !== 1 ? 'entrenos este mes' : 'entreno este mes'}</span>` });
 
     return out;
   }
 
+  /* Pinta "✨ Para ti" en el Inicio nativo (#nhInsights). Solo Pro, como HomeScreen.kt;
+     sin Pro el banner bloqueado lo pone dashboard.js (#nhProLock). */
   function renderInsights() {
-    const el = document.getElementById('insightsList');
-    const sec = document.getElementById('insightsSec');
+    const el = document.getElementById('nhInsights');
+    const sec = document.getElementById('nhInsightsT');
     if (!el) return;
-    if (typeof Pro !== 'undefined' && Pro.can && !Pro.can('insights')) {
-      if (sec) sec.style.display = '';
-      el.innerHTML = '<div class="pro-locked-overlay" onclick="Pro.showUpgradeModal(\'insights\')" style="position:relative;min-height:64px;"><div class="pro-locked-icon">🔒</div><div class="pro-locked-text">Insights “Para ti” — Pro</div></div>';
-      return;
-    }
-    const ins = computeInsights().slice(0, 3);
+    let isPro = false; try { isPro = Pro.isPro(); } catch (e) { }
+    const ins = isPro ? computeInsights().slice(0, 3) : [];
     if (!ins.length) { el.innerHTML = ''; if (sec) sec.style.display = 'none'; return; }
     if (sec) sec.style.display = '';
-    el.innerHTML = ins.map(i => `<div style="display:flex;align-items:center;gap:11px;background:var(--s1,#131316);border:1px solid var(--line2,#2a2a32);border-left:3px solid ${i.c};border-radius:12px;padding:12px 13px;margin-bottom:8px;"><span style="font-size:1.3rem;flex-shrink:0;line-height:1;">${i.ic}</span><span style="font-size:.85rem;color:var(--t1,#fff);line-height:1.4;">${i.t}</span></div>`).join('');
+    el.innerHTML = ins.map(i => `<div class="nh-ins"><i style="background:${i.c}"></i><span class="nh-ins-ic">${i.ic}</span><span class="nh-ins-t">${i.t}</span></div>`).join('');
   }
 
   window.renderInsights = renderInsights;

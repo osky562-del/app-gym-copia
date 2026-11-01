@@ -93,19 +93,29 @@ function getSuggestedKg(name) {
   // Default: use last weight
   return { kg, reason: 'same', last: kg };
 }
-/** Get muscles worked in a workout */
+/** Volumen de un ejercicio = kg · series · reps (mínimos a 1). El cardio no suma volumen (igual que Android, Workout.kt). */
+function exerciseVolume(e) {
+  if (!e || e.cardio || e.isCardio) return 0;
+  return (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1);
+}
+/** Volumen total de un entreno (sin cardio). */
+function workoutVolume(wk) {
+  return ((wk && wk.exercises) || []).reduce((s, e) => s + exerciseVolume(e), 0);
+}
+/** Get muscles worked in a workout (volumen por grupo, sin cardio) */
 function getWorkoutMuscles(wk) {
   const muscles = {};
   (wk.exercises || []).forEach(e => {
+    if (e.cardio || e.isCardio) return;
     const m = getMuscle(e.ex);
-    const v = (+e.kg || 0) * (+e.sets || 1) * (+e.reps || 1);
+    const v = exerciseVolume(e);
     muscles[m] = (muscles[m] || 0) + v;
   });
   return muscles;
 }
 /** Estimate recovery time (hours) per muscle group */
 function estimateRecovery(muscle, volume, rpe) {
-  const baseHours = { 'Pierna': 72, 'Espalda': 60, 'Pecho': 48, 'Hombro': 48, 'Bíceps': 36, 'Tríceps': 36, 'Core': 24, 'Otros': 48 };
+  const baseHours = { 'Piernas': 72, 'Espalda': 60, 'Pecho': 48, 'Hombros': 48, 'Bíceps': 36, 'Tríceps': 36, 'Core': 24, 'Otros': 48 };
   let hours = baseHours[muscle] || 48;
   if (rpe >= 9) hours *= 1.2;
   else if (rpe <= 6) hours *= 0.8;

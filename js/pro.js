@@ -42,8 +42,8 @@ const Pro = (function () {
     pro: {
       name: 'Pro',
       label: 'Pro',
-      price: '$4.99/mes',
-      maxSessions: Infinity,
+      price: '5 €/mes',
+      maxSessions: 5,        // Pro.kt: Gratis y Pro 5 entrenos; Pro+ y Élite ilimitado
       maxHistory: Infinity,
       aiCoachPerWeek: Infinity,
       aiRutina: true,
@@ -65,7 +65,7 @@ const Pro = (function () {
     pro_plus: {
       name: 'Pro+',
       label: 'Pro+',
-      price: '$9.99/mes',
+      price: '9,99 €/mes',
       maxSessions: Infinity,
       maxHistory: Infinity,
       aiCoachPerWeek: Infinity,
@@ -90,8 +90,44 @@ const Pro = (function () {
       mealPlans: true,
       videoAnalysis: true,
       prioritySupport: true,
+    },
+    elite: {
+      name: 'Élite',
+      label: 'Élite',
+      price: '15 €/mes',
+      maxSessions: Infinity,
+      maxHistory: Infinity,
+      aiCoachPerWeek: Infinity,
+      aiRutina: true,
+      advancedAnalytics: true,
+      exportImport: true,
+      customThemes: true,
+      freeAccents: null,
+      unlimitedWorkouts: true,
+      weeklyComparison: true,
+      bodyWeight: true,
+      prTable: true,
+      heatmap: true,
+      muscleMap: true,
+      insights: true,
+      strengthLevels: true,
+      prTimeline: true,
+      setTypes: true,
+      periodization: true,
+      socialFeatures: true,
+      mealPlans: true,
+      videoAnalysis: true,
+      prioritySupport: true,
     }
   };
+
+  /* ── Niveles de la pantalla de planes (ProScreen.kt) ── */
+  const TIERS = [
+    { id: 'free', name: 'Gratis', price: '0 €', ads: true, trial: 0, features: ['Entrenos (máx. 5 guardados)', 'Progreso y mapa muscular', 'Sin Coach'] },
+    { id: 'pro', name: 'Pro', price: '5 €/mes', ads: true, trial: 7, features: ['Coach: 6 análisis + 3 rutinas al mes', 'Analítica avanzada, temas y tipos de serie', 'Registro de molestias', 'Máx. 5 entrenos guardados · con anuncios'] },
+    { id: 'pro_plus', name: 'Pro+', price: '9,99 €/mes', ads: false, trial: 7, best: true, features: ['Sin anuncios · entrenos ilimitados', 'Coach: 25 análisis + 15 rutinas al mes', 'Análisis automático tras cada entreno'] },
+    { id: 'elite', name: 'Élite', price: '15 €/mes', ads: false, trial: 3, features: ['Todo SIN límites', 'Coach y rutinas ilimitadas', 'Análisis tras cada entreno, adaptado a tus dolores'] },
+  ];
 
   /* ── Feature → Plan Key Mapping ── */
   const FEATURE_MAP = {
@@ -130,15 +166,19 @@ const Pro = (function () {
   let aiUsageThisWeek = 0;
   let aiWeekStart = null;
   let isAdmin = false;
+  let trialEnd = 0;            // ms; 0 = sin prueba gratis en curso (Pro.kt trialEnd)
 
   /* ── Load from storage ── */
   function load() {
     const saved = STORE.get('pro_plan');
     if (saved) {
-      currentPlan = saved.plan || 'free';
+      currentPlan = PLANS[saved.plan] ? saved.plan : 'free';
       planExpiry = saved.expiry ? new Date(saved.expiry) : null;
       aiUsageThisWeek = saved.aiUsage || 0;
       aiWeekStart = saved.aiWeekStart || null;
+      trialEnd = +saved.trialEnd || 0;
+      // Prueba acabada sin cancelar: el plan se mantiene (cobro simulado) y se limpia la marca.
+      if (trialEnd && Date.now() > trialEnd) trialEnd = 0;
 
       // Check expiry (admins never expire)
       if (!isAdmin && planExpiry && new Date() > planExpiry) {
@@ -158,6 +198,7 @@ const Pro = (function () {
       expiry: planExpiry ? planExpiry.toISOString() : null,
       aiUsage: aiUsageThisWeek,
       aiWeekStart: aiWeekStart,
+      trialEnd: trialEnd || 0,
     });
   }
 
@@ -402,48 +443,50 @@ const Pro = (function () {
     };
 
     const label = featureLabels[featureName] || featureName;
+    const tr = s => (typeof I18N !== 'undefined' ? I18N.t(s) : s);
 
     // Remove existing modal
     const old = document.getElementById('proUpgradeModal');
     if (old) old.remove();
 
+    // Mismo diálogo que ProUpsellDialog (Android): título, 4 puntos, 4 duraciones de Pro.
     const modal = document.createElement('div');
     modal.id = 'proUpgradeModal';
     modal.innerHTML = `
       <div class="pro-modal-overlay" onclick="Pro.closeUpgradeModal()">
         <div class="pro-modal-card" onclick="event.stopPropagation()">
-          <div class="pro-modal-badge">⚡ PRO</div>
-          <div class="pro-modal-title">Desbloquea ${label}</div>
-          <div class="pro-modal-desc">Esta función requiere KO95FIT Pro. Mejora tu plan para acceder a todas las herramientas avanzadas.</div>
+          <div class="pro-modal-badge">PRO</div>
+          <div class="pro-modal-title">${tr('Desbloquea')} ${tr(label)}</div>
+          <div class="pro-modal-desc">${tr('Esta función requiere KO95FIT Pro. Mejora tu plan para acceder a todas las herramientas avanzadas.')}</div>
 
           <ul class="pro-plan-features" style="margin:0 0 14px;">
-            <li>Entrenos ilimitados (sin tope de 5)</li>
-            <li>Mapa muscular, Insights y Fuerza estimada</li>
-            <li>Historial de récords y tipos de serie</li>
-            <li>Coach y rutinas, analíticas, todos los temas</li>
+            <li>${tr('Entrenos ilimitados (sin tope de 5)')}</li>
+            <li>${tr('Insights, comparativa semanal y mapa de actividad')}</li>
+            <li>${tr('Historial de récords y fuerza estimada')}</li>
+            <li>${tr('Coach y rutinas, tipos de serie avanzados')}</li>
           </ul>
 
           <div class="pro-modal-plans" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <div class="pro-plan-option" onclick="Pro.selectPlan('pro','1m')">
-              <div class="pro-plan-name">1 mes</div>
-              <div class="pro-plan-price">4,99 €<small>/mes</small></div>
+              <div class="pro-plan-name">${tr('1 mes')}</div>
+              <div class="pro-plan-price">4,99€<small> /mes</small></div>
             </div>
             <div class="pro-plan-option" onclick="Pro.selectPlan('pro','3m')">
-              <div class="pro-plan-name">3 meses</div>
-              <div class="pro-plan-price">12,99 €<small> · 4,33/mes</small></div>
+              <div class="pro-plan-name">${tr('3 meses')}</div>
+              <div class="pro-plan-price">12,99€<small> 4,33/mes</small></div>
             </div>
             <div class="pro-plan-option" onclick="Pro.selectPlan('pro','6m')">
-              <div class="pro-plan-name">6 meses</div>
-              <div class="pro-plan-price">21,99 €<small> · 3,66/mes</small></div>
+              <div class="pro-plan-name">${tr('6 meses')}</div>
+              <div class="pro-plan-price">21,99€<small> 3,66/mes</small></div>
             </div>
             <div class="pro-plan-option featured" onclick="Pro.selectPlan('pro','1y')">
-              <div class="pro-plan-popular">Mejor precio</div>
-              <div class="pro-plan-name">1 año</div>
-              <div class="pro-plan-price">34,99 €<small> · 2,92/mes</small></div>
+              <div class="pro-plan-popular">${tr('MEJOR PRECIO')}</div>
+              <div class="pro-plan-name">${tr('1 año')}</div>
+              <div class="pro-plan-price">34,99€<small> 2,92/mes</small></div>
             </div>
           </div>
 
-          <button class="pro-modal-close" onclick="Pro.closeUpgradeModal()">Quizás luego</button>
+          <button class="pro-modal-close" onclick="Pro.closeUpgradeModal()">${tr('Quizás luego')}</button>
         </div>
       </div>`;
     document.body.appendChild(modal);
@@ -453,18 +496,74 @@ const Pro = (function () {
   function closeUpgradeModal() {
     const m = document.getElementById('proUpgradeModal');
     if (m) m.remove();
+    const p = document.getElementById('proPlansModal');
+    if (p) p.remove();
   }
 
-  function selectPlan(planId, duration) {
-    // TODO: integrar Google Play Billing (Android) / pago real.
-    // De momento el pago no está conectado: el Pro se concede desde el panel admin.
+  /* Compra simulada, igual que ProUpsellDialog en Android (Pro.activate("pro")). */
+  function selectPlan(planId) {
     closeUpgradeModal();
-    const dl = { '1m': '1 mes', '3m': '3 meses', '6m': '6 meses', '1y': '1 año' }[duration] || '';
-    toast('Pago aún no disponible. Pro ' + dl + ' — ¡pronto! 💪', 'ok');
+    setPlan(PLANS[planId] ? planId : 'pro');
   }
+
+  /* ── Prueba gratis (Pro.kt: trialDays / activateWithTrial / cancelPlan) ── */
+  function trialDays(planId) { return planId === 'pro' || planId === 'pro_plus' ? 7 : planId === 'elite' ? 3 : 0; }
+  function isOnTrial() { return currentPlan !== 'free' && trialEnd > Date.now(); }
+  function activateWithTrial(planId) {
+    if (!PLANS[planId]) return;
+    currentPlan = planId; planExpiry = null;
+    const d = trialDays(planId);
+    trialEnd = d > 0 ? Date.now() + d * 86400000 : 0;
+    save(); saveToFirestore(); renderProBadges();
+  }
+  function cancelPlan() {
+    currentPlan = 'free'; planExpiry = null; trialEnd = 0;
+    save(); saveToFirestore(); renderProBadges();
+  }
+  function fmtTrialEnd(ms) { const d = new Date(ms); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); }
+
+  /* ── Pantalla de planes (ProScreen.kt): Gratis · Pro · Pro+ · Élite ── */
+  let plansJustChanged = false;
+  function showPlans() {
+    const tr = s => (typeof I18N !== 'undefined' ? I18N.t(s) : s);
+    let m = document.getElementById('proPlansModal');
+    if (!m) { m = document.createElement('div'); m.id = 'proPlansModal'; document.body.appendChild(m); }
+    const cur = currentPlan;
+    m.innerHTML = `
+      <div class="pro-modal-overlay" onclick="Pro.closePlans()" style="align-items:flex-start;padding:0;">
+        <div class="pro-plans" onclick="event.stopPropagation()">
+          <div class="pro-plans-h"><button type="button" class="pro-plans-back" onclick="Pro.closePlans()">‹</button><div class="pro-plans-t">KO95FIT PRO</div></div>
+          <div class="pro-plans-intro">${tr('Elige tu plan. Los niveles superiores desbloquean más análisis y rutinas. Empieza con días gratis: cancela antes de que acaben y no se cobra nada.')}</div>
+          <div class="pro-plans-sim">${tr('(Compra simulada — todavía no cobra nada)')}</div>
+          ${TIERS.map(t => {
+            const isCur = cur === t.id;
+            return `<div class="pro-tier${t.best ? ' best' : ''}${isCur ? ' cur' : ''}">
+              <div class="pro-tier-row"><span class="pro-tier-name">${tr(t.name)}</span>${t.best ? `<span class="pro-tier-pop">POPULAR</span>` : ''}<span style="flex:1"></span><span class="pro-tier-price">${t.price}</span></div>
+              <div class="pro-tier-meta">${t.ads ? tr('📺 Con anuncios') : ''}${t.ads && t.trial ? ' · ' : ''}${t.trial ? `<span style="color:var(--a);font-weight:600;">🎁 ${t.trial} ${tr('días gratis')}</span>` : ''}</div>
+              <div class="pro-tier-feats">${t.features.map(f => `<div class="pro-tier-f"><span>✓</span><span>${tr(f)}</span></div>`).join('')}</div>
+              ${isCur && isOnTrial() ? `<div class="pro-tier-trial">🎁 ${tr('En prueba gratis hasta el')} ${fmtTrialEnd(trialEnd)} · ${tr('cancela antes para no pagar')}</div>` : ''}
+              <button type="button" class="pro-tier-btn${isCur ? ' cur' : ''}" onclick="Pro.pickTier('${t.id}')">${isCur ? tr('✓ Tu plan actual') : t.id === 'free' ? tr('Cambiar a Gratis') : tr('Probar') + ' ' + t.trial + ' ' + tr('días gratis')}</button>
+            </div>`;
+          }).join('')}
+          ${cur !== 'free' ? `<button type="button" class="pro-plans-cancel" onclick="Pro.pickTier('free')">${tr('Cancelar y volver a Gratis')}</button>` : ''}
+          ${plansJustChanged ? `<div class="pro-plans-done">${cur === 'free' ? tr('Plan «Gratis» activado (no se cobra nada)') : '✓ «' + PLANS[cur].label + '» ' + tr('activado · prueba gratis empezada')}</div>` : ''}
+          <div style="height:24px"></div>
+        </div>
+      </div>`;
+  }
+  function pickTier(id) {
+    if (id === 'free') cancelPlan(); else activateWithTrial(id);
+    plansJustChanged = true;
+    showPlans();
+    try { if (typeof renderProfile === 'function') renderProfile(); } catch (e) { }
+    try { if (typeof renderDash === 'function') renderDash(); } catch (e) { }
+  }
+  function closePlans() { plansJustChanged = false; const m = document.getElementById('proPlansModal'); if (m) m.remove(); }
 
   /** Render PRO badges on UI elements */
   function renderProBadges() {
+    // El Inicio nativo depende del plan (badge PRO, anuncio, insights bloqueados): refrescarlo
+    try { if (typeof renderNativeHome === 'function' && typeof workouts !== 'undefined') renderNativeHome(); } catch (e) { }
     // Add/remove pro badge in topbar
     const topbar = document.querySelector('.tb-brand');
     if (!topbar) return;
@@ -513,6 +612,13 @@ const Pro = (function () {
     showUpgradeModal,
     closeUpgradeModal,
     selectPlan,
+    showPlans,
+    closePlans,
+    pickTier,
+    activateWithTrial,
+    cancelPlan,
+    isOnTrial,
+    trialDays,
     renderProBadges,
     checkAdmin,
     loadFromFirestore,

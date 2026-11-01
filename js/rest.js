@@ -1,30 +1,26 @@
-/* ══ REST ══ */
-const LRC = 2 * Math.PI * 17;
+/* ══ REST (paridad con LiveViewModel.kt: startRest / addRest / skipRest / notifyRestEnd) ══ */
 
-/* Reproduce un triple beep ascendente cuando termina el descanso (Web Audio API).
-   Funciona con auriculares Bluetooth gracias a la sesión de audio configurada en Swift/Android. */
+/* Beep corto al terminar el descanso (Web Audio API). Solo si STORE.restSound !== false. */
 function playRestEndSound() {
   try {
     if (!window._restAudioCtx) {
       window._restAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     const ctx = window._restAudioCtx;
-    if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
-    const tones = [{ f: 880, t: 0 }, { f: 1109, t: 0.18 }, { f: 1397, t: 0.36 }];
-    tones.forEach(({ f, t }) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = f;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      const start = ctx.currentTime + t;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.5, start + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
-      osc.start(start);
-      osc.stop(start + 0.20);
-    });
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 1000;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const start = ctx.currentTime;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.5, start + 0.01);
+    gain.gain.setValueAtTime(0.5, start + 0.30);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+    osc.start(start);
+    osc.stop(start + 0.36);
   } catch (e) { console.warn('Audio beep failed:', e); }
 }
 
@@ -33,8 +29,6 @@ function playRestEndSound() {
 function scheduleNativeRestSound(sec, nextUp) {
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scheduleRestSound) {
-      // nextUp: texto "qué viene después" que se muestra en la notificación
-      // (visible en el Apple Watch al vibrar). Si va vacío, Swift usa el texto genérico.
       window.webkit.messageHandlers.scheduleRestSound.postMessage({ delay: sec, nextUp: nextUp || '' });
     }
   } catch (e) {}
@@ -55,8 +49,7 @@ function unlockAudioContext() {
       window._restAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     const ctx = window._restAudioCtx;
-    if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
-    // Tono inaudible de 0.01s para confirmar que el contexto está activo
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     gain.gain.value = 0;
@@ -67,23 +60,41 @@ function unlockAudioContext() {
   } catch (e) {}
 }
 
+/* Pide permiso de notificaciones (para "¡Descanso terminado! 💪" con la pantalla apagada). */
+function requestRestNotifPermission() {
+  try {
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+  } catch (e) {}
+}
+
+/* Aviso de fin de descanso: vibración 450 ms, beep y notificación, según ajustes (notifyRestEnd). */
+function notifyRestEnd() {
+  if (STORE.get('haptics') !== false && typeof vib === 'function') vib([450]);
+  if (STORE.get('restSound') !== false) playRestEndSound();
+  try {
+    if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+      const title = (typeof I18N !== 'undefined' && I18N.t) ? I18N.t('¡Descanso terminado! 💪') : '¡Descanso terminado! 💪';
+      const n = new Notification(title, { tag: 'ko95-rest', icon: 'logo.png' });
+      setTimeout(() => { try { n.close(); } catch (e) {} }, 8000);
+    }
+  } catch (e) {}
+}
+
+let restPauseWall = 0;   // instante en que se pausó el entreno con un descanso en marcha
+
 function startRest(sec, msg, nextUp) {
-  if (!sec || liveIsPaused) return;
+  if (!sec) return;
   stopRest();
   restTotal = sec;
-  restMsg = msg || 'Prepárate';
+  restMsg = msg || '';
   restStartWall = Date.now();
   restLeft = sec;
-  $('lrrN').textContent = sec;
-  $('lvRestSub').textContent = restMsg;
+  restPauseWall = liveIsPaused ? Date.now() : 0;
+  renderRest();
   $('lvRest').classList.add('show');
-  updRing();
 
-  // iOS: programa una notificación nativa con sonido para que suene aunque
-  // se bloquee la pantalla y la app pase a segundo plano. nextUp se muestra
-  // en la notificación (visible en el Apple Watch).
+  // iOS: notificación nativa con sonido aunque se bloquee la pantalla.
   scheduleNativeRestSound(sec, nextUp);
-
   // iOS: actualizar la Live Activity con el descanso en curso
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.startRestActivity) {
@@ -92,50 +103,64 @@ function startRest(sec, msg, nextUp) {
   } catch (e) {}
 
   restInt = setInterval(() => {
+    if (liveIsPaused) return;   // en pausa el descanso se congela (se reanuda al seguir)
     restLeft = restTotal - Math.floor((Date.now() - restStartWall) / 1000);
     if (restLeft <= 0) {
       stopRest();
-      toast('¡Listo! 💪', 'good');
-      vib([100, 60, 120]);
-      playRestEndSound();   // beep en primer plano (Web Audio)
-      // La notificación nativa ya habrá sonado por su cuenta si la app estaba en background
-      // Auto-advance: scroll/focus al input de la siguiente serie activa,
-      // o pasa al siguiente ejercicio si todas las series están hechas.
+      notifyRestEnd();
       if (typeof autoAdvanceAfterRest === 'function') autoAdvanceAfterRest();
       return;
     }
-    $('lrrN').textContent = restLeft;
-    updRing();
+    renderRest();
   }, 1000);
 }
-function updRing() { $('lrrProg').style.strokeDashoffset = LRC * (1 - restLeft / restTotal); }
+function renderRest() {
+  const left = Math.max(0, restLeft);
+  $('lrrN').textContent = typeof fmt === 'function' ? fmt(left) : left;
+  const pct = restTotal > 0 ? Math.round(left / restTotal * 100) : 0;
+  $('lrrProg').style.width = pct + '%';
+}
+/* Compatibilidad con el bridge iOS (__onLiveActivitySync). */
+function updRing() { renderRest(); }
+/* Llamado por togglePause: congela / reanuda el descanso sin cancelarlo. */
+function restOnPause(paused) {
+  if (!restInt) return;
+  if (paused) { restPauseWall = Date.now(); cancelNativeRestSound(); }
+  else if (restPauseWall) {
+    restStartWall += Date.now() - restPauseWall;
+    restPauseWall = 0;
+    scheduleNativeRestSound(Math.max(1, restLeft));
+  }
+}
 function stopRest() {
   clearInterval(restInt); restInt = null;
+  restPauseWall = 0;
   $('lvRest').classList.remove('show');
-  cancelNativeRestSound();   // anular notificación pendiente si se salta o termina antes
-  // iOS: parar el descanso en la Live Activity (lock screen)
+  cancelNativeRestSound();
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.stopRestActivity) {
       window.webkit.messageHandlers.stopRestActivity.postMessage({});
     }
   } catch (e) {}
 }
-/* Ajusta el descanso que está corriendo (+15s, -15s, +1m). Nunca baja de 1 segundo. */
+/* Ajusta el descanso que está corriendo (−15s, +15s, +1m). Puede llegar a 0 (addRest de Android). */
 function bumpRest(delta) {
   if (!restInt) return;
-  const left = Math.max(1, restLeft + delta);
+  const left = Math.max(0, restLeft + delta);
   restTotal = Math.max(restTotal + (left - restLeft), left);
   restStartWall = Date.now() - (restTotal - left) * 1000;
   restLeft = left;
-  $('lrrN').textContent = restLeft;
-  updRing();
-  // Reprograma el aviso nativo (iOS) con el tiempo nuevo.
+  renderRest();
   cancelNativeRestSound();
-  scheduleNativeRestSound(restLeft);
+  if (left > 0) scheduleNativeRestSound(left);
   if (typeof vib === 'function') vib([20]);
+  if (left <= 0 && !liveIsPaused) {
+    stopRest();
+    notifyRestEnd();
+    if (typeof autoAdvanceAfterRest === 'function') autoAdvanceAfterRest();
+  }
 }
 function skipRest() {
   stopRest();
-  // Saltar también dispara el auto-advance (mismo comportamiento que cuando termina solo).
   if (typeof autoAdvanceAfterRest === 'function') autoAdvanceAfterRest();
 }
