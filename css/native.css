@@ -268,3 +268,7 @@ body { background: var(--bg); }
   font-family: var(--f) !important; font-size: .9rem !important; letter-spacing: 0 !important; text-transform: none !important;
   height: 48px; border-radius: 12px !important; font-weight: 600;
 }
+
+/* La pantalla de entrada se puede desplazar: en moviles pequenos lo de abajo quedaba oculto */
+#authOverlay { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-top: calc(var(--st) + 16px); padding-bottom: 40px; }
+.auth-logo { width: 104px; height: 104px; }
