@@ -396,3 +396,8 @@ body { background: var(--bg); }
 .plan-ex-tech { font-size: .95rem; }
 .plan-ac-tech { font-size: .95rem; padding: 2px 6px; border-radius: 7px; background: var(--s3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .plan-ac-tech:active { background: var(--ag); }
+
+/* Avisos push (Perfil) */
+.np-pushrow { padding-bottom: 8px; }
+.np-pushrow .np-hs { padding: 0 2px 6px; }
+.np-pushbtns { padding: 2px 0 4px; }

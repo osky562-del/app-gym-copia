@@ -71,11 +71,15 @@ function requestRestNotifPermission() {
 function notifyRestEnd() {
   if (STORE.get('haptics') !== false && typeof vib === 'function') vib([450]);
   if (STORE.get('restSound') !== false) playRestEndSound();
+  // Con la web en segundo plano pero sin congelar (Android), aviso local por el service worker.
+  // Con el móvil bloqueado el aviso lo manda el NAS (Push.restStarted); aquí se cancela para no duplicar.
   try {
-    if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
-      const title = (typeof I18N !== 'undefined' && I18N.t) ? I18N.t('¡Descanso terminado! 💪') : '¡Descanso terminado! 💪';
-      const n = new Notification(title, { tag: 'ko95-rest', icon: 'logo.png' });
-      setTimeout(() => { try { n.close(); } catch (e) {} }, 8000);
+    if (typeof Push !== 'undefined') {
+      Push.restStopped();
+      if (document.visibilityState !== 'visible') {
+        const title = (typeof I18N !== 'undefined' && I18N.t) ? I18N.t('¡Descanso terminado! 💪') : '¡Descanso terminado! 💪';
+        Push.showLocal(title, '');
+      }
     }
   } catch (e) {}
 }
@@ -95,6 +99,8 @@ function startRest(sec, msg, nextUp) {
 
   // iOS: notificación nativa con sonido aunque se bloquee la pantalla.
   scheduleNativeRestSound(sec, nextUp);
+  // Web instalada en el móvil: el NAS manda el aviso al acabar (la web se congela al bloquear).
+  if (typeof Push !== 'undefined') Push.restStarted(sec, nextUp);
   // iOS: actualizar la Live Activity con el descanso en curso
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.startRestActivity) {
@@ -125,11 +131,12 @@ function updRing() { renderRest(); }
 /* Llamado por togglePause: congela / reanuda el descanso sin cancelarlo. */
 function restOnPause(paused) {
   if (!restInt) return;
-  if (paused) { restPauseWall = Date.now(); cancelNativeRestSound(); }
+  if (paused) { restPauseWall = Date.now(); cancelNativeRestSound(); if (typeof Push !== 'undefined') Push.restStopped(); }
   else if (restPauseWall) {
     restStartWall += Date.now() - restPauseWall;
     restPauseWall = 0;
     scheduleNativeRestSound(Math.max(1, restLeft));
+    if (typeof Push !== 'undefined') Push.restStarted(Math.max(1, restLeft), '');
   }
 }
 function stopRest() {
@@ -137,6 +144,7 @@ function stopRest() {
   restPauseWall = 0;
   $('lvRest').classList.remove('show');
   cancelNativeRestSound();
+  if (typeof Push !== 'undefined') Push.restStopped();
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.stopRestActivity) {
       window.webkit.messageHandlers.stopRestActivity.postMessage({});
@@ -153,6 +161,7 @@ function bumpRest(delta) {
   renderRest();
   cancelNativeRestSound();
   if (left > 0) scheduleNativeRestSound(left);
+  if (typeof Push !== 'undefined') { if (left > 0) Push.restStarted(left, ''); else Push.restStopped(); }
   if (typeof vib === 'function') vib([20]);
   if (left <= 0 && !liveIsPaused) {
     stopRest();

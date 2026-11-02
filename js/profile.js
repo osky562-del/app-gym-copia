@@ -138,6 +138,7 @@ applyAccent();
 
 /* ── Personalización: avatar, interruptores y pantalla de inicio ── */
 function renderPersonal() {
+  renderPushRow();
   const av = $('avatarRow');
   if (av) {
     const cur = getAvatar();
@@ -300,3 +301,34 @@ function cycleFontSize() { }
   if (typeof prev !== 'function') return;
   window.playRestEndSound = function () { if (prefGet('restSound') === false) return; return prev.apply(this, arguments); };
 })();
+
+
+function _pushT(s) { return (typeof I18N !== 'undefined' && I18N.t) ? I18N.t(s) : s; }
+/* ── Avisos con el móvil bloqueado (push desde el NAS, js/push.js) ── */
+async function renderPushRow() {
+  const sw = document.getElementById('tg_push'), st = document.getElementById('pushState'), tb = document.getElementById('pushTestBtn');
+  if (!sw || typeof Push === 'undefined') return;
+  const s = await Push.state();
+  sw.classList.toggle('on', s.code === 'on');
+  sw.style.opacity = (s.code === 'unsupported' || s.code === 'ios_tab' || s.code === 'denied' || s.code === 'no_session') ? '.4' : '1';
+  st.textContent = s.text;
+  tb.style.display = s.code === 'on' ? '' : 'none';
+}
+async function pushToggle() {
+  if (typeof Push === 'undefined') return;
+  try {
+    const s = await Push.state();
+    if (s.code === 'on') { await Push.disable(); toast(_pushT('Avisos desactivados'), 'ok'); }
+    else if (s.code === 'off' || s.code === 'pending') { await Push.enable(); toast(_pushT('Avisos activados ✓'), 'good'); }
+    else toast(s.text, 'err');
+  } catch (e) { toast(e && e.message ? e.message : _pushT('No se pudo activar'), 'err'); }
+  renderPushRow();
+}
+async function pushTest() {
+  const b = document.getElementById('pushTestBtn'); if (b) b.disabled = true;
+  try {
+    const r = await Push.test();
+    toast(r.sent > 0 ? _pushT('Aviso enviado: mira el móvil (y el reloj)') : _pushT('El NAS no pudo enviar el aviso'), r.sent > 0 ? 'good' : 'err');
+  } catch (e) { toast(typeof NAS !== 'undefined' && e && e.kind ? NAS.friendly(e) : _pushT('No se pudo enviar'), 'err'); }
+  if (b) b.disabled = false;
+}
