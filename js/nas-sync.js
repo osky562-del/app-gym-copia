@@ -374,6 +374,7 @@ const NAS = (() => {
     ls.del(K.closed);
     if (typeof Pro !== 'undefined') Pro.applyAccount(user);
     if (typeof Admin !== 'undefined') Admin.checkAndShowBroadcast();
+    if (typeof Push !== 'undefined') Push.refresh();
     const ov = document.getElementById('authOverlay');
     if (ov) ov.classList.remove('show');
     updateSyncStatus('on', 'NAS: ' + user.email);
@@ -464,6 +465,7 @@ const NAS = (() => {
         sync().then(() => { if (u) updateSyncStatus('on', 'NAS: ' + u.email); });
         refreshAccount().catch(() => { /* sin conexion: vale el plan guardado */ });
         if (typeof Admin !== 'undefined') Admin.checkAndShowBroadcast();
+        if (typeof Push !== 'undefined') Push.refresh();
       } else if (localStorage.getItem('ko95_sess') !== 'local') {
         localStorage.removeItem('ko95_sess');
         updateSyncStatus('off', '🔒 Identifícate');
